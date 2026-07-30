@@ -1,0 +1,135 @@
+/* Runners Guru — app-level layout on top of the Industry design system.
+   Keep component classes (.btn, .field, .input, .table, .dialog, .tag, .blueprint)
+   from styles.css untouched; this file only adds page/layout scaffolding. */
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  min-height: 100vh;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.app-main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+/* Blueprint card padding variant used throughout the prototype */
+.blueprint-card {
+  border: 1px solid var(--color-divider);
+  padding: var(--space-4);
+  position: relative;
+}
+
+.stack-2 { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-3 { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-4 { display: flex; flex-direction: column; gap: var(--space-4); }
+.row-2 { display: flex; align-items: center; gap: var(--space-2); }
+.row-3 { display: flex; align-items: center; gap: var(--space-3); }
+.row-4 { display: flex; align-items: center; gap: var(--space-4); }
+
+.grid-auto-160 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); }
+.grid-auto-200 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+.grid-auto-240 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); }
+
+.centered-card-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  background: var(--color-accent-100);
+}
+
+.avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+  border: 1px solid var(--color-divider);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.avatar-initials--md { width: 40px; height: 40px; }
+.avatar-initials--sm { width: 36px; height: 36px; font-size: 13px; }
+
+.nav-cta {
+  margin-left: var(--space-4);
+}
+
+/* Progress bar for challenges */
+.progress-track { height: 6px; background: var(--color-neutral-200); }
+.progress-fill { height: 100%; background: var(--color-accent); }
+
+/* Run screen live map placeholder */
+.live-map-placeholder {
+  border: 1px solid var(--color-divider);
+  position: relative;
+  aspect-ratio: 16/10;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-accent-100),
+    var(--color-accent-100) 10px,
+    var(--color-accent-200) 10px,
+    var(--color-accent-200) 20px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-map-label {
+  font-family: monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-800);
+  background: var(--color-bg);
+  padding: 4px 10px;
+  border: 1px solid var(--color-divider);
+}
+
+/* Chat */
+.chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: var(--space-4); height: calc(100vh - 220px); min-height: 420px; }
+.chat-contact { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); cursor: pointer; border-bottom: 1px solid var(--color-divider); }
+.chat-thread { display: flex; flex-direction: column; gap: var(--space-3); flex: 1; overflow-y: auto; padding: var(--space-4); }
+.chat-bubble { max-width: 70%; padding: 10px 14px; border: 1px solid var(--color-divider); }
+
+/* Hero image slot placeholder replacement (no drag-and-drop needed in production) */
+.hero-image-slot {
+  width: 100%;
+  aspect-ratio: 16/10;
+  background: var(--color-accent-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent-800);
+  font-size: 13px;
+  text-align: center;
+  padding: var(--space-4);
+}
