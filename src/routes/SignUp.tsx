@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
+import { BrandHeader } from '../components/Logo';
 import { signUp, saveProfileAddress } from '../lib/api';
 import type { Address } from '../types';
 import './auth.css';
@@ -41,6 +42,7 @@ export function SignUp() {
 
   return (
     <div className="rg-auth-page">
+      <BrandHeader />
       <div className="rg-auth-card">
         <div className="rg-auth-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">

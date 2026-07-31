@@ -21,3 +21,30 @@ export function Wordmark({ fontSize = 32 }: { fontSize?: number }) {
     </div>
   );
 }
+
+/** For standalone pages that sit outside the main app nav (Sign In, Sign
+ * Up, Onboarding) — a small clickable brand mark so those screens don't
+ * feel disconnected from the rest of the product. Links to the marketing
+ * page when signed out, since none of these screens have a "home" to
+ * return to yet. */
+export function BrandHeader() {
+  return (
+    <a
+      href="/"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 10,
+        fontFamily: 'var(--font-heading)',
+        fontWeight: 600,
+        fontSize: 20,
+        color: 'var(--color-text)',
+        textDecoration: 'none',
+        marginBottom: 'var(--space-6)',
+      }}
+    >
+      <LogoMark size={28} />
+      The Runners Guru
+    </a>
+  );
+}

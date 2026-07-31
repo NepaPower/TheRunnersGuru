@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Blueprint } from '../../components/ui/Blueprint';
 import { Button } from '../../components/ui/Button';
+import { BrandHeader } from '../../components/Logo';
 import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
 import { saveTrainingPlan } from '../../lib/api';
@@ -9,6 +9,7 @@ import { StepDistance } from './StepDistance';
 import { StepFirstTime } from './StepFirstTime';
 import { StepPace } from './StepPace';
 import { StepDateGoal } from './StepDateGoal';
+import '../auth.css';
 
 const STEP_LABELS = ['Distance & race', 'First time?', 'Pace', 'Race date & goal'];
 
@@ -49,34 +50,31 @@ export function Onboarding() {
   }
 
   return (
-    <div className="centered-card-page" style={{ background: 'var(--color-bg)' }}>
-      <Blueprint style={{ width: 'min(480px, 100%)', border: '1px solid var(--color-divider)', padding: 'var(--space-8) var(--space-6)' }}>
+    <div className="rg-auth-page">
+      <BrandHeader />
+      <div className="rg-auth-card" style={{ width: 'min(480px, 100%)' }}>
         <div className="row-2" style={{ marginBottom: 'var(--space-6)' }}>
           {STEP_LABELS.map((label, i) => (
             <div
               key={label}
               title={label}
-              style={{ width: 20, height: 3, background: i <= step ? 'var(--color-accent)' : 'var(--color-divider)' }}
+              style={{ width: 22, height: 4, borderRadius: 2, background: i <= step ? 'var(--color-accent)' : 'var(--color-divider)' }}
             />
           ))}
         </div>
 
-        <h6 className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>
+        <h6 style={{ marginBottom: 'var(--space-2)', color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
           Step {step + 1} of 4
         </h6>
 
-        {error && (
-          <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', marginBottom: 'var(--space-4)', fontSize: 13 }}>
-            {error}
-          </div>
-        )}
+        {error && <div className="rg-auth-error">{error}</div>}
 
         {step === 0 && <StepDistance />}
         {step === 1 && <StepFirstTime />}
         {step === 2 && <StepPace />}
         {step === 3 && <StepDateGoal />}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
           <Button variant="secondary" disabled={step === 0 || saving} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
             Back
           </Button>
@@ -84,7 +82,7 @@ export function Onboarding() {
             {saving ? 'Saving…' : step === 3 ? 'Get started' : 'Next'}
           </Button>
         </div>
-      </Blueprint>
+      </div>
     </div>
   );
 }
