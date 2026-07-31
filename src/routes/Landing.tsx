@@ -60,7 +60,7 @@ export function Landing() {
               starts here
             </h1>
             <p className="rg-landing-subhead">
-              Intelligent training plans built around you — whether it's your first 5K or your next 100-miler. Pick
+              Intelligent training plans built around you — whether it's your first 5K or your next 300-mile ultra. Pick
               your distance, upload your route, and let AI handle the rest.
             </p>
 
@@ -79,7 +79,7 @@ export function Landing() {
 
             <div className="rg-landing-hero-stats">
               <div>
-                <div className="rg-landing-hero-stat-value">5K–100mi</div>
+                <div className="rg-landing-hero-stat-value">5K–300+mi</div>
                 <div className="rg-landing-hero-stat-label">Every distance covered</div>
               </div>
               <div>

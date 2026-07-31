@@ -124,7 +124,7 @@ export const NUTRITION_BRANDS = [
 
 export const LANDING_FEATURES = [
   { title: 'Built For Every Runner', desc: 'From your first 5K to your fiftieth ultra — plans that meet you where you are.' },
-  { title: 'Any Distance, Your Choice', desc: '5K to 100-miler, pick your race and we build the plan around it.' },
+  { title: 'Any Distance, Your Choice', desc: '5K to 300-mile ultras, pick your race and we build the plan around it.' },
   { title: 'Upload, Analyze, Train', desc: 'Drop in a GPX file and get route-aware training insights.' },
   { title: 'Fuel Right', desc: 'Nutrition guidance tuned to your mileage and race distance.' },
   { title: 'Stay Ahead of Dehydration', desc: 'Weather-aware hydration recommendations for every run.' },
