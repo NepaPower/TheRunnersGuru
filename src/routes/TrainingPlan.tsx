@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Blueprint } from '../components/ui/Blueprint';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../state/AppContext';
+import './trainingplan.css';
 
 const MONTH_BG = ['var(--color-bg)', 'var(--color-neutral-100)'];
 
@@ -29,34 +29,31 @@ export function TrainingPlan() {
         ← Back to summary
       </Button>
 
-      <Blueprint style={{ border: '1px solid var(--color-divider)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 'var(--space-4)', gap: 'var(--space-2)' }}>
-          <div className="card-kicker" style={{ fontSize: 20 }}>
-            Your training plan for {plan.raceName}
+      <div className="rg-tp-header-card">
+        <div className="rg-tp-header-top">
+          <div className="rg-tp-race-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <path d="M9 20l-5-2V4l5 2 6-2 5 2v14l-5-2-6 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M9 6v14M15 4v14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          <div className="text-muted" style={{ fontSize: 13 }}>
-            {plan.totalWeeks} week training plan
-          </div>
-          <div style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--color-accent-700)', maxWidth: 480 }}>
-            "{plan.quote}"
-          </div>
-          <Button variant="secondary" onClick={() => setExpanded((v) => !v)} style={{ marginTop: 'var(--space-2)' }}>
+          <div className="rg-tp-race-name">Your training plan for {plan.raceName}</div>
+          <div className="rg-tp-weeks">{plan.totalWeeks} week training plan</div>
+          <div className="rg-tp-quote">"{plan.quote}"</div>
+          <Button variant="secondary" onClick={() => setExpanded((v) => !v)}>
             {expanded ? 'Collapse full plan' : 'Expand full plan'}
           </Button>
         </div>
 
-        <div
-          style={{
-            padding: '0 var(--space-4) var(--space-4)',
-            borderTop: '1px solid var(--color-divider)',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 'var(--space-4)',
-          }}
-        >
+        <div className="rg-tp-info-grid">
           <div>
-            <h6 style={{ margin: 'var(--space-4) 0 var(--space-2)' }}>Phase Summary</h6>
-            <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+            <div className="rg-tp-info-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                <path d="M4 17l5-6 4 4 7-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Phase Summary
+            </div>
+            <ul>
               {plan.phases.map((ph) => (
                 <li key={ph.label}>
                   <strong>{ph.label}:</strong> {ph.title}
@@ -65,8 +62,14 @@ export function TrainingPlan() {
             </ul>
           </div>
           <div>
-            <h6 style={{ margin: 'var(--space-4) 0 var(--space-2)' }}>Key execution guidelines</h6>
-            <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+            <div className="rg-tp-info-heading">
+              <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                <path d="M9 12l2 2 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Key execution guidelines
+            </div>
+            <ul>
               <li>
                 <strong>The 10% rule:</strong> volume increments are capped carefully and paired with a recovery week
                 every 4th week to shed accumulated systemic fatigue and allow tendon remodeling.
@@ -84,49 +87,45 @@ export function TrainingPlan() {
             </ul>
           </div>
         </div>
+      </div>
 
-        {expanded && (
-          <div style={{ maxHeight: 520, overflow: 'auto', borderTop: '1px solid var(--color-divider)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      {expanded && (
+        <div className="rg-tp-table-card">
+          <div className="rg-tp-table-scroll">
+            <table className="rg-tp-table">
               <thead>
-                <tr style={{ position: 'sticky', top: 0, background: 'var(--color-accent-800)', color: 'var(--color-bg)', zIndex: 1 }}>
+                <tr>
                   {['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'].map(
                     (h) => (
-                      <th key={h} style={{ padding: 8, textAlign: 'left' }}>
-                        {h}
-                      </th>
+                      <th key={h}>{h}</th>
                     ),
                   )}
                 </tr>
               </thead>
               <tbody>
                 {plan.rows.map((row, i) => {
-                  const bg = row.isRaceWeek
-                    ? 'var(--color-accent-600)'
-                    : row.phase === 'Recovery Week'
-                      ? 'var(--color-accent-2-100)'
-                      : MONTH_BG[i % 2];
-                  const color = row.isRaceWeek ? 'var(--color-bg)' : 'var(--color-text)';
+                  const rowClass = row.isRaceWeek ? 'rg-tp-race' : row.phase === 'Recovery Week' ? 'rg-tp-recovery' : '';
+                  const bg = !row.isRaceWeek && row.phase !== 'Recovery Week' ? MONTH_BG[i % 2] : undefined;
                   return (
-                    <tr key={row.week} style={{ background: bg, color }}>
-                      <td style={{ padding: 8, fontWeight: 600 }}>{row.week}</td>
-                      <td style={{ padding: 8, fontWeight: 600 }}>{row.phase}</td>
-                      <td style={{ padding: 8 }}>{row.mon}</td>
-                      <td style={{ padding: 8 }}>{row.tue}</td>
-                      <td style={{ padding: 8 }}>{row.wed}</td>
-                      <td style={{ padding: 8 }}>{row.thu}</td>
-                      <td style={{ padding: 8 }}>{row.fri}</td>
-                      <td style={{ padding: 8, fontWeight: 600 }}>{row.sat}</td>
-                      <td style={{ padding: 8 }}>{row.sun}</td>
-                      <td style={{ padding: 8, fontWeight: 600 }}>{row.totalMiles.toFixed(1)} Miles</td>
+                    <tr key={row.week} className={rowClass} style={bg ? { background: bg } : undefined}>
+                      <td style={{ fontWeight: 600 }}>{row.week}</td>
+                      <td style={{ fontWeight: 600 }}>{row.phase}</td>
+                      <td>{row.mon}</td>
+                      <td>{row.tue}</td>
+                      <td>{row.wed}</td>
+                      <td>{row.thu}</td>
+                      <td>{row.fri}</td>
+                      <td style={{ fontWeight: 600 }}>{row.sat}</td>
+                      <td>{row.sun}</td>
+                      <td style={{ fontWeight: 600 }}>{row.totalMiles.toFixed(1)} Miles</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        )}
-      </Blueprint>
+        </div>
+      )}
     </>
   );
 }

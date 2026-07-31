@@ -1,0 +1,124 @@
+/* Training Plan — same rounded-card, icon-anchored treatment as the rest
+   of the app. Race week uses the gold accent (same "peak moment" color as
+   the Dashboard's streak stat and the landing CTA) since it's the payoff
+   week the whole plan builds toward. */
+
+.rg-tp-header-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.rg-tp-header-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  gap: var(--space-2);
+}
+.rg-tp-race-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent-700);
+  margin-bottom: var(--space-2);
+}
+.rg-tp-race-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+.rg-tp-weeks {
+  color: color-mix(in srgb, var(--color-text) 65%, transparent);
+  font-size: 15px;
+}
+.rg-tp-quote {
+  font-style: italic;
+  color: var(--color-accent-700);
+  font-size: 16px;
+  max-width: 480px;
+}
+.rg-tp-header-top .btn {
+  border-radius: 999px;
+  margin-top: var(--space-2);
+}
+
+.rg-tp-info-grid {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-top: 1px solid var(--color-divider);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+.rg-tp-info-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 15.5px;
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+.rg-tp-info-heading svg { color: var(--color-accent-600); flex: none; }
+.rg-tp-info-grid ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+  color: color-mix(in srgb, var(--color-text) 88%, transparent);
+  line-height: 1.6;
+}
+.rg-tp-info-grid strong { color: var(--color-text); }
+
+.rg-tp-table-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.rg-tp-table-scroll {
+  max-height: 560px;
+  overflow: auto;
+}
+.rg-tp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.rg-tp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-accent-800);
+  color: var(--color-bg);
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+.rg-tp-table td {
+  padding: 10px;
+  color: var(--color-text);
+}
+.rg-tp-table tr.rg-tp-recovery { background: var(--color-accent-2-100); }
+.rg-tp-table tr.rg-tp-race {
+  background: #d9a441;
+  color: #16241f;
+}
+.rg-tp-table tr.rg-tp-race td { color: #16241f; font-weight: 600; }
