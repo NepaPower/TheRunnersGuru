@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppProvider } from './state/AppContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { RequireAuth } from './components/layout/RequireAuth';
+import { RequirePlan } from './components/layout/RequirePlan';
 import { Landing } from './routes/Landing';
 import { SignUp } from './routes/SignUp';
 import { SignIn } from './routes/SignIn';
@@ -21,17 +22,20 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/signin" element={<SignIn />} />
-        <Route path="/onboarding" element={<Onboarding />} />
 
         <Route element={<RequireAuth />}>
-          <Route element={<AppLayout />}>
-            <Route path="/home" element={<Dashboard />} />
-            <Route path="/training-plan" element={<TrainingPlan />} />
-            <Route path="/log-run" element={<LogRun />} />
-            <Route path="/partners" element={<Partners />} />
-            <Route path="/run" element={<Run />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/profile" element={<Profile />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+
+          <Route element={<RequirePlan />}>
+            <Route element={<AppLayout />}>
+              <Route path="/home" element={<Dashboard />} />
+              <Route path="/training-plan" element={<TrainingPlan />} />
+              <Route path="/log-run" element={<LogRun />} />
+              <Route path="/partners" element={<Partners />} />
+              <Route path="/run" element={<Run />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
           </Route>
         </Route>
 

@@ -31,6 +31,32 @@ export async function getCurrentUserId(): Promise<string | null> {
   return data.session?.user.id ?? null;
 }
 
+/** Fetches everything needed to hydrate local state for a signed-in user
+ * in one call. Used both by AppContext (on load / on auth state change)
+ * and directly by SignIn (so it can decide whether to route to onboarding
+ * or the dashboard without racing the auth-state-change listener). */
+export async function hydrateUserData(userId: string) {
+  const [profile, trainingPlan, loggedRuns] = await Promise.all([
+    fetchProfile(userId),
+    fetchTrainingPlan(userId),
+    fetchLoggedRuns(userId),
+  ]);
+  return {
+    name: profile?.name ?? '',
+    address: {
+      street: profile?.street ?? '',
+      unit: profile?.unit ?? '',
+      city: profile?.city ?? '',
+      state: profile?.state ?? '',
+      zip: profile?.zip ?? '',
+      phone: profile?.phone ?? '',
+    },
+    garminConnected: profile?.garmin_connected ?? false,
+    trainingPlan,
+    loggedRuns,
+  };
+}
+
 // ─── Profile (name + address + garmin) ─────────────────────────────────
 
 export async function fetchProfile(userId: string) {

@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Blueprint } from '../components/ui/Blueprint';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
-import { signIn } from '../lib/api';
+import { signIn, hydrateUserData } from '../lib/api';
+import { useApp } from '../state/AppContext';
 
 export function SignIn() {
   const navigate = useNavigate();
+  const { dispatch } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -16,10 +18,17 @@ export function SignIn() {
     setError(null);
     setSubmitting(true);
     try {
-      await signIn(email, password);
-      // AppContext's onAuthStateChange listener hydrates state (profile,
-      // plan, logged runs) automatically once the session comes through.
-      navigate('/home');
+      const { user } = await signIn(email, password);
+      if (!user) throw new Error('Sign in did not return a user.');
+
+      // Hydrate directly here (rather than waiting on AppContext's
+      // onAuthStateChange listener) so we can decide, deterministically,
+      // whether this user still needs onboarding or already has a plan —
+      // the listener will also fire and dispatch the same data, which is
+      // harmless (just a redundant, idempotent update).
+      const hydrated = await hydrateUserData(user.id);
+      dispatch({ type: 'AUTH_HYDRATE', userId: user.id, ...hydrated });
+      navigate(hydrated.trainingPlan ? '/home' : '/onboarding');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign in.');
       setSubmitting(false);

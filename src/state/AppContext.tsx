@@ -4,7 +4,8 @@ import type { Action } from './actions';
 import { buildInitialState, reducer } from './reducer';
 import { fetchTemperatureForZipAndDate } from './../lib/weather';
 import { supabase } from '../lib/supabaseClient';
-import { fetchProfile, fetchTrainingPlan, fetchLoggedRuns, updateLoggedRunTemperature } from '../lib/api';
+import { hydrateUserData } from '../lib/api';
+import { updateLoggedRunTemperature } from '../lib/api';
 
 interface AppContextValue {
   state: AppState;
@@ -23,27 +24,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // sign-out, token refresh), pull the user's data and hydrate local state.
   useEffect(() => {
     async function hydrateFromSession(userId: string) {
-      const [profile, trainingPlan, loggedRuns] = await Promise.all([
-        fetchProfile(userId),
-        fetchTrainingPlan(userId),
-        fetchLoggedRuns(userId),
-      ]);
-      dispatch({
-        type: 'AUTH_HYDRATE',
-        userId,
-        name: profile?.name ?? '',
-        address: {
-          street: profile?.street ?? '',
-          unit: profile?.unit ?? '',
-          city: profile?.city ?? '',
-          state: profile?.state ?? '',
-          zip: profile?.zip ?? '',
-          phone: profile?.phone ?? '',
-        },
-        garminConnected: profile?.garmin_connected ?? false,
-        trainingPlan,
-        loggedRuns,
-      });
+      const hydrated = await hydrateUserData(userId);
+      dispatch({ type: 'AUTH_HYDRATE', userId, ...hydrated });
     }
 
     supabase.auth.getSession().then(({ data }) => {
