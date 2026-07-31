@@ -41,6 +41,7 @@ export type Action =
   | { type: 'ONBOARDING_SELECT_PACE'; id: PaceChoice }
   | { type: 'ONBOARDING_SET_CUSTOM_PACE'; value: string }
   | { type: 'ONBOARDING_SET_RACE_DATE'; value: string }
+  | { type: 'ONBOARDING_SET_GOAL_DAYS'; value: string }
   | { type: 'ONBOARDING_SET_GOAL_HOURS'; value: string }
   | { type: 'ONBOARDING_SET_GOAL_MINUTES'; value: string }
   | { type: 'ONBOARDING_NEXT' }

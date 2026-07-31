@@ -76,6 +76,7 @@ export interface OnboardingState {
   paceUnit: PaceUnit;
   customPace: string;
   raceDate: string; // ISO yyyy-mm-dd
+  goalDays: string; // only shown/used when distanceGoal === 'ultra' — multi-day ultras need this
   goalHours: string;
   goalMinutes: string;
 }
