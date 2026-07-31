@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Blueprint } from '../../components/ui/Blueprint';
 import { Button } from '../../components/ui/Button';
 import { useApp } from '../../state/AppContext';
+import { buildTrainingPlan } from '../../lib/planGenerator';
+import { saveTrainingPlan } from '../../lib/api';
 import { StepDistance } from './StepDistance';
 import { StepFirstTime } from './StepFirstTime';
 import { StepPace } from './StepPace';
@@ -13,10 +16,36 @@ export function Onboarding() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
   const step = state.onboarding.step;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleNext() {
-    dispatch({ type: 'ONBOARDING_NEXT' });
-    if (step === 3) navigate('/home');
+  async function handleNext() {
+    if (step < 3) {
+      dispatch({ type: 'ONBOARDING_NEXT' });
+      return;
+    }
+    if (!state.userId) {
+      setError('You need to be signed in to save a training plan.');
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      const plan = buildTrainingPlan(
+        state.onboarding.raceDate,
+        state.onboarding.distanceGoal || '5k',
+        state.onboarding.firstTime,
+        state.onboarding.raceName,
+      );
+      if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
+      await saveTrainingPlan(state.userId, plan);
+      dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan });
+      navigate('/home');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save your training plan.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -36,17 +65,23 @@ export function Onboarding() {
           Step {step + 1} of 4
         </h6>
 
+        {error && (
+          <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', marginBottom: 'var(--space-4)', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+
         {step === 0 && <StepDistance />}
         {step === 1 && <StepFirstTime />}
         {step === 2 && <StepPace />}
         {step === 3 && <StepDateGoal />}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-          <Button variant="secondary" disabled={step === 0} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
+          <Button variant="secondary" disabled={step === 0 || saving} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
             Back
           </Button>
-          <Button variant="primary" onClick={handleNext}>
-            {step === 3 ? 'Get started' : 'Next'}
+          <Button variant="primary" disabled={saving} onClick={handleNext}>
+            {saving ? 'Saving…' : step === 3 ? 'Get started' : 'Next'}
           </Button>
         </div>
       </Blueprint>

@@ -1,7 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Wordmark } from '../Logo';
 import { Button } from '../ui/Button';
-import { useApp } from '../../state/AppContext';
+import { signOut } from '../../lib/api';
 
 const NAV_ITEMS = [
   { to: '/home', label: 'Home' },
@@ -12,7 +12,14 @@ const NAV_ITEMS = [
 ];
 
 export function AppNav() {
-  const { dispatch } = useApp();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    // AppContext's onAuthStateChange listener dispatches LOGOUT once
+    // Supabase confirms the session is gone — no manual dispatch needed here.
+    await signOut();
+    navigate('/');
+  }
 
   return (
     <nav className="nav" style={{ borderBottom: '1px solid var(--color-divider)' }}>
@@ -24,11 +31,7 @@ export function AppNav() {
           {({ isActive }) => <span style={{ color: isActive ? 'var(--color-accent)' : undefined }}>{item.label}</span>}
         </NavLink>
       ))}
-      <Button
-        variant="ghost"
-        className="nav-cta"
-        onClick={() => dispatch({ type: 'LOGOUT' })}
-      >
+      <Button variant="ghost" className="nav-cta" onClick={handleLogout}>
         Log out
       </Button>
     </nav>

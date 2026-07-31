@@ -132,6 +132,7 @@ export type ProfileTab = 'stats' | 'leaderboard' | 'challenges' | 'settings';
 export interface AppState {
   screen: Screen;
   isAuthenticated: boolean;
+  userId: string | null;
   auth: AuthState;
   onboarding: OnboardingState;
   trainingPlan: TrainingPlan | null; // generated ONCE, persisted, never recomputed

@@ -27,6 +27,13 @@ jobs:
 
       - run: npm ci
       - run: npm run build
+        env:
+          # Set these under repo Settings → Secrets and variables → Actions.
+          # Vite only embeds env vars prefixed VITE_ into the built bundle,
+          # and only at build time — this is the one place they need to be
+          # available in CI.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       # BrowserRouter needs a real server rewrite for deep links (e.g.
       # /profile) to survive a hard refresh. GitHub Pages can't rewrite, but

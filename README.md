@@ -72,29 +72,65 @@ src/
   main.tsx               Entry point
 ```
 
+## Backend: Supabase
+
+This app now uses [Supabase](https://supabase.com) (managed Postgres + auth)
+for real accounts, training plans, and logged runs. Set it up:
+
+1. Create a free project at supabase.com.
+2. **Project → SQL Editor → New query** → paste the contents of
+   `supabase/schema.sql` → **Run**. This creates every table, plus row-level
+   security policies so each user can only see their own data.
+3. **Project Settings → API** → copy the **Project URL** and **anon public**
+   key.
+4. Locally: `cp .env.example .env.local` and fill in those two values.
+5. For the deployed (GitHub Pages) build: repo → **Settings → Secrets and
+   variables → Actions** → add two repository secrets:
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, same values as above.
+   The deploy workflow reads these at build time.
+6. (Optional, for smoother testing) **Authentication → Providers → Email** →
+   turn off "Confirm email" so sign-up doesn't require clicking an email
+   link before you can use the app. Turn it back on before real users sign up.
+
+Once both `.env.local` (local) and the two repo secrets (deployed) are set,
+`npm run dev` and the GitHub Pages deploy both talk to the same real
+database — sign up on one, and the account/plan/logged runs are there
+when you sign in from the other.
+
 ## What's real vs. still mocked
 
-Matches the prototype's fidelity — this is a faithful **frontend**
-recreation, not a backend:
-
-- **Real:** the training-plan generation algorithm, the weather API calls
-  (Open-Meteo, no key required), logged-run persistence (localStorage),
-  all client-side state/navigation.
-- **Still mocked (same as the prototype, needs a real backend):**
-  auth/session (no password check, no server), race lookup (`RACES_BY_DISTANCE`
-  hardcoded table instead of a real geocoded search), partner matches, chat,
-  leaderboard, and Garmin Connect (fully faked — real integration needs
-  Garmin Developer Program approval, OAuth credentials, and a server to
-  receive Garmin's webhook push data; there's no client-only path).
+- **Real, backed by Supabase:** sign-up/sign-in (real accounts, real
+  passwords, real sessions), the generated training plan (persisted once,
+  never regenerated), logged runs, address/profile, Garmin connected/
+  disconnected status.
+- **Real, no backend needed:** the training-plan generation algorithm, the
+  weather API calls (Open-Meteo, no key required).
+- **Still mocked (needs more backend work — see "Next steps" below):**
+  race lookup (`RACES_BY_DISTANCE` hardcoded table instead of a real
+  geocoded search), partner matches, chat, leaderboard, and Garmin Connect
+  (the *toggle* is now real and persisted, but there's no actual OAuth flow
+  or synced data behind it — see the Garmin note below).
 
 ## Next steps for a real backend
 
-Per the handoff README's "State Management" section, the pieces that need
-a real per-user store are: auth/session, onboarding answers, the generated
-plan (generate once, never recompute), logged runs, partner matches/chat,
-and profile/settings. The reducer in `state/reducer.ts` is a reasonable map
-of what your API payloads/tables should look like — each action roughly
-corresponds to one endpoint.
+The remaining phased steps from the original plan:
+
+1. ~~Auth~~ ✅ done — real Supabase Auth.
+2. ~~Profile + onboarding + training plan~~ ✅ done — persisted to
+   `profiles` / `training_plans` / `training_plan_weeks`.
+3. ~~Logged runs~~ ✅ done — persisted to `logged_runs`, replacing localStorage.
+4. **Matches + chat** — needs a `matches` table (schema already included in
+   `supabase/schema.sql`) plus real user discovery (currently there's only
+   one signed-in user's perspective — matching needs a way to see *other*
+   real users, e.g. a "find nearby runners" query). Chat is a good fit for
+   [Supabase Realtime](https://supabase.com/docs/guides/realtime) so
+   messages appear live without polling — the schema file has the table
+   ready and a commented-out line to enable realtime on it.
+5. **Garmin** — real integration needs Garmin Developer Program approval,
+   OAuth 1.0a/2.0 credentials, and a server endpoint to receive Garmin's
+   webhook push data (there's no client-only path). Supabase **Edge
+   Functions** are a reasonable place to host that webhook receiver when
+   you get there.
 
 ## Known gaps in this scaffold
 

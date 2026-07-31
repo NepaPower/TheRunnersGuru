@@ -1,19 +1,58 @@
+import { useState } from 'react';
 import { Blueprint } from '../../components/ui/Blueprint';
 import { Button } from '../../components/ui/Button';
 import { Field, Input } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import { GARMIN_SAMPLE_ACTIVITIES } from '../../data/constants';
+import { saveProfileAddress, setGarminConnected } from '../../lib/api';
 
 export function SettingsTab() {
   const { state, dispatch } = useApp();
   const address = state.auth.address;
   const zipMissing = address.zip.trim() === '';
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [garminBusy, setGarminBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const setField = (field: keyof typeof address) => (e: React.ChangeEvent<HTMLInputElement>) =>
     dispatch({ type: 'ADDRESS_FIELD_CHANGE', field, value: e.target.value });
 
+  async function handleSaveAddress() {
+    if (!state.userId) return;
+    setError(null);
+    setSavingAddress(true);
+    try {
+      await saveProfileAddress(state.userId, state.auth.name, address);
+      dispatch({ type: 'ADDRESS_SAVED' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save your address.');
+    } finally {
+      setSavingAddress(false);
+    }
+  }
+
+  async function handleToggleGarmin(connect: boolean) {
+    if (!state.userId) return;
+    setError(null);
+    setGarminBusy(true);
+    try {
+      await setGarminConnected(state.userId, connect);
+      dispatch({ type: connect ? 'GARMIN_CONNECT' : 'GARMIN_DISCONNECT' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not update Garmin connection.');
+    } finally {
+      setGarminBusy(false);
+    }
+  }
+
   return (
     <>
+      {error && (
+        <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', marginBottom: 'var(--space-4)', fontSize: 13, maxWidth: 520 }}>
+          {error}
+        </div>
+      )}
+
       <Blueprint className="blueprint-card" style={{ border: '1px solid var(--color-divider)', maxWidth: 520, marginBottom: 'var(--space-6)' }}>
         <div className="card-kicker">Connected devices</div>
         <h3 style={{ margin: 'var(--space-1) 0 var(--space-2)' }}>Garmin Connect</h3>
@@ -38,8 +77,8 @@ export function SettingsTab() {
                 </div>
               ))}
             </div>
-            <Button variant="secondary" onClick={() => dispatch({ type: 'GARMIN_DISCONNECT' })}>
-              Disconnect
+            <Button variant="secondary" disabled={garminBusy} onClick={() => handleToggleGarmin(false)}>
+              {garminBusy ? 'Working…' : 'Disconnect'}
             </Button>
           </>
         ) : (
@@ -47,8 +86,8 @@ export function SettingsTab() {
             <p className="text-muted" style={{ marginBottom: 'var(--space-4)' }}>
               Sync your watch to auto-import runs, pace, distance and heart rate into your training plan.
             </p>
-            <Button variant="primary" onClick={() => dispatch({ type: 'GARMIN_CONNECT' })}>
-              Connect Garmin →
+            <Button variant="primary" disabled={garminBusy} onClick={() => handleToggleGarmin(true)}>
+              {garminBusy ? 'Working…' : 'Connect Garmin →'}
             </Button>
           </>
         )}
@@ -84,10 +123,10 @@ export function SettingsTab() {
         </Field>
 
         <div className="row-3">
-          <Button variant="primary" disabled={zipMissing} onClick={() => dispatch({ type: 'ADDRESS_SAVE' })}>
-            Save address
+          <Button variant="primary" disabled={zipMissing || savingAddress} onClick={handleSaveAddress}>
+            {savingAddress ? 'Saving…' : 'Save address'}
           </Button>
-          {state.addressSaved && (
+          {state.addressSaved && !savingAddress && (
             <span className="text-muted" style={{ fontSize: 13 }}>
               Saved ✓
             </span>

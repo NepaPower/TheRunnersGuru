@@ -1,10 +1,6 @@
-import type { AppState, LoggedRun } from '../types';
+import type { AppState } from '../types';
 import type { Action } from './actions';
 import { SEED_MATCHES } from '../data/constants';
-import { buildTrainingPlan } from '../lib/planGenerator';
-import { formatDurationParts, paceLabelFromMinutes } from '../lib/format';
-import { mockTemperature } from '../lib/weather';
-import { saveLoggedRuns } from '../lib/storage';
 import { RACES_BY_DISTANCE } from '../data/constants';
 
 export const emptyLogForm = {
@@ -23,10 +19,11 @@ export const emptyLogForm = {
   electrolytesBrand: '',
 };
 
-export function buildInitialState(loggedRuns: LoggedRun[]): AppState {
+export function buildInitialState(): AppState {
   return {
     screen: 'landing',
     isAuthenticated: false,
+    userId: null,
     auth: {
       name: '',
       firstName: '',
@@ -49,6 +46,8 @@ export function buildInitialState(loggedRuns: LoggedRun[]): AppState {
       goalMinutes: '',
     },
     trainingPlan: null,
+    // Partner matching and chat are still mocked client-side — see README
+    // "Next steps" for the phased plan to move these onto real tables too.
     matches: SEED_MATCHES.map((m) => ({ ...m })),
     activeChatId: 'maya',
     chatMessages: {
@@ -64,7 +63,7 @@ export function buildInitialState(loggedRuns: LoggedRun[]): AppState {
     profileTab: 'stats',
     garminConnected: false,
     logForm: { ...emptyLogForm },
-    loggedRuns,
+    loggedRuns: [],
     joinedEvent: false,
     addressSaved: false,
   };
@@ -84,52 +83,26 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_SCREEN':
       return { ...state, screen: action.screen };
 
-    case 'SIGNUP_SUBMIT': {
+    case 'AUTH_HYDRATE': {
       const firstName = action.name.trim().split(' ')[0] || 'Runner';
       return {
         ...state,
-        screen: 'onboarding',
         isAuthenticated: true,
+        userId: action.userId,
+        screen: action.trainingPlan ? 'home' : 'onboarding',
         auth: { ...state.auth, name: action.name, firstName, address: action.address },
-        onboarding: { ...state.onboarding, step: 0, raceAddress: formatAddress(action.address) },
-      };
-    }
-
-    case 'SIGNIN_SUBMIT': {
-      // Returning user: if a plan already exists this session, skip straight
-      // to the dashboard. Otherwise seed sensible demo defaults so the
-      // dashboard isn't empty (in production: fetch the user's stored plan).
-      if (state.trainingPlan) {
-        return { ...state, screen: 'home', isAuthenticated: true };
-      }
-      const defaultRaceDate = new Date();
-      defaultRaceDate.setMonth(defaultRaceDate.getMonth() + 4);
-      const distanceGoal = state.onboarding.distanceGoal || 'full';
-      const raceDate = state.onboarding.raceDate || defaultRaceDate.toISOString().slice(0, 10);
-      const firstTime = state.onboarding.firstTime || 'no';
-      const raceName = state.onboarding.raceName || 'Marine Corps Marathon';
-      return {
-        ...state,
-        screen: 'home',
-        isAuthenticated: true,
-        auth: { ...state.auth, firstName: state.auth.firstName || 'Ramesh' },
-        onboarding: {
-          ...state.onboarding,
-          distanceGoal,
-          raceDate,
-          firstTime,
-          pace: state.onboarding.pace || 'steady',
-          raceName,
-        },
-        trainingPlan: buildTrainingPlan(raceDate, distanceGoal, firstTime, raceName),
+        onboarding: { ...state.onboarding, raceAddress: formatAddress(action.address) },
+        trainingPlan: action.trainingPlan,
+        loggedRuns: action.loggedRuns,
+        garminConnected: action.garminConnected,
       };
     }
 
     case 'LOGOUT':
-      // Logged-run history persists (localStorage); everything else in this
-      // in-memory session resets, matching the prototype. A real app must
-      // persist all of this server-side per account instead.
-      return { ...buildInitialState(state.loggedRuns), screen: 'landing' };
+      // All server-backed data (profile, plan, logged runs) simply isn't
+      // fetched again until the next real sign-in — nothing to clear
+      // server-side here, just reset the in-memory session.
+      return buildInitialState();
 
     case 'ONBOARDING_SELECT_DISTANCE':
       return {
@@ -180,25 +153,22 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ONBOARDING_SET_GOAL_MINUTES':
       return { ...state, onboarding: { ...state.onboarding, goalMinutes: action.value } };
 
-    case 'ONBOARDING_NEXT': {
+    case 'ONBOARDING_NEXT':
+      // Step 3 (the final step) is handled entirely by the Onboarding
+      // component: it generates the plan, awaits saving it to Supabase,
+      // then dispatches ONBOARDING_PLAN_SAVED. This action only advances
+      // steps 0-2.
       if (state.onboarding.step < 3) {
         return { ...state, onboarding: { ...state.onboarding, step: (state.onboarding.step + 1) as 0 | 1 | 2 | 3 } };
       }
-      // Final step: generate the plan ONCE. Never regenerate on later visits.
-      const plan =
-        state.trainingPlan ??
-        buildTrainingPlan(
-          state.onboarding.raceDate,
-          state.onboarding.distanceGoal || '5k',
-          state.onboarding.firstTime,
-          state.onboarding.raceName,
-        );
-      return { ...state, screen: 'home', trainingPlan: plan };
-    }
+      return state;
 
     case 'ONBOARDING_PREV':
       if (state.onboarding.step === 0) return state;
       return { ...state, onboarding: { ...state.onboarding, step: (state.onboarding.step - 1) as 0 | 1 | 2 | 3 } };
+
+    case 'ONBOARDING_PLAN_SAVED':
+      return { ...state, screen: 'home', trainingPlan: action.plan };
 
     case 'MATCH_ACCEPT':
       return { ...state, matches: state.matches.map((m) => (m.id === action.id ? { ...m, status: 'accepted' } : m)) };
@@ -255,46 +225,16 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, logForm: { ...state.logForm, [action.field]: value } };
     }
 
-    case 'LOG_RUN_ADD': {
-      const f = state.logForm;
-      const d = Number(f.days), h = Number(f.hours), m = Number(f.minutes), sec = Number(f.seconds);
-      const totalMinutes = d * 24 * 60 + h * 60 + m + sec / 60;
-      const miles = parseFloat(f.distance) || 0;
-      const paceLabel = paceLabelFromMinutes(totalMinutes, miles);
-      const duration = formatDurationParts(d, h, m, sec);
-      const entryId = Date.now() + '-' + Math.random().toString(36).slice(2, 7);
-      const zip = state.auth.address.zip.trim();
-      const manualTemp = f.temperature !== '' ? Math.abs(Math.round(Number(f.temperature))) : null;
+    case 'LOG_RUN_ADDED':
+      return { ...state, loggedRuns: [action.run, ...state.loggedRuns], logForm: { ...emptyLogForm } };
 
-      const newEntry: LoggedRun = {
-        id: entryId,
-        date: f.date,
-        distance: f.distance,
-        duration,
-        timeOfDay: f.timeOfDay,
-        paceLabel,
-        temperature:
-          manualTemp != null ? `${manualTemp}°F` : zip ? 'Looking up…' : `${mockTemperature(f.date, f.timeOfDay)}°F`,
-        electrolytes:
-          Number(f.electrolytesCount) > 0 && f.electrolytesBrand ? `${f.electrolytesCount}x ${f.electrolytesBrand}` : '—',
-        nutrition: Number(f.nutritionCount) > 0 && f.nutritionBrand ? `${f.nutritionCount}x ${f.nutritionBrand}` : '—',
-        comment: f.comment,
-      };
-      const updatedRuns = [newEntry, ...state.loggedRuns];
-      saveLoggedRuns(updatedRuns);
-      return { ...state, loggedRuns: updatedRuns, logForm: { ...emptyLogForm } };
-    }
-
-    case 'LOG_RUN_SET_TEMP': {
-      const loggedRuns = state.loggedRuns.map((r) => (r.id === action.id ? { ...r, temperature: action.label } : r));
-      saveLoggedRuns(loggedRuns);
-      return { ...state, loggedRuns };
-    }
+    case 'LOG_RUN_SET_TEMP':
+      return { ...state, loggedRuns: state.loggedRuns.map((r) => (r.id === action.id ? { ...r, temperature: action.label } : r)) };
 
     case 'ADDRESS_FIELD_CHANGE':
       return { ...state, auth: { ...state.auth, address: { ...state.auth.address, [action.field]: action.value } } };
 
-    case 'ADDRESS_SAVE':
+    case 'ADDRESS_SAVED':
       return {
         ...state,
         onboarding: { ...state.onboarding, raceAddress: formatAddress(state.auth.address) },
@@ -303,9 +243,6 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'JOIN_EVENT_TOGGLE':
       return { ...state, joinedEvent: !state.joinedEvent };
-
-    case 'LOGGED_RUNS_LOADED':
-      return { ...state, loggedRuns: action.runs };
 
     default:
       return state;

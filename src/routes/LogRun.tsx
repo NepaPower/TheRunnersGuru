@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Blueprint } from '../components/ui/Blueprint';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { ELECTROLYTE_BRANDS, NUTRITION_BRANDS } from '../data/constants';
+import { insertLoggedRun } from '../lib/api';
+import { paceLabelFromMinutes } from '../lib/format';
+import { mockTemperature } from '../lib/weather';
 
 const DAY_OPTIONS = Array.from({ length: 8 }, (_, i) => i);
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
@@ -15,9 +19,55 @@ export function LogRun() {
   const navigate = useNavigate();
   const f = state.logForm;
   const submitDisabled = !f.distance || !f.date;
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const setField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     dispatch({ type: 'LOG_FORM_SET_FIELD', field, value: e.target.value });
+
+  async function handleAddRun() {
+    if (!state.userId) {
+      setError('You need to be signed in to log a run.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const days = Number(f.days), hours = Number(f.hours), minutes = Number(f.minutes), seconds = Number(f.seconds);
+      const totalMinutes = days * 24 * 60 + hours * 60 + minutes + seconds / 60;
+      const distanceMiles = parseFloat(f.distance) || 0;
+      const paceLabel = paceLabelFromMinutes(totalMinutes, distanceMiles);
+      const zip = state.auth.address.zip.trim();
+      const manualTemp = f.temperature !== '' ? Math.abs(Math.round(Number(f.temperature))) : null;
+      // Real weather lookup happens after insert (see AppContext's effect,
+      // triggered by the "Looking up…" placeholder) since it's async and
+      // shouldn't block the form submit.
+      const temperatureLabel =
+        manualTemp != null ? `${manualTemp}°F` : zip ? 'Looking up…' : `${mockTemperature(f.date, f.timeOfDay)}°F`;
+
+      const run = await insertLoggedRun(state.userId, {
+        date: f.date,
+        distanceMiles,
+        days,
+        hours,
+        minutes,
+        seconds,
+        timeOfDay: f.timeOfDay,
+        paceLabel,
+        temperatureLabel,
+        electrolytesCount: Number(f.electrolytesCount),
+        electrolytesBrand: f.electrolytesBrand,
+        nutritionCount: Number(f.nutritionCount),
+        nutritionBrand: f.nutritionBrand,
+        comment: f.comment,
+      });
+      dispatch({ type: 'LOG_RUN_ADDED', run });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save this run.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <>
@@ -126,8 +176,14 @@ export function LogRun() {
           <TextArea placeholder="How did it feel?" value={f.comment} onChange={setField('comment')} />
         </Field>
 
-        <Button variant="primary" disabled={submitDisabled} onClick={() => dispatch({ type: 'LOG_RUN_ADD' })}>
-          Add run
+        {error && (
+          <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', marginBottom: 'var(--space-3)', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+
+        <Button variant="primary" disabled={submitDisabled || submitting} onClick={handleAddRun}>
+          {submitting ? 'Saving…' : 'Add run'}
         </Button>
       </Blueprint>
 
