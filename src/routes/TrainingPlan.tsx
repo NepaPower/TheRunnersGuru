@@ -23,6 +23,11 @@ export function TrainingPlan() {
     );
   }
 
+  const isUltra = plan.distanceGoal === 'ultra';
+  const tableHeaders = isUltra
+    ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
+    : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
+
   return (
     <>
       <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
@@ -69,22 +74,47 @@ export function TrainingPlan() {
               </svg>
               Key execution guidelines
             </div>
-            <ul>
-              <li>
-                <strong>The 10% rule:</strong> volume increments are capped carefully and paired with a recovery week
-                every 4th week to shed accumulated systemic fatigue and allow tendon remodeling.
-              </li>
-              <li>
-                <strong>Tuesday workouts:</strong> intervals focus on VO2 max upgrades (e.g. 4×800m or 5×1k repeats at
-                5K/10K effort with jogging rest); tempo runs are sustained efforts at your Goal Marathon Pace (GMP) or
-                lactate threshold to build muscular stamina.
-              </li>
-              <li>
-                <strong>Saturday long runs:</strong> run at an easy, conversational effort — roughly 60 to 90 seconds
-                slower per mile than goal race pace. Focus on time on your feet, zone 2 cardiovascular adaptation, and
-                testing your nutrition/hydration protocol.
-              </li>
-            </ul>
+            {isUltra ? (
+              <ul>
+                <li>
+                  <strong>Back-to-back long runs:</strong> once Build Phase begins, Saturday and Sunday both carry a
+                  long effort — Sunday is run on legs still tired from Saturday, which is what actually prepares you
+                  for late-race fatigue rather than a single long run ever could.
+                </li>
+                <li>
+                  <strong>Tuesday climbing:</strong> {plan.hillAccess === 'no' ? 'treadmill incline and StairMaster sessions' : 'hill repeats'} build the
+                  eccentric quad strength and durability that descents demand — power-hiking the steep climbs is a
+                  trained skill here, not a fallback.
+                </li>
+                <li>
+                  <strong>Long run fueling:</strong> treat Saturday's long run as a rehearsal, not just training —
+                  practice the real race-day carb intake (60–90g/hr) and hydration so your gut is trained
+                  alongside your legs.
+                </li>
+                <li>
+                  <strong>Strength and cross-training:</strong> the weekly strength session targets the durability
+                  that resists breakdown over many hours, and the weekly bike/swim keeps blood flow moving on an
+                  easy day without adding to the pounding.
+                </li>
+              </ul>
+            ) : (
+              <ul>
+                <li>
+                  <strong>The 10% rule:</strong> volume increments are capped carefully and paired with a recovery week
+                  every 4th week to shed accumulated systemic fatigue and allow tendon remodeling.
+                </li>
+                <li>
+                  <strong>Tuesday workouts:</strong> intervals focus on VO2 max upgrades (e.g. 4×800m or 5×1k repeats at
+                  5K/10K effort with jogging rest); tempo runs are sustained efforts at your Goal Marathon Pace (GMP) or
+                  lactate threshold to build muscular stamina.
+                </li>
+                <li>
+                  <strong>Saturday long runs:</strong> run at an easy, conversational effort — roughly 60 to 90 seconds
+                  slower per mile than goal race pace. Focus on time on your feet, zone 2 cardiovascular adaptation, and
+                  testing your nutrition/hydration protocol.
+                </li>
+              </ul>
+            )}
           </div>
         </div>
       </div>
@@ -95,11 +125,9 @@ export function TrainingPlan() {
             <table className="rg-tp-table">
               <thead>
                 <tr>
-                  {['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'].map(
-                    (h) => (
-                      <th key={h}>{h}</th>
-                    ),
-                  )}
+                  {tableHeaders.map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -117,7 +145,9 @@ export function TrainingPlan() {
                       <td>{row.fri}</td>
                       <td style={{ fontWeight: 600 }}>{row.sat}</td>
                       <td>{row.sun}</td>
-                      <td style={{ fontWeight: 600 }}>{row.totalMiles.toFixed(1)} Miles</td>
+                      <td style={{ fontWeight: 600 }}>
+                        {isUltra && row.totalHours != null ? `${row.totalHours.toFixed(1)} hrs` : `${row.totalMiles.toFixed(1)} Miles`}
+                      </td>
                     </tr>
                   );
                 })}

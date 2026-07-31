@@ -90,6 +90,7 @@ create policy "training plans are owner-only"
 -- above.
 --   alter table public.training_plans add column hill_access text
 --     check (hill_access in ('yes','no'));
+--   alter table public.training_plan_weeks add column total_hours numeric;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the
@@ -101,6 +102,10 @@ create table public.training_plan_weeks (
   phase text not null,
   mon text, tue text, wed text, thu text, fri text, sat text, sun text,
   total_miles numeric not null,
+  -- Only set for ultra plans (see generateUltraPlan in planGenerator.ts) —
+  -- the Training Plan screen shows this instead of total_miles when
+  -- distance_goal = 'ultra'. Null for every other distance.
+  total_hours numeric,
   is_race_week boolean not null default false,
   unique (plan_id, week_number)
 );

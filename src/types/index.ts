@@ -92,6 +92,7 @@ export interface TrainingPlanRow {
   sat: string;
   sun: string;
   totalMiles: number;
+  totalHours?: number; // set (instead of relied-on totalMiles) for ultra plans — see planGenerator.ts generateUltraPlan
   isRaceWeek: boolean;
 }
 

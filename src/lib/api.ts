@@ -133,6 +133,7 @@ export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
     sat: r.sat,
     sun: r.sun,
     total_miles: r.totalMiles,
+    total_hours: r.totalHours ?? null,
     is_race_week: r.isRaceWeek,
   }));
   const { error: weeksErr } = await supabase.from('training_plan_weeks').insert(weekRows);
@@ -177,6 +178,7 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
       sat: w.sat,
       sun: w.sun,
       totalMiles: Number(w.total_miles),
+      totalHours: w.total_hours != null ? Number(w.total_hours) : undefined,
       isRaceWeek: w.is_race_week,
     })),
   };
