@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { BrandHeader } from '../../components/Logo';
 import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
-import { saveTrainingPlan } from '../../lib/api';
+import { saveTrainingPlan, getCurrentUserId } from '../../lib/api';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { StepRaceCategory } from './StepRaceCategory';
 import { StepDistance } from './StepDistance';
@@ -44,6 +44,18 @@ export function Onboarding() {
     setError(null);
     setSaving(true);
     try {
+      // A "row-level security policy" rejection on this save specifically
+      // means Supabase's auth.uid() didn't match the user_id being written
+      // — i.e. there's no valid, current session, even though local state
+      // still has a userId cached from earlier (e.g. an unconfirmed email
+      // signup, or a session that expired mid-onboarding). Re-check the
+      // live session right before saving instead of trusting the cached
+      // value, so this fails with a clear message instead of a raw
+      // Postgres RLS error.
+      const liveUserId = await getCurrentUserId();
+      if (!liveUserId) {
+        throw new Error("Your session isn't active — please sign in again before finishing setup.");
+      }
       const plan = buildTrainingPlan(
         state.onboarding.raceDate,
         state.onboarding.distanceGoal || '5k',
@@ -53,7 +65,7 @@ export function Onboarding() {
         isUltra ? ultraDistanceMiles(state.onboarding) : null,
       );
       if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
-      await saveTrainingPlan(state.userId, plan);
+      await saveTrainingPlan(liveUserId, plan);
       dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan });
       navigate('/home');
     } catch (e) {
