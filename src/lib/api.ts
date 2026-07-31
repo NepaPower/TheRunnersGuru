@@ -9,7 +9,15 @@ export async function signUp(email: string, password: string, name: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { name },
+      // Without this, Supabase falls back to window.location.origin for
+      // the confirmation-email link — which is just the bare domain
+      // (e.g. https://nepapower.github.io) and excludes the "/TheRunnersGuru/"
+      // subfolder this app is actually served from on GitHub Pages,
+      // landing confirmed users on a 404 instead of the app.
+      emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+    },
   });
   if (error) throw error;
   return data;
