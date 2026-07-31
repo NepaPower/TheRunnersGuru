@@ -1,13 +1,9 @@
 import { Field, Input, Select } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
-import { formatRaceDateReadout } from '../../lib/format';
+import { formatRaceDateReadout, goalTimeBreakdownLabel } from '../../lib/format';
 import { monthsLeftLabel } from '../../lib/planGenerator';
 
 const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
-// Ultra finish times run 24+ hours for 100-milers and multi-day for 200/300
-// milers — Days (below) absorbs full days, so Hours only needs to cover the
-// remainder within a day.
-const HOUR_OPTIONS_ULTRA = Array.from({ length: 24 }, (_, i) => String(i));
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
 
 export function StepDateGoal() {
@@ -15,7 +11,7 @@ export function StepDateGoal() {
   const { onboarding } = state;
   const isUltra = onboarding.distanceGoal === 'ultra';
   const months = monthsLeftLabel(onboarding.raceDate);
-  const hourOptions = isUltra ? HOUR_OPTIONS_ULTRA : HOUR_OPTIONS_STANDARD;
+  const breakdown = isUltra ? goalTimeBreakdownLabel(onboarding.goalHours, onboarding.goalMinutes) : '';
 
   return (
     <>
@@ -40,35 +36,29 @@ export function StepDateGoal() {
       <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>
         Target goal to finish race
       </label>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: isUltra ? '1fr 1fr 1fr' : '1fr 1fr',
-          gap: 'var(--space-3)',
-          marginBottom: 'var(--space-6)',
-        }}
-      >
-        {isUltra && (
-          <Field label="Days">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: isUltra ? 'var(--space-2)' : 'var(--space-6)' }}>
+        {isUltra ? (
+          <Field label="Total hours">
             <Input
               type="text"
               inputMode="numeric"
-              placeholder="0"
-              value={onboarding.goalDays}
-              onChange={(e) => dispatch({ type: 'ONBOARDING_SET_GOAL_DAYS', value: e.target.value.replace(/[^\d]/g, '') })}
+              placeholder="e.g. 38"
+              value={onboarding.goalHours}
+              onChange={(e) => dispatch({ type: 'ONBOARDING_SET_GOAL_HOURS', value: e.target.value.replace(/[^\d]/g, '') })}
             />
           </Field>
+        ) : (
+          <Field label="Hours">
+            <Select value={onboarding.goalHours} onChange={(e) => dispatch({ type: 'ONBOARDING_SET_GOAL_HOURS', value: e.target.value })}>
+              <option value="">—</option>
+              {HOUR_OPTIONS_STANDARD.map((h) => (
+                <option key={h} value={h}>
+                  {h} h
+                </option>
+              ))}
+            </Select>
+          </Field>
         )}
-        <Field label="Hours">
-          <Select value={onboarding.goalHours} onChange={(e) => dispatch({ type: 'ONBOARDING_SET_GOAL_HOURS', value: e.target.value })}>
-            <option value="">—</option>
-            {hourOptions.map((h) => (
-              <option key={h} value={h}>
-                {h} h
-              </option>
-            ))}
-          </Select>
-        </Field>
         <Field label="Minutes">
           <Select value={onboarding.goalMinutes} onChange={(e) => dispatch({ type: 'ONBOARDING_SET_GOAL_MINUTES', value: e.target.value })}>
             <option value="">—</option>
@@ -80,6 +70,12 @@ export function StepDateGoal() {
           </Select>
         </Field>
       </div>
+
+      {isUltra && (
+        <p className="text-muted" style={{ fontSize: 13, marginBottom: 'var(--space-6)' }}>
+          {breakdown ? `= ${breakdown}` : 'Enter total hours to see this broken down into days.'}
+        </p>
+      )}
 
       {months && (
         <div style={{ border: '1px solid var(--color-accent-300)', background: 'var(--color-accent-100)', padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>

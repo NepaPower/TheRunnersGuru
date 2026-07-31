@@ -57,7 +57,18 @@ export function Onboarding() {
       dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan });
       navigate('/home');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your training plan.');
+      // Supabase's PostgrestError isn't an instanceof Error, so the old
+      // `e instanceof Error` check silently swallowed the real reason
+      // (missing column, check-constraint violation, etc.) behind a
+      // generic message. Surface whatever message/detail is actually
+      // available instead.
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === 'object' && e && 'message' in e
+            ? String((e as { message: unknown }).message)
+            : 'Could not save your training plan.';
+      setError(message);
     } finally {
       setSaving(false);
     }

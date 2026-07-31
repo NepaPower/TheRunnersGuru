@@ -47,7 +47,6 @@ export function buildInitialState(): AppState {
       paceUnit: 'mi',
       customPace: '',
       raceDate: '',
-      goalDays: '',
       goalHours: '',
       goalMinutes: '',
     },
@@ -201,9 +200,6 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'ONBOARDING_SET_RACE_DATE':
       return { ...state, onboarding: { ...state.onboarding, raceDate: action.value } };
-
-    case 'ONBOARDING_SET_GOAL_DAYS':
-      return { ...state, onboarding: { ...state.onboarding, goalDays: action.value } };
 
     case 'ONBOARDING_SET_GOAL_HOURS':
       return { ...state, onboarding: { ...state.onboarding, goalHours: action.value } };
