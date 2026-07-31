@@ -97,16 +97,48 @@ export function Landing() {
               track from a finished run — start marker, winding path, finish. */}
           <div className="rg-landing-route-wrap">
             <svg viewBox="0 0 420 380" width="100%" height="100%" aria-hidden="true">
+              {/* Rocky mountain "skeleton" — layered jagged ridgelines, drawn
+                  as bare outlines rather than solid silhouettes, echoing the
+                  contour-line motif elsewhere in the hero. */}
+              <path
+                d="M0,260 L20,230 L35,245 L55,190 L70,210 L90,175 L110,200 L130,160 L150,195 L175,150 L200,185 L225,140 L250,180 L275,155 L300,190 L330,150 L360,185 L390,160 L420,195"
+                fill="none"
+                stroke="#3a5145"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                opacity="0.5"
+              />
+              <path
+                d="M0,300 L25,250 L40,270 L65,210 L85,235 L100,190 L125,225 L145,175 L170,215 L190,165 L215,205 L240,155 L260,195 L285,150 L305,190 L335,145 L360,180 L385,150 L420,185"
+                fill="none"
+                stroke="#4a6b58"
+                strokeWidth="1.75"
+                strokeLinejoin="round"
+                opacity="0.7"
+              />
+              <path
+                d="M0,330 L15,300 L30,315 L50,270 L60,285 L80,240 L95,260 L115,210 L130,235 L150,190 L165,220 L185,175 L200,210 L220,165 L235,195 L255,155 L270,185 L295,145 L310,175 L335,140 L355,170 L375,150 L400,175 L420,155"
+                fill="none"
+                stroke="#6f8f76"
+                strokeWidth="2"
+                strokeLinejoin="round"
+                opacity="0.9"
+              />
+
+              {/* Switchback trail — a running route climbing the rocky
+                  ridge, drawing itself in like a finished route on a GPS
+                  watch. */}
               <path
                 className="rg-landing-route-path"
-                d="M40,60 C110,40 120,110 70,150 C10,195 60,230 130,215 C230,193 200,120 260,100 C330,76 340,160 300,210 C255,266 300,300 370,320"
+                d="M30,340 L78,318 L48,292 L98,270 L68,242 L118,222 L88,192 L140,175 L165,220 L200,210 L220,165 L250,180 L270,185 L295,145 L320,168 L345,205 L370,225"
                 fill="none"
                 stroke="#d9a441"
                 strokeWidth="3.5"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
-              <circle cx="40" cy="60" r="6" fill="#f4efe1" />
-              <circle className="rg-landing-route-dot" cx="370" cy="320" r="8" fill="#d9a441" stroke="#16241f" strokeWidth="3" />
+              <circle cx="30" cy="340" r="6" fill="#f4efe1" />
+              <circle className="rg-landing-route-dot" cx="370" cy="225" r="8" fill="#d9a441" stroke="#16241f" strokeWidth="3" />
             </svg>
           </div>
         </div>
