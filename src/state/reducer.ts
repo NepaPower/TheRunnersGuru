@@ -234,6 +234,11 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ADDRESS_FIELD_CHANGE':
       return { ...state, auth: { ...state.auth, address: { ...state.auth.address, [action.field]: action.value } } };
 
+    case 'AUTH_NAME_CHANGE': {
+      const firstName = action.value.trim().split(' ')[0] || state.auth.firstName;
+      return { ...state, auth: { ...state.auth, name: action.value, firstName } };
+    }
+
     case 'ADDRESS_SAVED':
       return {
         ...state,

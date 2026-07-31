@@ -49,6 +49,7 @@ export type Action =
   | { type: 'LOG_RUN_ADDED'; run: LoggedRun }
   | { type: 'LOG_RUN_SET_TEMP'; id: string; label: string }
   | { type: 'ADDRESS_FIELD_CHANGE'; field: keyof Address; value: string }
+  | { type: 'AUTH_NAME_CHANGE'; value: string }
   // Dispatched after the address has been successfully saved to Supabase.
   | { type: 'ADDRESS_SAVED' }
   | { type: 'JOIN_EVENT_TOGGLE' };
