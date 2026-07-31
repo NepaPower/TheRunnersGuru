@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Blueprint } from '../components/ui/Blueprint';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
@@ -8,11 +7,23 @@ import { ELECTROLYTE_BRANDS, NUTRITION_BRANDS } from '../data/constants';
 import { insertLoggedRun } from '../lib/api';
 import { paceLabelFromMinutes } from '../lib/format';
 import { mockTemperature } from '../lib/weather';
+import './logrun.css';
 
 const DAY_OPTIONS = Array.from({ length: 8 }, (_, i) => i);
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
 const MIN_SEC_OPTIONS = Array.from({ length: 60 }, (_, i) => i);
 const COUNT_OPTIONS = Array.from({ length: 6 }, (_, i) => i);
+
+function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rg-logrun-section-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+        {icon}
+      </svg>
+      {children}
+    </div>
+  );
+}
 
 export function LogRun() {
   const { state, dispatch } = useApp();
@@ -39,9 +50,6 @@ export function LogRun() {
       const paceLabel = paceLabelFromMinutes(totalMinutes, distanceMiles);
       const zip = state.auth.address.zip.trim();
       const manualTemp = f.temperature !== '' ? Math.abs(Math.round(Number(f.temperature))) : null;
-      // Real weather lookup happens after insert (see AppContext's effect,
-      // triggered by the "Looking up…" placeholder) since it's async and
-      // shouldn't block the form submit.
       const temperatureLabel =
         manualTemp != null ? `${manualTemp}°F` : zip ? 'Looking up…' : `${mockTemperature(f.date, f.timeOfDay)}°F`;
 
@@ -71,15 +79,27 @@ export function LogRun() {
 
   return (
     <>
-      <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
+      <Button variant="ghost" className="rg-logrun-back" onClick={() => navigate('/home')}>
         ← Back to summary
       </Button>
 
-      <Blueprint className="blueprint-card" style={{ border: '1px solid var(--color-divider)', maxWidth: 520, marginBottom: 'var(--space-6)' }}>
-        <h3 style={{ marginBottom: 'var(--space-1)' }}>Log a run</h3>
-        <p className="text-muted" style={{ marginBottom: 'var(--space-4)', fontSize: 13 }}>
-          Add a run you tracked elsewhere.
-        </p>
+      <div className="rg-logrun-card">
+        <div className="rg-logrun-title-row">
+          <div className="rg-logrun-title-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <circle cx="12" cy="12" r="9" strokeWidth="2" />
+              <path d="M12 8v8M8 12h8" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div>
+            <h3 style={{ margin: 0 }}>Log a run</h3>
+            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+              Add a run you tracked elsewhere.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ height: 'var(--space-4)' }} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
           <Field label="Date" required>
@@ -99,73 +119,63 @@ export function LogRun() {
           </Field>
         </div>
 
-        <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>Time taken</label>
+        <SectionLabel icon={<><circle cx="12" cy="13" r="8" strokeWidth="2" /><path d="M12 9v4l3 2M9 2h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>}>
+          Time taken
+        </SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
           <Select value={f.days} onChange={setField('days')}>
             {DAY_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                {d} d
-              </option>
+              <option key={d} value={d}>{d} d</option>
             ))}
           </Select>
           <Select value={f.hours} onChange={setField('hours')}>
             {HOUR_OPTIONS.map((h) => (
-              <option key={h} value={h}>
-                {h} h
-              </option>
+              <option key={h} value={h}>{h} h</option>
             ))}
           </Select>
           <Select value={f.minutes} onChange={setField('minutes')}>
             {MIN_SEC_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {m} m
-              </option>
+              <option key={m} value={m}>{m} m</option>
             ))}
           </Select>
           <Select value={f.seconds} onChange={setField('seconds')}>
             {MIN_SEC_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s} s
-              </option>
+              <option key={s} value={s}>{s} s</option>
             ))}
           </Select>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>Gels/Electrolytes</label>
+            <SectionLabel icon={<path d="M13 3L5 13h5l-1 8 8-11h-5l1-7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}>
+              Gels/Electrolytes
+            </SectionLabel>
             <div className="row-2">
               <Select value={f.electrolytesCount} onChange={setField('electrolytesCount')} style={{ maxWidth: 70 }}>
                 {COUNT_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
               <Select value={f.electrolytesBrand} onChange={setField('electrolytesBrand')}>
                 {ELECTROLYTE_BRANDS.map((b) => (
-                  <option key={b} value={b}>
-                    {b || 'Select brand'}
-                  </option>
+                  <option key={b} value={b}>{b || 'Select brand'}</option>
                 ))}
               </Select>
             </div>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>Nutrition</label>
+            <SectionLabel icon={<path d="M12 21c4-3 7-6.5 7-11a7 7 0 10-14 0c0 4.5 3 8 7 11z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}>
+              Nutrition
+            </SectionLabel>
             <div className="row-2">
               <Select value={f.nutritionCount} onChange={setField('nutritionCount')} style={{ maxWidth: 70 }}>
                 {COUNT_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
               <Select value={f.nutritionBrand} onChange={setField('nutritionBrand')}>
                 {NUTRITION_BRANDS.map((b) => (
-                  <option key={b} value={b}>
-                    {b || 'Select brand'}
-                  </option>
+                  <option key={b} value={b}>{b || 'Select brand'}</option>
                 ))}
               </Select>
             </div>
@@ -177,7 +187,7 @@ export function LogRun() {
         </Field>
 
         {error && (
-          <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', marginBottom: 'var(--space-3)', fontSize: 13 }}>
+          <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', marginBottom: 'var(--space-3)', fontSize: 13, borderRadius: 8 }}>
             {error}
           </div>
         )}
@@ -185,10 +195,10 @@ export function LogRun() {
         <Button variant="primary" disabled={submitDisabled || submitting} onClick={handleAddRun}>
           {submitting ? 'Saving…' : 'Add run'}
         </Button>
-      </Blueprint>
+      </div>
 
-      {state.loggedRuns.length > 0 && (
-        <div style={{ overflowX: 'auto' }}>
+      {state.loggedRuns.length > 0 ? (
+        <div className="rg-logrun-table-card">
           <table className="table">
             <thead>
               <tr>
@@ -219,6 +229,12 @@ export function LogRun() {
               ))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="rg-logrun-table-card" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
+          <p className="text-muted" style={{ margin: 0 }}>
+            Runs you log will show up here.
+          </p>
         </div>
       )}
     </>

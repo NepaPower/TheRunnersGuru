@@ -1,0 +1,95 @@
+/* Log a Run — brought up to the same "considered" visual language as the
+   Dashboard: rounded cards with soft elevation, icon-anchored section
+   labels, better-defined inputs. Stays in the light functional palette
+   (this is a data-entry screen), but no longer looks like a different app
+   from the Dashboard next to it. */
+
+.rg-logrun-back {
+  margin-bottom: var(--space-4);
+}
+
+.rg-logrun-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  max-width: 620px;
+  margin-bottom: var(--space-6);
+}
+
+.rg-logrun-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+.rg-logrun-title-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent-700);
+  flex: none;
+}
+
+.rg-logrun-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+.rg-logrun-section-label svg { color: var(--color-accent-600); flex: none; }
+
+.rg-logrun-card .text-muted {
+  color: color-mix(in srgb, var(--color-text) 65%, transparent);
+  font-size: 13.5px;
+}
+
+.rg-logrun-card .field > label {
+  font-weight: 500;
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--color-text) 85%, transparent);
+}
+.rg-logrun-card .input,
+.rg-logrun-card select.input {
+  border-radius: 9px;
+  font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.rg-logrun-card .input:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.rg-logrun-card .btn-primary {
+  border-radius: 999px;
+  padding: 11px 26px;
+}
+
+.rg-logrun-table-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4);
+  overflow-x: auto;
+}
+.rg-logrun-table-card .table th {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text) 75%, transparent);
+}
+.rg-logrun-table-card .table td {
+  font-size: 14.5px;
+  color: var(--color-text);
+}
+.rg-logrun-table-card .table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
