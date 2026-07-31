@@ -56,6 +56,22 @@ export const PACES_KM = [
   { id: 'fast', label: 'Fast — under 5:00/km' },
 ] as const;
 
+/** Used instead of PACES_MI/PACES_KM when distanceGoal === 'ultra' — road
+ * pace bands don't hold up once climbing and power-hiking enter the
+ * picture, so the whole range shifts slower and "Easy" explicitly covers
+ * hiking effort on climbs rather than just a slow jog. */
+export const PACES_MI_ULTRA = [
+  { id: 'easy', label: 'Easy — 16:00/mi or slower (includes hiking on climbs)' },
+  { id: 'steady', label: 'Steady — 12:00–16:00/mi' },
+  { id: 'fast', label: 'Fast — under 12:00/mi' },
+] as const;
+
+export const PACES_KM_ULTRA = [
+  { id: 'easy', label: 'Easy — 10:00/km or slower (includes hiking on climbs)' },
+  { id: 'steady', label: 'Steady — 7:30–10:00/km' },
+  { id: 'fast', label: 'Fast — under 7:30/km' },
+] as const;
+
 export const PACE_CUSTOM = { id: 'custom', label: 'Enter my own pace' } as const;
 
 export const RUNNING_QUOTES = [

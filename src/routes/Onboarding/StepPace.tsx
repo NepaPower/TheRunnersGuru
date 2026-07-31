@@ -1,17 +1,22 @@
 import { Field, Input, RadioOption, SegOption } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
-import { PACES_KM, PACES_MI, PACE_CUSTOM } from '../../data/constants';
+import { PACES_KM, PACES_KM_ULTRA, PACES_MI, PACES_MI_ULTRA, PACE_CUSTOM } from '../../data/constants';
 
 export function StepPace() {
   const { state, dispatch } = useApp();
   const { onboarding } = state;
-  const paceOptions = [...(onboarding.paceUnit === 'km' ? PACES_KM : PACES_MI), PACE_CUSTOM];
+  const isUltra = onboarding.distanceGoal === 'ultra';
+  const bandsMi = isUltra ? PACES_MI_ULTRA : PACES_MI;
+  const bandsKm = isUltra ? PACES_KM_ULTRA : PACES_KM;
+  const paceOptions = [...(onboarding.paceUnit === 'km' ? bandsKm : bandsMi), PACE_CUSTOM];
 
   return (
     <>
       <h2 style={{ marginBottom: 'var(--space-1)' }}>What's your current pace?</h2>
       <p className="text-muted" style={{ marginBottom: 'var(--space-6)' }}>
-        We'll use this to suggest partners who run at a similar clip.
+        {isUltra
+          ? "We'll use this to suggest partners who run at a similar clip — ultra pace runs slower than road pace once climbing and hiking are part of the terrain."
+          : "We'll use this to suggest partners who run at a similar clip."}
       </p>
 
       <div className="seg" style={{ marginBottom: 'var(--space-4)', maxWidth: 220 }}>

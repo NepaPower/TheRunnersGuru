@@ -1,5 +1,5 @@
 import type { AppState } from '../types';
-import { DISTANCE_LABELS, PACES_KM, PACES_MI } from '../data/constants';
+import { DISTANCE_LABELS, PACES_KM, PACES_KM_ULTRA, PACES_MI, PACES_MI_ULTRA } from '../data/constants';
 import { durationToSeconds, paceLabelPerMile } from '../lib/format';
 
 const DAY_MS = 86400000;
@@ -75,11 +75,16 @@ export function homeStats(state: AppState) {
 }
 
 export function paceLabel(state: AppState): string {
-  const { pace, customPace, paceUnit } = state.onboarding;
+  const { pace, customPace, paceUnit, distanceGoal } = state.onboarding;
   if (pace === 'custom') {
     return customPace ? `${customPace} ${paceUnit === 'km' ? 'min/km' : 'min/mi'}` : 'Set a pace';
   }
-  const found = [...PACES_MI, ...PACES_KM].find((p) => p.id === pace);
+  // Ultra reuses the same easy/steady/fast ids at slower speeds, so the
+  // lookup has to branch the same way Onboarding/StepPace.tsx does — a
+  // plain id match against the standard bands would silently show the
+  // faster road-pace label for an ultra runner.
+  const bands = distanceGoal === 'ultra' ? [...PACES_MI_ULTRA, ...PACES_KM_ULTRA] : [...PACES_MI, ...PACES_KM];
+  const found = bands.find((p) => p.id === pace);
   return found?.label || 'Set a pace';
 }
 
