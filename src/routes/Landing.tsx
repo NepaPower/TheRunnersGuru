@@ -25,7 +25,7 @@ export function Landing() {
       <section className="rg-landing-hero">
         <nav className="rg-landing-nav">
           <div className="rg-landing-nav-brand">
-            <LogoMark size={26} />
+            <LogoMark size={32} />
             The Runners Guru
           </div>
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }}>

@@ -24,7 +24,7 @@ export function AppNav() {
   return (
     <nav className="nav" style={{ borderBottom: '1px solid var(--color-divider)' }}>
       <div className="nav-brand">
-        <Wordmark fontSize={26} />
+        <Wordmark fontSize={32} />
       </div>
       {NAV_ITEMS.map((item) => (
         <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'active' : undefined)}>
