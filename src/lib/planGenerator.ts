@@ -1,4 +1,4 @@
-import type { DistanceGoal, FirstTimeAnswer, PhaseSummaryItem, TrainingPlan, TrainingPlanRow } from '../types';
+import type { DistanceGoal, FirstTimeAnswer, HillAccessAnswer, PhaseSummaryItem, TrainingPlan, TrainingPlanRow } from '../types';
 import { DISTANCE_LABELS, RUNNING_QUOTES } from '../data/constants';
 
 /**
@@ -143,6 +143,12 @@ export function buildTrainingPlan(
   distanceGoal: DistanceGoal,
   firstTime: FirstTimeAnswer,
   raceName: string,
+  // Only meaningful for distanceGoal === 'ultra'. Stored on the plan now so
+  // it isn't lost; the row generator doesn't branch on it yet — that's the
+  // hook point for swapping hill-repeat text to treadmill/StairMaster
+  // equivalents when the ultra-specific (time + vert based) generator is
+  // built out.
+  hillAccess: HillAccessAnswer = '',
 ): TrainingPlan | null {
   if (!raceDateStr || !distanceGoal) return null;
   const race = new Date(raceDateStr + 'T00:00:00');
@@ -193,6 +199,7 @@ export function buildTrainingPlan(
     raceName: raceName || DISTANCE_LABELS[distanceGoal],
     distanceGoal,
     firstTime,
+    hillAccess: distanceGoal === 'ultra' ? hillAccess : '',
     raceDate: raceDateStr,
     totalWeeks,
     rows,

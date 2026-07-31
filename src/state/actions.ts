@@ -1,4 +1,4 @@
-import type { Address, DistanceGoal, FirstTimeAnswer, LoggedRun, PaceChoice, PaceUnit, ProfileTab, Screen, TrainingPlan } from '../types';
+import type { Address, DistanceGoal, FirstTimeAnswer, HillAccessAnswer, LoggedRun, PaceChoice, PaceUnit, ProfileTab, Screen, TrainingPlan } from '../types';
 
 export type Action =
   | { type: 'SET_SCREEN'; screen: Screen }
@@ -19,6 +19,7 @@ export type Action =
   | { type: 'ONBOARDING_SET_RACE_CHOICE'; value: string }
   | { type: 'ONBOARDING_SET_RACE_NAME'; value: string }
   | { type: 'ONBOARDING_SET_RACE_ADDRESS'; value: string }
+  | { type: 'ONBOARDING_SELECT_HILL_ACCESS'; id: HillAccessAnswer }
   | { type: 'ONBOARDING_SELECT_FIRST_TIME'; id: FirstTimeAnswer }
   | { type: 'ONBOARDING_SELECT_PACE_UNIT'; unit: PaceUnit }
   | { type: 'ONBOARDING_SELECT_PACE'; id: PaceChoice }

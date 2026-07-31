@@ -65,6 +65,10 @@ create table public.training_plans (
   race_name text not null,
   distance_goal text not null check (distance_goal in ('5k','10k','half','full','ultra')),
   first_time text not null check (first_time in ('yes','no')),
+  -- Only asked/set when distance_goal = 'ultra'; determines whether
+  -- climbing-specific sessions are prescribed as outdoor hills or their
+  -- treadmill-incline / StairMaster equivalents. Null for all other distances.
+  hill_access text check (hill_access in ('yes','no')),
   race_date date not null,
   total_weeks int not null,
   pace text,
@@ -80,6 +84,12 @@ create policy "training plans are owner-only"
   on public.training_plans for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Migration for an already-deployed database (this table already exists in
+-- Supabase): run this once in the SQL editor instead of the CREATE TABLE
+-- above.
+--   alter table public.training_plans add column hill_access text
+--     check (hill_access in ('yes','no'));
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

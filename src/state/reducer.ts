@@ -2,6 +2,7 @@ import type { AppState } from '../types';
 import type { Action } from './actions';
 import { SEED_MATCHES } from '../data/constants';
 import { RACES_BY_DISTANCE } from '../data/constants';
+import { onboardingStepLabels } from '../lib/onboardingSteps';
 
 export const emptyLogForm = {
   date: '',
@@ -37,6 +38,7 @@ export function buildInitialState(): AppState {
       raceChoice: '',
       raceName: '',
       raceAddress: '',
+      hillAccess: '',
       firstTime: '',
       pace: '',
       paceUnit: 'mi',
@@ -107,7 +109,14 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ONBOARDING_SELECT_DISTANCE':
       return {
         ...state,
-        onboarding: { ...state.onboarding, distanceGoal: action.id, raceChoice: '', raceName: '', distanceEditing: false },
+        onboarding: {
+          ...state.onboarding,
+          distanceGoal: action.id,
+          raceChoice: '',
+          raceName: '',
+          distanceEditing: false,
+          hillAccess: action.id === 'ultra' ? state.onboarding.hillAccess : '',
+        },
       };
 
     case 'ONBOARDING_EDIT_DISTANCE':
@@ -132,6 +141,9 @@ export function reducer(state: AppState, action: Action): AppState {
         onboarding: { ...state.onboarding, raceAddress: action.value, raceChoice: '', raceName: '' },
       };
 
+    case 'ONBOARDING_SELECT_HILL_ACCESS':
+      return { ...state, onboarding: { ...state.onboarding, hillAccess: action.id } };
+
     case 'ONBOARDING_SELECT_FIRST_TIME':
       return { ...state, onboarding: { ...state.onboarding, firstTime: action.id } };
 
@@ -153,19 +165,22 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ONBOARDING_SET_GOAL_MINUTES':
       return { ...state, onboarding: { ...state.onboarding, goalMinutes: action.value } };
 
-    case 'ONBOARDING_NEXT':
-      // Step 3 (the final step) is handled entirely by the Onboarding
-      // component: it generates the plan, awaits saving it to Supabase,
-      // then dispatches ONBOARDING_PLAN_SAVED. This action only advances
-      // steps 0-2.
-      if (state.onboarding.step < 3) {
-        return { ...state, onboarding: { ...state.onboarding, step: (state.onboarding.step + 1) as 0 | 1 | 2 | 3 } };
+    case 'ONBOARDING_NEXT': {
+      // The final step (Race date & goal — index varies: 3 normally, 4 for
+      // ultra plans with the Hill access step inserted) is handled entirely
+      // by the Onboarding component: it generates the plan, awaits saving it
+      // to Supabase, then dispatches ONBOARDING_PLAN_SAVED. This action only
+      // advances the steps before that.
+      const lastStep = onboardingStepLabels(state.onboarding.distanceGoal).length - 1;
+      if (state.onboarding.step < lastStep) {
+        return { ...state, onboarding: { ...state.onboarding, step: state.onboarding.step + 1 } };
       }
       return state;
+    }
 
     case 'ONBOARDING_PREV':
       if (state.onboarding.step === 0) return state;
-      return { ...state, onboarding: { ...state.onboarding, step: (state.onboarding.step - 1) as 0 | 1 | 2 | 3 } };
+      return { ...state, onboarding: { ...state.onboarding, step: state.onboarding.step - 1 } };
 
     case 'ONBOARDING_PLAN_SAVED':
       return { ...state, screen: 'home', trainingPlan: action.plan };

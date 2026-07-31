@@ -17,6 +17,14 @@ export const FIRST_TIME_OPTIONS = [
   { id: 'no', label: "No, I've done this distance before" },
 ] as const;
 
+/** Only asked when the selected distance is Ultra — determines whether
+ * climbing-specific sessions are prescribed as outdoor hill repeats or
+ * their treadmill-incline / StairMaster equivalents. */
+export const HILL_ACCESS_OPTIONS = [
+  { id: 'yes', label: 'Yes, I have hills or trails nearby' },
+  { id: 'no', label: "No — I'll need treadmill or StairMaster substitutes" },
+] as const;
+
 export const PACES_MI = [
   { id: 'easy', label: 'Easy — 11:00/mi or slower' },
   { id: 'steady', label: 'Steady — 8:00–11:00/mi' },

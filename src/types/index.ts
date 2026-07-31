@@ -22,6 +22,11 @@ export type DistanceGoal = '5k' | '10k' | 'half' | 'full' | 'ultra';
 
 export type FirstTimeAnswer = 'yes' | 'no' | '';
 
+/** Only asked when distanceGoal === 'ultra' — determines whether the plan's
+ * climbing-specific sessions are prescribed as outdoor hill repeats or their
+ * treadmill-incline / StairMaster equivalents. */
+export type HillAccessAnswer = 'yes' | 'no' | '';
+
 export type PaceChoice = 'easy' | 'steady' | 'fast' | 'custom' | '';
 
 export type PaceUnit = 'mi' | 'km';
@@ -43,12 +48,16 @@ export interface AuthState {
 }
 
 export interface OnboardingState {
-  step: 0 | 1 | 2 | 3;
+  // Step count is dynamic: 4 steps normally, 5 when distanceGoal === 'ultra'
+  // (the Hill access step is inserted after Distance & race). See
+  // ONBOARDING_STEP_LABELS / getOnboardingStepCount in Onboarding/index.tsx.
+  step: number;
   distanceGoal: DistanceGoal | '';
   distanceEditing: boolean;
   raceChoice: string; // dropdown value, or '__other__'
   raceName: string;
   raceAddress: string; // may seed from signup address, editable inline if missing
+  hillAccess: HillAccessAnswer; // only meaningful when distanceGoal === 'ultra'
   firstTime: FirstTimeAnswer;
   pace: PaceChoice;
   paceUnit: PaceUnit;
@@ -82,6 +91,7 @@ export interface TrainingPlan {
   raceName: string;
   distanceGoal: DistanceGoal;
   firstTime: FirstTimeAnswer;
+  hillAccess: HillAccessAnswer; // '' for non-ultra plans
   raceDate: string;
   totalWeeks: number;
   rows: TrainingPlanRow[];
