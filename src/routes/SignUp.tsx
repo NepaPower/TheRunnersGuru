@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { BrandHeader } from '../components/Logo';
@@ -9,9 +9,10 @@ import './auth.css';
 
 export function SignUp() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [password, setPassword] = useState('');
   const [address, setAddress] = useState<Address>({ street: '', unit: '', city: '', state: '', zip: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -95,7 +96,7 @@ export function SignUp() {
 
         <div className="rg-auth-footer-line">
           Already have an account?{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }}>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin', { state: { email } }); }}>
             Sign in
           </a>
         </div>

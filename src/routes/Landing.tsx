@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { Button } from '../components/ui/Button';
@@ -19,6 +20,7 @@ const FEATURE_ICONS = [
 
 export function Landing() {
   const navigate = useNavigate();
+  const [heroEmail, setHeroEmail] = useState('');
 
   return (
     <div className="rg-landing">
@@ -64,15 +66,27 @@ export function Landing() {
               your distance, upload your route, and let AI handle the rest.
             </p>
 
-            <form className="rg-landing-capture" onSubmit={(e) => { e.preventDefault(); navigate('/signup'); }}>
-              <input type="email" placeholder="your@email.com" aria-label="Email address" />
+            <form
+              className="rg-landing-capture"
+              onSubmit={(e) => {
+                e.preventDefault();
+                navigate('/signup', { state: { email: heroEmail } });
+              }}
+            >
+              <input
+                type="email"
+                placeholder="your@email.com"
+                aria-label="Email address"
+                value={heroEmail}
+                onChange={(e) => setHeroEmail(e.target.value)}
+              />
               <Button variant="primary" type="submit">
                 Join free
               </Button>
             </form>
             <div className="rg-landing-signin-line">
               Already have an account?{' '}
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }}>
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin', { state: { email: heroEmail } }); }}>
                 Sign in
               </a>
             </div>

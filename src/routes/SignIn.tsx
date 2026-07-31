@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { BrandHeader } from '../components/Logo';
@@ -9,8 +9,9 @@ import './auth.css';
 
 export function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { dispatch } = useApp();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export function SignIn() {
 
         <div className="rg-auth-footer-line">
           New here?{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signup'); }}>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signup', { state: { email } }); }}>
             Join free
           </a>
         </div>
