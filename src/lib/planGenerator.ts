@@ -68,14 +68,25 @@ export function buildPhaseSummary(totalWeeks: number): PhaseSummaryItem[] {
  * Long run and weekly total scale linearly from start -> peak across the
  * build phase; recovery weeks (every 4th week) cut ~30%; taper steps down
  * in stages; race week is a short shakeout + the race distance on race day. */
-function generateDynamicPlan(totalWeeks: number, distanceGoal: DistanceGoal, firstTime: FirstTimeAnswer): RawPlanRow[] {
+function generateDynamicPlan(
+  totalWeeks: number,
+  distanceGoal: DistanceGoal,
+  firstTime: FirstTimeAnswer,
+  raceMilesOverride?: number | null,
+): RawPlanRow[] {
   const cfg = PLAN_TARGETS[distanceGoal] || PLAN_TARGETS['5k'];
   const factor = firstTime === 'yes' ? 0.85 : 1;
   const startLongRun = cfg.startLong;
   const peakLongRun = cfg.peakLong * factor;
   const startWeeklyMiles = cfg.startWeekly;
   const peakWeeklyMiles = cfg.peakWeekly * factor;
-  const raceMiles = cfg.raceMiles;
+  // For ultra, the specific selected distance (50K up to a custom 500-mile
+  // entry) overrides the generic 31-mile default so Race Week shows the
+  // real race-day mileage. The weekly build-up (peakLongRun/peakWeeklyMiles
+  // above) still uses the generic ultra targets regardless of which ultra
+  // distance was picked — scaling those to the actual distance is part of
+  // the larger time+vert based ultra generator, not yet built.
+  const raceMiles = raceMilesOverride ?? cfg.raceMiles;
 
   const taperWeeks = totalWeeks >= 10 ? 3 : totalWeeks >= 5 ? 2 : 1;
   const buildWeeks = totalWeeks - taperWeeks;
@@ -149,6 +160,10 @@ export function buildTrainingPlan(
   // equivalents when the ultra-specific (time + vert based) generator is
   // built out.
   hillAccess: HillAccessAnswer = '',
+  // Only meaningful for distanceGoal === 'ultra' — the specific selected
+  // distance in miles (50K/100K/.../300mi preset or a custom entry, capped
+  // at 500). Null falls back to the generic 31-mile ultra default.
+  ultraMiles: number | null = null,
 ): TrainingPlan | null {
   if (!raceDateStr || !distanceGoal) return null;
   const race = new Date(raceDateStr + 'T00:00:00');
@@ -177,7 +192,7 @@ export function buildTrainingPlan(
   const totalWeeks = weeks.length;
   const dayKeyByDow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
   const raceKey = dayKeyByDow[race.getDay()];
-  const planRows = generateDynamicPlan(totalWeeks, distanceGoal, firstTime);
+  const planRows = generateDynamicPlan(totalWeeks, distanceGoal, firstTime, distanceGoal === 'ultra' ? ultraMiles : null);
 
   const rows: TrainingPlanRow[] = weeks.map((wk) => {
     const p = planRows[wk.weekNum - 1];

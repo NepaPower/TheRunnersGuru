@@ -1,4 +1,4 @@
-import type { DistanceGoal, PartnerMatch } from '../types';
+import type { DistanceGoal, PartnerMatch, UltraDistanceId } from '../types';
 
 export const DISTANCES: { id: DistanceGoal; label: string }[] = [
   { id: '5k', label: '5K' },
@@ -11,6 +11,25 @@ export const DISTANCES: { id: DistanceGoal; label: string }[] = [
 export const DISTANCE_LABELS: Record<DistanceGoal, string> = Object.fromEntries(
   DISTANCES.map((d) => [d.id, d.label]),
 ) as Record<DistanceGoal, string>;
+
+/** Step 2's picker when raceCategory === 'standard' — everything except ultra,
+ * which gets its own picker (see ULTRA_DISTANCES) once raceCategory === 'ultra'
+ * is chosen in Step 1. */
+export const STANDARD_DISTANCES = DISTANCES.filter((d) => d.id !== 'ultra');
+
+/** Step 2's picker when raceCategory === 'ultra'. 'custom' pairs with a typed
+ * mileage input capped at MAX_ULTRA_MILES. */
+export const ULTRA_DISTANCES: { id: Exclude<UltraDistanceId, ''>; label: string; miles?: number }[] = [
+  { id: '50k', label: '50K', miles: 31 },
+  { id: '100k', label: '100K', miles: 62 },
+  { id: '100mi', label: '100 Miles', miles: 100 },
+  { id: '135mi', label: '135 Miles', miles: 135 },
+  { id: '200mi', label: '200 Miles', miles: 200 },
+  { id: '300mi', label: '300 Miles', miles: 300 },
+  { id: 'custom', label: 'Enter my own distance' },
+];
+
+export const MAX_ULTRA_MILES = 500;
 
 export const FIRST_TIME_OPTIONS = [
   { id: 'yes', label: 'Yes, this is my first time' },

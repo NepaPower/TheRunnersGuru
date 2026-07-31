@@ -1,4 +1,17 @@
-import type { Address, DistanceGoal, FirstTimeAnswer, HillAccessAnswer, LoggedRun, PaceChoice, PaceUnit, ProfileTab, Screen, TrainingPlan } from '../types';
+import type {
+  Address,
+  DistanceGoal,
+  FirstTimeAnswer,
+  HillAccessAnswer,
+  LoggedRun,
+  PaceChoice,
+  PaceUnit,
+  ProfileTab,
+  RaceCategory,
+  Screen,
+  TrainingPlan,
+  UltraDistanceId,
+} from '../types';
 
 export type Action =
   | { type: 'SET_SCREEN'; screen: Screen }
@@ -14,8 +27,11 @@ export type Action =
       loggedRuns: LoggedRun[];
     }
   | { type: 'LOGOUT' }
+  | { type: 'ONBOARDING_SELECT_RACE_CATEGORY'; category: RaceCategory }
   | { type: 'ONBOARDING_SELECT_DISTANCE'; id: DistanceGoal }
   | { type: 'ONBOARDING_EDIT_DISTANCE' }
+  | { type: 'ONBOARDING_SELECT_ULTRA_DISTANCE'; id: UltraDistanceId }
+  | { type: 'ONBOARDING_SET_ULTRA_CUSTOM_MILES'; value: string }
   | { type: 'ONBOARDING_SET_RACE_CHOICE'; value: string }
   | { type: 'ONBOARDING_SET_RACE_NAME'; value: string }
   | { type: 'ONBOARDING_SET_RACE_ADDRESS'; value: string }

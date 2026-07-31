@@ -1,7 +1,7 @@
 import type { AppState } from '../types';
 import type { Action } from './actions';
 import { SEED_MATCHES } from '../data/constants';
-import { RACES_BY_DISTANCE } from '../data/constants';
+import { RACES_BY_DISTANCE, MAX_ULTRA_MILES } from '../data/constants';
 import { onboardingStepLabels } from '../lib/onboardingSteps';
 
 export const emptyLogForm = {
@@ -33,8 +33,11 @@ export function buildInitialState(): AppState {
     },
     onboarding: {
       step: 0,
+      raceCategory: '',
       distanceGoal: '',
       distanceEditing: false,
+      ultraDistanceId: '',
+      ultraCustomMiles: '',
       raceChoice: '',
       raceName: '',
       raceAddress: '',
@@ -106,6 +109,25 @@ export function reducer(state: AppState, action: Action): AppState {
       // server-side here, just reset the in-memory session.
       return buildInitialState();
 
+    case 'ONBOARDING_SELECT_RACE_CATEGORY':
+      return {
+        ...state,
+        onboarding: {
+          ...state.onboarding,
+          raceCategory: action.category,
+          // Ultra sets distanceGoal immediately so downstream logic (Hill
+          // access step, plan-target lookup) can key off it right away;
+          // standard clears it so Step 2 re-prompts for a specific distance.
+          distanceGoal: action.category === 'ultra' ? 'ultra' : '',
+          distanceEditing: false,
+          raceChoice: '',
+          raceName: '',
+          ultraDistanceId: '',
+          ultraCustomMiles: '',
+          hillAccess: action.category === 'ultra' ? state.onboarding.hillAccess : '',
+        },
+      };
+
     case 'ONBOARDING_SELECT_DISTANCE':
       return {
         ...state,
@@ -115,9 +137,29 @@ export function reducer(state: AppState, action: Action): AppState {
           raceChoice: '',
           raceName: '',
           distanceEditing: false,
-          hillAccess: action.id === 'ultra' ? state.onboarding.hillAccess : '',
+          hillAccess: '',
         },
       };
+
+    case 'ONBOARDING_SELECT_ULTRA_DISTANCE':
+      return {
+        ...state,
+        onboarding: {
+          ...state.onboarding,
+          ultraDistanceId: action.id,
+          ultraCustomMiles: action.id === 'custom' ? state.onboarding.ultraCustomMiles : '',
+          raceChoice: '',
+          raceName: '',
+        },
+      };
+
+    case 'ONBOARDING_SET_ULTRA_CUSTOM_MILES': {
+      // Digits only, clamped to the 500-mile ceiling — enforced here too
+      // (not just in the input) since this is the single source of truth.
+      const digits = action.value.replace(/[^\d]/g, '');
+      const clamped = digits === '' ? '' : String(Math.min(Number(digits), MAX_ULTRA_MILES));
+      return { ...state, onboarding: { ...state.onboarding, ultraCustomMiles: clamped } };
+    }
 
     case 'ONBOARDING_EDIT_DISTANCE':
       return { ...state, onboarding: { ...state.onboarding, distanceEditing: true } };
@@ -171,7 +213,7 @@ export function reducer(state: AppState, action: Action): AppState {
       // by the Onboarding component: it generates the plan, awaits saving it
       // to Supabase, then dispatches ONBOARDING_PLAN_SAVED. This action only
       // advances the steps before that.
-      const lastStep = onboardingStepLabels(state.onboarding.distanceGoal).length - 1;
+      const lastStep = onboardingStepLabels(state.onboarding.raceCategory).length - 1;
       if (state.onboarding.step < lastStep) {
         return { ...state, onboarding: { ...state.onboarding, step: state.onboarding.step + 1 } };
       }

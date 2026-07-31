@@ -20,6 +20,16 @@ export type Screen =
 
 export type DistanceGoal = '5k' | '10k' | 'half' | 'full' | 'ultra';
 
+/** Step 1 of onboarding now asks this before any specific distance — it
+ * determines whether Step 2 shows the standard 5K-Marathon picker or the
+ * Ultra-specific one. */
+export type RaceCategory = 'standard' | 'ultra' | '';
+
+/** Only used when raceCategory === 'ultra'. 'custom' pairs with
+ * OnboardingState.ultraCustomMiles (capped at MAX_ULTRA_MILES, see
+ * data/constants.ts). */
+export type UltraDistanceId = '50k' | '100k' | '100mi' | '135mi' | '200mi' | '300mi' | 'custom' | '';
+
 export type FirstTimeAnswer = 'yes' | 'no' | '';
 
 /** Only asked when distanceGoal === 'ultra' — determines whether the plan's
@@ -48,12 +58,15 @@ export interface AuthState {
 }
 
 export interface OnboardingState {
-  // Step count is dynamic: 4 steps normally, 5 when distanceGoal === 'ultra'
-  // (the Hill access step is inserted after Distance & race). See
-  // ONBOARDING_STEP_LABELS / getOnboardingStepCount in Onboarding/index.tsx.
+  // Step count is dynamic — see onboardingStepLabels() in lib/onboardingSteps.ts:
+  // 5 steps for a standard (5K-Marathon) race, 6 for Ultra (adds the Hill
+  // access step). Step 0 (Race type) is always the same.
   step: number;
+  raceCategory: RaceCategory;
   distanceGoal: DistanceGoal | '';
   distanceEditing: boolean;
+  ultraDistanceId: UltraDistanceId;
+  ultraCustomMiles: string; // typed miles when ultraDistanceId === 'custom', clamped to MAX_ULTRA_MILES
   raceChoice: string; // dropdown value, or '__other__'
   raceName: string;
   raceAddress: string; // may seed from signup address, editable inline if missing

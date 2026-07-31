@@ -5,6 +5,8 @@ import { BrandHeader } from '../../components/Logo';
 import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
 import { saveTrainingPlan } from '../../lib/api';
+import { ultraDistanceMiles } from '../../lib/ultraDistance';
+import { StepRaceCategory } from './StepRaceCategory';
 import { StepDistance } from './StepDistance';
 import { StepHillAccess } from './StepHillAccess';
 import { StepFirstTime } from './StepFirstTime';
@@ -17,13 +19,16 @@ export function Onboarding() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
   const step = state.onboarding.step;
-  const isUltra = state.onboarding.distanceGoal === 'ultra';
-  const STEP_LABELS = onboardingStepLabels(state.onboarding.distanceGoal);
+  const isUltra = state.onboarding.raceCategory === 'ultra';
+  const STEP_LABELS = onboardingStepLabels(state.onboarding.raceCategory);
   const lastStep = STEP_LABELS.length - 1;
-  // Step indices shift by one once the Hill access step is inserted for ultra.
-  const hillAccessStep = 1;
-  const firstTimeStep = isUltra ? 2 : 1;
-  const paceStep = isUltra ? 3 : 2;
+  // Step 0 (Race type) and Step 1 (Distance & race) are always the same
+  // positions; everything after shifts by one once Hill access is inserted
+  // for ultra.
+  const distanceStep = 1;
+  const hillAccessStep = 2;
+  const firstTimeStep = isUltra ? 3 : 2;
+  const paceStep = isUltra ? 4 : 3;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +50,7 @@ export function Onboarding() {
         state.onboarding.firstTime,
         state.onboarding.raceName,
         state.onboarding.hillAccess,
+        isUltra ? ultraDistanceMiles(state.onboarding) : null,
       );
       if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
       await saveTrainingPlan(state.userId, plan);
@@ -77,7 +83,8 @@ export function Onboarding() {
 
         {error && <div className="rg-auth-error">{error}</div>}
 
-        {step === 0 && <StepDistance />}
+        {step === 0 && <StepRaceCategory />}
+        {step === distanceStep && <StepDistance />}
         {isUltra && step === hillAccessStep && <StepHillAccess />}
         {step === firstTimeStep && <StepFirstTime />}
         {step === paceStep && <StepPace />}
