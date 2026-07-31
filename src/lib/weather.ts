@@ -1,3 +1,5 @@
+import { geocodeZip } from './geocode';
+
 /**
  * Temperature lookup for logged runs. If the runner enters a manual
  * temperature, that always wins (handled by the caller before this is
@@ -21,11 +23,7 @@ export function mockTemperature(date: string, timeOfDay = ''): number {
 
 export async function fetchTemperatureForZipAndDate(zip: string, dateStr: string): Promise<string> {
   try {
-    const geoRes = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(zip)}&count=1&countryCode=US&language=en&format=json`,
-    );
-    const geo = await geoRes.json();
-    const place = geo?.results?.[0];
+    const place = await geocodeZip(zip);
     if (!place) throw new Error('no geocode result');
 
     const date = dateStr || new Date().toISOString().slice(0, 10);

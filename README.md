@@ -106,10 +106,13 @@ when you sign in from the other.
 - **Real, no backend needed:** the training-plan generation algorithm, the
   weather API calls (Open-Meteo, no key required).
 - **Still mocked (needs more backend work — see "Next steps" below):**
-  race lookup (`RACES_BY_DISTANCE` hardcoded table instead of a real
-  geocoded search), partner matches, chat, leaderboard, and Garmin Connect
-  (the *toggle* is now real and persisted, but there's no actual OAuth flow
-  or synced data behind it — see the Garmin note below).
+  race lookup (`RACES_BY_DISTANCE` hardcoded table — a real geocoded
+  search was investigated, but the obvious provider, RunSignup, gates
+  broad race search behind partner/affiliate approval rather than a
+  self-serve key, so this stayed mocked), partner matches, chat, and
+  leaderboard. Garmin Connect (the *toggle* is real and persisted, but
+  there's no actual OAuth flow or synced data behind it — see the Garmin
+  note below).
 
 ## Next steps for a real backend
 
