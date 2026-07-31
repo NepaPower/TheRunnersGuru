@@ -1,119 +1,151 @@
 import { useNavigate } from 'react-router-dom';
-import { Wordmark } from '../components/Logo';
+import { LogoMark } from '../components/Logo';
 import { Button } from '../components/ui/Button';
-import { Blueprint } from '../components/ui/Blueprint';
-import { Input } from '../components/ui/Form';
 import { LANDING_FEATURES } from '../data/constants';
+import './landing.css';
+
+// Feature icons — small, purposeful glyphs (no icon library dependency),
+// one per card, cycling through the three accent colors via CSS nth-child.
+const FEATURE_ICONS = [
+  <path key="a" d="M4 17l5-6 4 4 7-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="b" d="M12 3v18M6 8l6-5 6 5M6 16l6 5 6-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="c" d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="d" d="M13 3L5 13h5l-1 8 8-11h-5l1-7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="e" d="M12 21c4-3 7-6.5 7-11a7 7 0 10-14 0c0 4.5 3 8 7 11z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="f" d="M5 21l4-11 3 6 3-9 4 14M5 21h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="g" d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  <path key="h" d="M17 11a5 5 0 10-10 0c0 3 2 4 2 7h6c0-3 2-4 2-7z M9 21h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+];
 
 export function Landing() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ background: 'var(--color-accent-100)', display: 'flex', flexDirection: 'column' }}>
-      <nav className="nav container" style={{ color: 'var(--color-text)' }}>
-        <div className="nav-brand">
-          <Wordmark fontSize={30} />
-        </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }} style={{ color: 'var(--color-text)', opacity: 0.8 }}>
-          Sign in
-        </a>
-        <Button variant="primary" onClick={() => navigate('/signup')}>
-          Join free →
-        </Button>
-      </nav>
-
-      <div
-        className="container"
-        style={{
-          padding: 'var(--space-6) var(--space-4)',
-          display: 'grid',
-          gridTemplateColumns: '1.1fr 1fr',
-          gap: 'var(--space-6)',
-          alignItems: 'center',
-        }}
-      >
-        <div>
-          <div className="row-2" style={{ marginBottom: 'var(--space-4)' }}>
-            <div style={{ width: 24, height: 1, background: 'var(--color-accent-700)' }} />
-            <h6 style={{ color: 'var(--color-accent-700)', margin: 0 }}>The runner's intelligence platform</h6>
+    <div className="rg-landing">
+      <section className="rg-landing-hero">
+        <nav className="rg-landing-nav">
+          <div className="rg-landing-nav-brand">
+            <LogoMark size={26} />
+            The Runners Guru
           </div>
-          <h1 style={{ fontSize: 64, textTransform: 'uppercase', lineHeight: 1.02, marginBottom: 'var(--space-4)' }}>
-            Your next <span style={{ color: 'var(--color-accent-700)' }}>mile</span>
-            <br />
-            starts here
-          </h1>
-          <p style={{ fontSize: 16, opacity: 0.75, maxWidth: 440, marginBottom: 'var(--space-6)' }}>
-            Intelligent training plans built around you — whether it's your first 5K or your next 100-miler. Pick your
-            distance, upload your route, and let AI handle the rest.
-          </p>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }}>
+            Sign in
+          </a>
+          <Button variant="primary" onClick={() => navigate('/signup')}>
+            Join free →
+          </Button>
+        </nav>
 
-          <div className="row-2" style={{ marginBottom: 'var(--space-3)' }}>
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              style={{ background: 'transparent', borderColor: 'var(--color-accent-300)', color: 'var(--color-text)' }}
+        {/* Background contour lines — faint topographic texture, like
+            elevation lines on a trail map, filling the predawn section. */}
+        <svg className="rg-landing-hero-contours" viewBox="0 0 800 500" preserveAspectRatio="none" aria-hidden="true">
+          {[60, 120, 175, 235, 300, 360, 420, 470].map((y, i) => (
+            <path
+              key={y}
+              d={`M0,${y} Q100,${y - 22} 200,${y} T400,${y} T600,${y} T800,${y}`}
+              fill="none"
+              stroke="#f4efe1"
+              strokeWidth="1"
+              opacity={0.08 + (i % 3) * 0.03}
             />
-            <Button variant="primary" onClick={() => navigate('/signup')} style={{ whiteSpace: 'nowrap' }}>
-              Join free
-            </Button>
+          ))}
+        </svg>
+
+        <div className="rg-landing-hero-inner">
+          <div>
+            <div className="rg-landing-eyebrow">Before sunrise, every mile counts</div>
+            <h1 className="rg-landing-headline">
+              Your next <em>mile</em>
+              <br />
+              starts here
+            </h1>
+            <p className="rg-landing-subhead">
+              Intelligent training plans built around you — whether it's your first 5K or your next 100-miler. Pick
+              your distance, upload your route, and let AI handle the rest.
+            </p>
+
+            <form className="rg-landing-capture" onSubmit={(e) => { e.preventDefault(); navigate('/signup'); }}>
+              <input type="email" placeholder="your@email.com" aria-label="Email address" />
+              <Button variant="primary" type="submit">
+                Join free
+              </Button>
+            </form>
+            <div className="rg-landing-signin-line">
+              Already have an account?{' '}
+              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }}>
+                Sign in
+              </a>
+            </div>
+
+            <div className="rg-landing-hero-stats">
+              <div>
+                <div className="rg-landing-hero-stat-value">5K–100mi</div>
+                <div className="rg-landing-hero-stat-label">Every distance covered</div>
+              </div>
+              <div>
+                <div className="rg-landing-hero-stat-value">100%</div>
+                <div className="rg-landing-hero-stat-label">Plans built for your race</div>
+              </div>
+              <div>
+                <div className="rg-landing-hero-stat-value">Free</div>
+                <div className="rg-landing-hero-stat-label">No card required</div>
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 12, opacity: 0.6 }}>
-            Already have an account?{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }} style={{ color: 'var(--color-accent-700)' }}>
-              Sign in
-            </a>
+
+          {/* Signature graphic: a route line drawing itself in, like a GPS
+              track from a finished run — start marker, winding path, finish. */}
+          <div className="rg-landing-route-wrap">
+            <svg viewBox="0 0 420 380" width="100%" height="100%" aria-hidden="true">
+              <path
+                className="rg-landing-route-path"
+                d="M40,60 C110,40 120,110 70,150 C10,195 60,230 130,215 C230,193 200,120 260,100 C330,76 340,160 300,210 C255,266 300,300 370,320"
+                fill="none"
+                stroke="#d9a441"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+              <circle cx="40" cy="60" r="6" fill="#f4efe1" />
+              <circle className="rg-landing-route-dot" cx="370" cy="320" r="8" fill="#d9a441" stroke="#16241f" strokeWidth="3" />
+            </svg>
           </div>
         </div>
+      </section>
 
-        <Blueprint style={{ border: '1px solid var(--color-accent-300)' }}>
-          <div className="hero-image-slot">Trail-running hero photo goes here</div>
-        </Blueprint>
-      </div>
-
-      <div style={{ borderTop: '1px solid var(--color-accent-300)', padding: 'var(--space-4)' }}>
-        <div className="container" style={{ padding: 0, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)' }}>
-          {LANDING_FEATURES.map((f) => (
-            <Blueprint key={f.title} style={{ border: '1px solid var(--color-accent-300)', padding: 'var(--space-3)' }}>
-              <div className="card-title" style={{ marginBottom: 6, fontSize: 15 }}>
-                {f.title}
+      <section className="rg-landing-features">
+        <div className="rg-landing-section-kicker">Why runners choose Guru</div>
+        <h2>Everything you need between now and race day.</h2>
+        <div className="rg-landing-feature-grid">
+          {LANDING_FEATURES.map((f, i) => (
+            <div key={f.title} className="rg-landing-feature-card">
+              <div className="rg-landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor">
+                  {FEATURE_ICONS[i % FEATURE_ICONS.length]}
+                </svg>
               </div>
-              <p className="card-body" style={{ fontSize: 12 }}>
-                {f.desc}
-              </p>
-            </Blueprint>
+              <div className="rg-landing-feature-title">{f.title}</div>
+              <p className="rg-landing-feature-desc">{f.desc}</p>
+            </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div
-        style={{
-          borderTop: '1px solid var(--color-accent-300)',
-          background: 'var(--color-accent-900)',
-          color: 'var(--color-bg)',
-          padding: 'var(--space-8) var(--space-4)',
-          textAlign: 'center',
-        }}
-      >
-        <h2 style={{ marginBottom: 'var(--space-4)' }}>Every runner. Every distance. Every mile — smarter.</h2>
+      <section className="rg-landing-cta">
+        <h2>Every runner. Every distance. Every mile — smarter.</h2>
         <Button variant="primary" onClick={() => navigate('/signup')}>
           Start your custom plan
         </Button>
-      </div>
+      </section>
 
-      <div style={{ borderTop: '1px solid var(--color-accent-300)' }}>
-        <div
-          className="container"
-          style={{ padding: 'var(--space-4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, opacity: 0.7 }}
-        >
-          <span>Runners Guru</span>
-          <div className="row-4">
-            <span>Privacy</span>
-            <span>Terms</span>
-            <span>Contact</span>
-          </div>
-          <span>© 2026 Runners Guru</span>
+      <footer className="rg-landing-footer">
+        <span>The Runners Guru</span>
+        <div className="rg-landing-footer-links">
+          <span>Privacy</span>
+          <span>Terms</span>
+          <span>Contact</span>
         </div>
-      </div>
+        <span>© 2026 The Runners Guru</span>
+      </footer>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# Runners Guru — React scaffold
+# The Runners Guru — React scaffold
 
 Recreation of the Claude-Design prototype (`Runners_Guru_dc.html`) in a real
 React + Vite + TypeScript app, per the design handoff README.
@@ -25,7 +25,7 @@ automatically on every push to `main`.
    ```bash
    git init
    git add .
-   git commit -m "Initial commit: Runners Guru scaffold"
+   git commit -m "Initial commit: The Runners Guru scaffold"
    git branch -M main
    git remote add origin https://github.com/<your-username>/<repo-name>.git
    git push -u origin main

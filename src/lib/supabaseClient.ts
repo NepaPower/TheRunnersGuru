@@ -12,4 +12,9 @@ if (!url || !anonKey) {
   );
 }
 
-export const supabase = createClient(url ?? '', anonKey ?? '');
+// createClient() throws synchronously on an invalid/empty URL, which would
+// crash the whole app at import time (blank white page, easy to mistake
+// for a rendering bug) if .env.local isn't set up yet. Fall back to a
+// syntactically valid placeholder so the app still boots — actual
+// Supabase calls will just fail with a clear network error instead.
+export const supabase = createClient(url || 'https://placeholder.supabase.co', anonKey || 'placeholder-anon-key');

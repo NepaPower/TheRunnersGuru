@@ -17,7 +17,7 @@ export function Wordmark({ fontSize = 32 }: { fontSize?: number }) {
   return (
     <div className="row-3" style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize }}>
       <LogoMark size={fontSize + 6} />
-      Runners Guru
+      The Runners Guru
     </div>
   );
 }

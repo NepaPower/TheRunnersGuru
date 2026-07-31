@@ -1,4 +1,4 @@
-// Core domain types for Runners Guru.
+// Core domain types for The Runners Guru.
 // Mirrors the state shape described in the design handoff README, ported
 // from the prototype's single-component `state` object into typed slices.
 
