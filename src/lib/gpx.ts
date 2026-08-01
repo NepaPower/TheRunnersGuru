@@ -70,6 +70,14 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
     }
   }
 
+  // Race-published GPX files list waypoints in course order almost
+  // universally, so matching is done as a forward-only sweep: once
+  // waypoint N is matched to a point, waypoint N+1 only searches points
+  // from there onward. A plain "closest point anywhere on the route"
+  // search gets this wrong on any course with a loop, out-and-back, or
+  // switchbacks — an aid station's coordinates can be nearest to a later
+  // pass through that area, silently pulling it out of sequence.
+  let searchStart = 0;
   const waypoints: GpxWaypoint[] = Array.from(doc.getElementsByTagName('wpt'))
     .map((el) => {
       const lat = parseFloat(el.getAttribute('lat') || '');
@@ -83,10 +91,10 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
       const symbol = el.getElementsByTagName('sym')[0]?.textContent?.trim() || undefined;
       const waypointType = el.getElementsByTagName('type')[0]?.textContent?.trim() || undefined;
 
-      let nearestIdx = 0;
+      let nearestIdx = searchStart;
       let nearestDist = Infinity;
       if (Number.isFinite(lat) && Number.isFinite(lon)) {
-        for (let i = 0; i < points.length; i++) {
+        for (let i = searchStart; i < points.length; i++) {
           const d = haversineMiles(lat, lon, points[i].lat, points[i].lon);
           if (d < nearestDist) {
             nearestDist = d;
@@ -94,6 +102,7 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
           }
         }
       }
+      searchStart = nearestIdx;
       return {
         name,
         mile: Math.round(cumMiles[nearestIdx] * 10) / 10,

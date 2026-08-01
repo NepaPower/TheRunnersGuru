@@ -135,12 +135,18 @@ export interface CrewNoteEntry {
   nutrition: string;
   hydration: string;
   gear: string;
-  crewAccess: 'yes' | 'no' | ''; // whether crew can meet the runner at this station
+  crewAccess: 'yes' | 'no' | 'sleep' | ''; // whether crew can meet the runner here, or it's a planned sleep stop
   // Single free-text field ("Day 1, 10:00 PM" style) rather than separate
   // day/time inputs — cutoffs are announced in wildly inconsistent formats
   // across races, so a single editable field is more honest than forcing a
   // structured shape we can't reliably parse from every course file.
   cutoff: string;
+  // Planned time spent AT this station (beyond just passing through) —
+  // hours/minutes, numeric (unlike cutoff) since it feeds directly into
+  // every downstream station's predicted arrival time. See
+  // lib/crewPlan.ts computeElapsedWithRests.
+  restHours: string;
+  restMinutes: string;
 }
 
 export interface TrainingPlan {

@@ -24,6 +24,29 @@ export function predictedArrivalDate(raceDateStr: string, raceStartTime: string,
   return new Date(start.getTime() + elapsedMinutes * 60000);
 }
 
+/** Computes each station's predicted elapsed minutes from race start,
+ * accounting for planned rest/sleep time at EARLIER stations. Ultra
+ * runners don't just pass through aid stations — a normal stop costs
+ * 10-15 minutes, and a sleep stop can cost 1-3 hours, and that time pushes
+ * back every station after it. `miles` and `restMinutesByIndex` must be
+ * the same length and in course order (station i's rest only affects
+ * stations after it, never itself or earlier ones). */
+export function computeElapsedWithRests(
+  miles: number[],
+  totalMiles: number,
+  goalFinishMinutes: number,
+  restMinutesByIndex: number[],
+): number[] {
+  const result: number[] = [];
+  let cumulativeRest = 0;
+  for (let i = 0; i < miles.length; i++) {
+    const basePace = predictedElapsedMinutes(miles[i], totalMiles, goalFinishMinutes);
+    result.push(basePace + cumulativeRest);
+    cumulativeRest += restMinutesByIndex[i] || 0;
+  }
+  return result;
+}
+
 /** Combines a race date + start time (HH:MM) + elapsed minutes into a
  * "Saturday 1:57 AM" style display string — the actual weekday rather than
  * a "Day 2" count, since that's what a crew actually needs to know (do I

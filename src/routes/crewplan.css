@@ -75,7 +75,10 @@
 .rg-cp-station-meta {
   font-size: 14px;
   line-height: 1.5;
-  color: color-mix(in srgb, var(--color-text) 78%, transparent);
+  color: color-mix(in srgb, var(--color-text) 85%, transparent);
+}
+.rg-cp-muted {
+  color: color-mix(in srgb, var(--color-text) 82%, transparent);
 }
 .rg-cp-station-eta {
   text-align: right;

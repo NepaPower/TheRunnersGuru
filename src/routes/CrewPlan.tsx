@@ -5,7 +5,7 @@ import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateCrewPlan } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
-import { formatEtaClock, formatElapsedLabel, predictedArrivalDate, predictedElapsedMinutes } from '../lib/crewPlan';
+import { formatEtaClock, formatElapsedLabel, predictedArrivalDate, computeElapsedWithRests } from '../lib/crewPlan';
 import {
   fetchClimateAverage,
   fetchShortRangeForecast,
@@ -17,7 +17,7 @@ import {
 import type { CrewNoteEntry, GpxWaypoint } from '../types';
 import './crewplan.css';
 
-const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '', crewAccess: '', cutoff: '' };
+const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '', crewAccess: '', cutoff: '', restHours: '', restMinutes: '' };
 
 interface StationWeather {
   climate: ClimateAverage | null;
@@ -71,6 +71,22 @@ export function CrewPlan() {
   const waypoints = plan?.gpxRoute?.waypoints ?? [];
   const totalMiles = plan?.gpxRoute?.distanceMiles ?? 0;
   const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
+  // Each station's rest/sleep time delays every station after it — see
+  // lib/crewPlan.ts computeElapsedWithRests. Recomputed from current
+  // `notes` state on every render; cheap even for a long aid-station list.
+  const elapsedByIndex: (number | null)[] =
+    goalFinishMinutes != null
+      ? computeElapsedWithRests(
+          waypoints.map((wp) => wp.mile),
+          totalMiles,
+          goalFinishMinutes,
+          waypoints.map((_, i) => (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0)),
+        )
+      : waypoints.map(() => null);
+  // Weather should re-fetch when rest times shift arrival times, but NOT
+  // on every keystroke in the Nutrition/Hydration/Gear textareas — this
+  // isolates just the two fields that actually affect the math.
+  const restSignature = waypoints.map((_, i) => `${notes[String(i)]?.restHours || ''}:${notes[String(i)]?.restMinutes || ''}`).join(',');
 
   // Fetches weather for every station once there's enough to compute a
   // predicted arrival date/time for it (a start time and goal finish time).
@@ -85,7 +101,8 @@ export function CrewPlan() {
     waypoints.forEach((wp, i) => {
       if (wp.lat == null || wp.lon == null) return;
       const key = String(i);
-      const elapsed = predictedElapsedMinutes(wp.mile, totalMiles, goalFinishMinutes);
+      const elapsed = elapsedByIndex[i];
+      if (elapsed == null) return;
       const arrival = predictedArrivalDate(raceDate, raceStartTime, elapsed);
       if (!arrival) return;
       const y = arrival.getFullYear();
@@ -127,7 +144,7 @@ export function CrewPlan() {
     // change — waypoints/totalMiles are derived from plan.gpxRoute, which
     // is included via `plan` itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, raceDate, raceStartTime, goalFinishMinutes]);
+  }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature]);
 
   if (!plan) {
     return (
@@ -135,17 +152,17 @@ export function CrewPlan() {
         <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
           ← Back to summary
         </Button>
-        <p className="text-muted">No training plan yet — finish onboarding to generate one.</p>
+        <p className="rg-cp-muted">No training plan yet — finish onboarding to generate one.</p>
       </>
     );
   }
 
-  function updateNoteField(key: string, field: 'nutrition' | 'hydration' | 'gear' | 'cutoff', value: string) {
+  function updateNoteField(key: string, field: 'nutrition' | 'hydration' | 'gear' | 'cutoff' | 'restHours' | 'restMinutes', value: string) {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: value } }));
     setSaved(false);
   }
 
-  function setCrewAccess(key: string, value: 'yes' | 'no') {
+  function setCrewAccess(key: string, value: 'yes' | 'no' | 'sleep') {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), crewAccess: value } }));
     setSaved(false);
   }
@@ -199,7 +216,7 @@ export function CrewPlan() {
         <div className="rg-cp-header-top">
           <div className="rg-cp-race-name">Crew Plan for {plan.raceName}</div>
           {plan.gpxRoute && (
-            <div className="text-muted">
+            <div className="rg-cp-muted">
               {plan.gpxRoute.distanceMiles} mi course · {plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
               {plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss
             </div>
@@ -209,7 +226,7 @@ export function CrewPlan() {
         <div className="rg-cp-gpx-row">
           <div>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Course file</div>
-            <div className="text-muted" style={{ fontSize: 13 }}>
+            <div className="rg-cp-muted" style={{ fontSize: 13 }}>
               {plan.gpxRoute
                 ? `${plan.gpxRoute.fileName} — ${waypoints.length} aid station${waypoints.length === 1 ? '' : 's'} found`
                 : 'No GPX uploaded yet.'}
@@ -223,7 +240,7 @@ export function CrewPlan() {
           </div>
         </div>
         {plan.gpxRoute && (
-          <p className="text-muted" style={{ fontSize: 12, padding: '0 var(--space-6) var(--space-4)', margin: 0 }}>
+          <p className="rg-cp-muted" style={{ fontSize: 12, padding: '0 var(--space-6) var(--space-4)', margin: 0 }}>
             Replacing the course file clears any aid station notes already added below, since the new file's stations
             may not match up with the old ones.
           </p>
@@ -284,7 +301,7 @@ export function CrewPlan() {
 
       {waypoints.length === 0 ? (
         <div className="rg-cp-empty-card">
-          <p className="text-muted" style={{ marginBottom: 0 }}>
+          <p className="rg-cp-muted" style={{ marginBottom: 0 }}>
             {plan.gpxRoute
               ? "This course file doesn't have any named aid stations. Some race organizers publish those as a separate GPX from the main course file — use \"Replace GPX\" above if you find one."
               : 'Upload a course GPX above to build out aid station pacing and crew notes.'}
@@ -292,9 +309,9 @@ export function CrewPlan() {
         </div>
       ) : (
         <>
-          <p className="text-muted" style={{ marginBottom: 'var(--space-4)', fontSize: 13 }}>
+          <p className="rg-cp-muted" style={{ marginBottom: 'var(--space-4)', fontSize: 13 }}>
             {goalFinishMinutes
-              ? 'Predicted arrival times assume even effort across the whole course — treat these as a starting estimate, not a guarantee, especially on technical terrain.'
+              ? 'Predicted arrival times assume even effort across the whole course, adjusted for any rest/sleep time you add below — treat these as a starting estimate, not a guarantee, especially on technical terrain.'
               : 'Enter a goal finish time above to see predicted arrival times at each aid station.'}
           </p>
 
@@ -302,7 +319,7 @@ export function CrewPlan() {
             {waypoints.map((wp, i) => {
               const key = String(i);
               const note = notes[key] ?? emptyNote;
-              const elapsed = goalFinishMinutes != null ? predictedElapsedMinutes(wp.mile, totalMiles, goalFinishMinutes) : null;
+              const elapsed = elapsedByIndex[i];
               const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed) : null;
               const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed) : null;
               return (
@@ -352,12 +369,13 @@ export function CrewPlan() {
                   <div className="rg-cp-station-fields">
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Crew access</div>
-                      <div className="seg" style={{ maxWidth: 160 }}>
+                      <div className="seg" style={{ maxWidth: 220 }}>
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'yes'} onChange={() => setCrewAccess(key, 'yes')} label="Yes" />
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'no'} onChange={() => setCrewAccess(key, 'no')} label="No" />
+                        <SegOption name={`crew-${key}`} checked={note.crewAccess === 'sleep'} onChange={() => setCrewAccess(key, 'sleep')} label="Sleep" />
                       </div>
                     </div>
-                    <Field label="Cutoff (Day, Time)" style={{ gridColumn: 'span 2' }}>
+                    <Field label="Cutoff (Day, Time)">
                       <Input
                         type="text"
                         placeholder="e.g. Day 1, 10:00 PM"
@@ -365,6 +383,30 @@ export function CrewPlan() {
                         onChange={(e) => updateNoteField(key, 'cutoff', e.target.value)}
                       />
                     </Field>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Rest/Sleep time</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="hrs"
+                          value={note.restHours}
+                          onChange={(e) => updateNoteField(key, 'restHours', e.target.value.replace(/[^\d]/g, ''))}
+                        />
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="min"
+                          value={note.restMinutes}
+                          onChange={(e) => updateNoteField(key, 'restMinutes', e.target.value.replace(/[^\d]/g, ''))}
+                        />
+                      </div>
+                      {(Number(note.restHours) > 0 || Number(note.restMinutes) > 0) && (
+                        <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          Adds {formatElapsedLabel((Number(note.restHours) || 0) * 60 + (Number(note.restMinutes) || 0))} to every station after this one
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {(wp.lat != null && wp.lon != null && (weather[key]?.climate || weather[key]?.climateLoading)) && (
