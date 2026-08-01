@@ -1,15 +1,44 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateCrewPlan } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
-import { formatEtaClock, formatElapsedLabel, predictedElapsedMinutes } from '../lib/crewPlan';
-import type { CrewNoteEntry } from '../types';
+import { formatEtaClock, formatElapsedLabel, predictedArrivalDate, predictedElapsedMinutes } from '../lib/crewPlan';
+import {
+  fetchClimateAverage,
+  fetchShortRangeForecast,
+  forecastAvailableFromLabel,
+  isWithinForecastHorizon,
+  type ClimateAverage,
+  type ShortRangeForecast,
+} from '../lib/weather';
+import type { CrewNoteEntry, GpxWaypoint } from '../types';
 import './crewplan.css';
 
-const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '', crewAccess: '', cutoffDay: '', cutoffTime: '' };
+const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '', crewAccess: '', cutoff: '' };
+
+interface StationWeather {
+  climate: ClimateAverage | null;
+  climateLoading: boolean;
+  forecast: ShortRangeForecast | null;
+  forecastLoading: boolean;
+  forecastEligible: boolean;
+  monthDayLabel: string;
+}
+
+/** Best-effort extraction of a cutoff mention from a waypoint's raw GPX
+ * text (some race organizers put it right in <desc> or <cmt>, as in the
+ * BigFoot 200 file this was built against). This is a plain substring
+ * match, not real parsing — it's a starting point to prefill the editable
+ * Cutoff field, not something to trust blindly. Only used when the person
+ * hasn't already typed a cutoff in themselves. */
+function detectCutoffText(wp: GpxWaypoint): string {
+  const source = [wp.description, wp.comment].filter(Boolean).join(' ');
+  const match = source.match(/cut[\s-]?off[:\s]*([^.;]+)/i);
+  return match ? match[1].trim() : '';
+}
 
 export function CrewPlan() {
   const { state, dispatch } = useApp();
@@ -19,12 +48,85 @@ export function CrewPlan() {
   const [raceStartTime, setRaceStartTime] = useState(plan?.raceStartTime ?? '');
   const [goalHours, setGoalHours] = useState(plan?.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
   const [goalMinutes, setGoalMinutes] = useState(plan?.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
-  const [notes, setNotes] = useState<Record<string, CrewNoteEntry>>(plan?.crewNotes ?? {});
+  const [notes, setNotes] = useState<Record<string, CrewNoteEntry>>(() => {
+    const base = plan?.crewNotes ?? {};
+    const withDefaults: Record<string, CrewNoteEntry> = { ...base };
+    (plan?.gpxRoute?.waypoints ?? []).forEach((wp, i) => {
+      const key = String(i);
+      if (!withDefaults[key]?.cutoff) {
+        const detected = detectCutoffText(wp);
+        if (detected) withDefaults[key] = { ...(withDefaults[key] ?? emptyNote), cutoff: detected };
+      }
+    });
+    return withDefaults;
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [gpxLoading, setGpxLoading] = useState(false);
   const [gpxError, setGpxError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [weather, setWeather] = useState<Record<string, StationWeather>>({});
+
+  const waypoints = plan?.gpxRoute?.waypoints ?? [];
+  const totalMiles = plan?.gpxRoute?.distanceMiles ?? 0;
+  const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
+
+  // Fetches weather for every station once there's enough to compute a
+  // predicted arrival date/time for it (a start time and goal finish time).
+  // Historical climate average is always fetched; the real short-range
+  // forecast only for stations whose predicted arrival falls within
+  // Open-Meteo's ~16-day forecast horizon from today — see lib/weather.ts
+  // for why anything further out can't have a real forecast at all.
+  useEffect(() => {
+    if (!plan || goalFinishMinutes == null || !raceStartTime) return;
+    let cancelled = false;
+
+    waypoints.forEach((wp, i) => {
+      if (wp.lat == null || wp.lon == null) return;
+      const key = String(i);
+      const elapsed = predictedElapsedMinutes(wp.mile, totalMiles, goalFinishMinutes);
+      const arrival = predictedArrivalDate(plan.raceDate, raceStartTime, elapsed);
+      if (!arrival) return;
+      const y = arrival.getFullYear();
+      const mo = arrival.getMonth() + 1;
+      const d = arrival.getDate();
+      const h = arrival.getHours();
+      const monthDayLabel = arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const forecastEligible = isWithinForecastHorizon(y, mo, d);
+
+      setWeather((prev) => ({
+        ...prev,
+        [key]: {
+          climate: prev[key]?.climate ?? null,
+          forecast: prev[key]?.forecast ?? null,
+          climateLoading: true,
+          forecastLoading: forecastEligible,
+          forecastEligible,
+          monthDayLabel,
+        },
+      }));
+
+      fetchClimateAverage(wp.lat, wp.lon, mo, d, y).then((climate) => {
+        if (cancelled) return;
+        setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climate, climateLoading: false } }));
+      });
+
+      if (forecastEligible) {
+        fetchShortRangeForecast(wp.lat, wp.lon, y, mo, d, h).then((forecast) => {
+          if (cancelled) return;
+          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], forecast, forecastLoading: false } }));
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-runs when the inputs that change the predicted arrival date/time
+    // change — waypoints/totalMiles are derived from plan.gpxRoute, which
+    // is included via `plan` itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, raceStartTime, goalFinishMinutes]);
 
   if (!plan) {
     return (
@@ -37,11 +139,7 @@ export function CrewPlan() {
     );
   }
 
-  const waypoints = plan.gpxRoute?.waypoints ?? [];
-  const totalMiles = plan.gpxRoute?.distanceMiles ?? 0;
-  const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
-
-  function updateNoteField(key: string, field: 'nutrition' | 'hydration' | 'gear' | 'cutoffDay' | 'cutoffTime', value: string) {
+  function updateNoteField(key: string, field: 'nutrition' | 'hydration' | 'gear' | 'cutoff', value: string) {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: value } }));
     setSaved(false);
   }
@@ -190,18 +288,19 @@ export function CrewPlan() {
               const key = String(i);
               const note = notes[key] ?? emptyNote;
               const elapsed = goalFinishMinutes != null ? predictedElapsedMinutes(wp.mile, totalMiles, goalFinishMinutes) : null;
+              const arrival = elapsed != null ? predictedArrivalDate(plan.raceDate, raceStartTime, elapsed) : null;
               const eta = elapsed != null && raceStartTime ? formatEtaClock(plan.raceDate, raceStartTime, elapsed) : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
                     <div>
                       <div className="rg-cp-station-name">{wp.name}</div>
-                      <div className="text-muted" style={{ fontSize: 13 }}>
+                      <div className="rg-cp-station-meta">
                         Mile {wp.mile}
                         {wp.elevationFt != null ? ` · ${wp.elevationFt.toLocaleString()} ft` : ''}
                       </div>
                       {(wp.description || wp.comment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
-                        <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                        <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
                           {wp.description && <div>{wp.description}</div>}
                           {wp.comment && <div>Note: {wp.comment}</div>}
                           {(wp.symbol || wp.waypointType) && (
@@ -219,10 +318,18 @@ export function CrewPlan() {
                     </div>
                     {elapsed != null && (
                       <div className="rg-cp-station-eta">
-                        <div className="rg-cp-eta-value">{eta ?? formatElapsedLabel(elapsed)}</div>
-                        <div className="text-muted" style={{ fontSize: 12 }}>
-                          {eta ? `+${formatElapsedLabel(elapsed)}` : 'set start time for clock time'}
-                        </div>
+                        {eta ? (
+                          <>
+                            <div className="rg-cp-eta-value">You'll reach here at {eta}</div>
+                            <div className="rg-cp-station-meta" style={{ fontSize: 12 }}>
+                              +{formatElapsedLabel(elapsed)} from start
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rg-cp-station-meta" style={{ fontSize: 13 }}>
+                            Set a race start time above to see your predicted arrival time
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -235,19 +342,49 @@ export function CrewPlan() {
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'no'} onChange={() => setCrewAccess(key, 'no')} label="No" />
                       </div>
                     </div>
-                    <Field label="Cutoff — day">
+                    <Field label="Cutoff (Day, Time)" style={{ gridColumn: 'span 2' }}>
                       <Input
                         type="text"
-                        inputMode="numeric"
-                        placeholder="e.g. 1"
-                        value={note.cutoffDay}
-                        onChange={(e) => updateNoteField(key, 'cutoffDay', e.target.value.replace(/[^\d]/g, ''))}
+                        placeholder="e.g. Day 1, 10:00 PM"
+                        value={note.cutoff}
+                        onChange={(e) => updateNoteField(key, 'cutoff', e.target.value)}
                       />
                     </Field>
-                    <Field label="Cutoff — time">
-                      <Input type="time" value={note.cutoffTime} onChange={(e) => updateNoteField(key, 'cutoffTime', e.target.value)} />
-                    </Field>
                   </div>
+
+                  {(wp.lat != null && wp.lon != null && (weather[key]?.climate || weather[key]?.climateLoading)) && (
+                    <div className="rg-cp-weather-row">
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                          Historical average — {weather[key]?.monthDayLabel}
+                        </div>
+                        {weather[key]?.climate ? (
+                          <div className="rg-cp-station-meta">
+                            High {weather[key]!.climate!.avgHighF}°F / Low {weather[key]!.climate!.avgLowF}°F
+                            <span style={{ fontSize: 12 }}> (avg of last {weather[key]!.climate!.yearsUsed} years)</span>
+                          </div>
+                        ) : (
+                          <div className="rg-cp-station-meta">Loading…</div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Short-range forecast</div>
+                        {weather[key]?.forecastEligible ? (
+                          weather[key]?.forecast ? (
+                            <div className="rg-cp-station-meta">{weather[key]!.forecast!.tempF}°F</div>
+                          ) : weather[key]?.forecastLoading ? (
+                            <div className="rg-cp-station-meta">Loading…</div>
+                          ) : (
+                            <div className="rg-cp-station-meta">Not available</div>
+                          )
+                        ) : (
+                          <div className="rg-cp-station-meta">
+                            {arrival ? `Available starting ${forecastAvailableFromLabel(arrival.getFullYear(), arrival.getMonth() + 1, arrival.getDate())}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="rg-cp-station-notes">
                     <Field label="Nutrition">

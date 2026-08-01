@@ -136,8 +136,11 @@ export interface CrewNoteEntry {
   hydration: string;
   gear: string;
   crewAccess: 'yes' | 'no' | ''; // whether crew can meet the runner at this station
-  cutoffDay: string; // race day number this cutoff falls on, e.g. "1", "2" — race organizer's own numbering
-  cutoffTime: string; // HH:MM, 24h — cutoff clock time on that day
+  // Single free-text field ("Day 1, 10:00 PM" style) rather than separate
+  // day/time inputs — cutoffs are announced in wildly inconsistent formats
+  // across races, so a single editable field is more honest than forcing a
+  // structured shape we can't reliably parse from every course file.
+  cutoff: string;
 }
 
 export interface TrainingPlan {

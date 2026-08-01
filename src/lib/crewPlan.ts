@@ -10,17 +10,27 @@ export function predictedElapsedMinutes(mile: number, totalMiles: number, goalFi
   return Math.round(goalFinishMinutes * (mile / totalMiles));
 }
 
-/** Combines a race date + start time (HH:MM) + elapsed minutes into a
- * display string, rolling over to "Day 2, 3:14 AM" etc. for races that
- * span more than 24 hours. Returns null if date/time aren't set yet. */
-export function formatEtaClock(raceDateStr: string, raceStartTime: string, elapsedMinutes: number): string | null {
+/** Combines a race date + start time (HH:MM) + elapsed minutes into the
+ * actual predicted arrival Date object. Returns null if date/time aren't
+ * set yet. Shared by the clock-time ETA label and the weather lookups,
+ * which both need the real date, not just a display string. */
+export function predictedArrivalDate(raceDateStr: string, raceStartTime: string, elapsedMinutes: number): Date | null {
   if (!raceDateStr || !raceStartTime) return null;
   const [h, m] = raceStartTime.split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
 
   const start = new Date(raceDateStr + 'T00:00:00');
   start.setHours(h, m, 0, 0);
-  const arrival = new Date(start.getTime() + elapsedMinutes * 60000);
+  return new Date(start.getTime() + elapsedMinutes * 60000);
+}
+
+/** Combines a race date + start time (HH:MM) + elapsed minutes into a
+ * display string, rolling over to "Day 2, 3:14 AM" etc. for races that
+ * span more than 24 hours. Returns null if date/time aren't set yet. */
+export function formatEtaClock(raceDateStr: string, raceStartTime: string, elapsedMinutes: number): string | null {
+  const arrival = predictedArrivalDate(raceDateStr, raceStartTime, elapsedMinutes);
+  if (!arrival) return null;
+  const start = predictedArrivalDate(raceDateStr, raceStartTime, 0)!;
 
   const dayIndex = Math.floor((arrival.getTime() - start.getTime()) / 86400000) + 1;
   const timeLabel = arrival.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
