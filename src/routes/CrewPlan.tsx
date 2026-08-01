@@ -45,6 +45,7 @@ export function CrewPlan() {
   const navigate = useNavigate();
   const plan = state.trainingPlan;
 
+  const [raceDate, setRaceDate] = useState(plan?.raceDate ?? '');
   const [raceStartTime, setRaceStartTime] = useState(plan?.raceStartTime ?? '');
   const [goalHours, setGoalHours] = useState(plan?.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
   const [goalMinutes, setGoalMinutes] = useState(plan?.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
@@ -85,7 +86,7 @@ export function CrewPlan() {
       if (wp.lat == null || wp.lon == null) return;
       const key = String(i);
       const elapsed = predictedElapsedMinutes(wp.mile, totalMiles, goalFinishMinutes);
-      const arrival = predictedArrivalDate(plan.raceDate, raceStartTime, elapsed);
+      const arrival = predictedArrivalDate(raceDate, raceStartTime, elapsed);
       if (!arrival) return;
       const y = arrival.getFullYear();
       const mo = arrival.getMonth() + 1;
@@ -126,7 +127,7 @@ export function CrewPlan() {
     // change — waypoints/totalMiles are derived from plan.gpxRoute, which
     // is included via `plan` itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, raceStartTime, goalFinishMinutes]);
+  }, [plan, raceDate, raceStartTime, goalFinishMinutes]);
 
   if (!plan) {
     return (
@@ -150,11 +151,15 @@ export function CrewPlan() {
   }
 
   async function handleSave() {
-    if (!state.userId) return;
+    if (!state.userId || !plan) return;
     setSaving(true);
     try {
-      await updateCrewPlan(state.userId, { raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes });
-      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes } });
+      const raceDateToSave = raceDate || plan.raceDate;
+      await updateCrewPlan(state.userId, { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes });
+      dispatch({
+        type: 'TRAINING_PLAN_UPDATED',
+        patch: { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes },
+      });
       setSaved(true);
     } finally {
       setSaving(false);
@@ -230,6 +235,16 @@ export function CrewPlan() {
         )}
 
         <div className="rg-cp-setup-grid">
+          <Field label="Race start date">
+            <Input
+              type="date"
+              value={raceDate}
+              onChange={(e) => {
+                setRaceDate(e.target.value);
+                setSaved(false);
+              }}
+            />
+          </Field>
           <Field label="Race start time">
             <Input
               type="time"
@@ -288,8 +303,8 @@ export function CrewPlan() {
               const key = String(i);
               const note = notes[key] ?? emptyNote;
               const elapsed = goalFinishMinutes != null ? predictedElapsedMinutes(wp.mile, totalMiles, goalFinishMinutes) : null;
-              const arrival = elapsed != null ? predictedArrivalDate(plan.raceDate, raceStartTime, elapsed) : null;
-              const eta = elapsed != null && raceStartTime ? formatEtaClock(plan.raceDate, raceStartTime, elapsed) : null;
+              const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed) : null;
+              const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed) : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
@@ -320,7 +335,7 @@ export function CrewPlan() {
                       <div className="rg-cp-station-eta">
                         {eta ? (
                           <>
-                            <div className="rg-cp-eta-value">You'll reach here at {eta}</div>
+                            <div className="rg-cp-eta-value">You'll reach here on {eta}</div>
                             <div className="rg-cp-station-meta" style={{ fontSize: 12 }}>
                               +{formatElapsedLabel(elapsed)} from start
                             </div>

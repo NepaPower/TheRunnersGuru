@@ -25,16 +25,16 @@ export function predictedArrivalDate(raceDateStr: string, raceStartTime: string,
 }
 
 /** Combines a race date + start time (HH:MM) + elapsed minutes into a
- * display string, rolling over to "Day 2, 3:14 AM" etc. for races that
- * span more than 24 hours. Returns null if date/time aren't set yet. */
+ * "Saturday 1:57 AM" style display string — the actual weekday rather than
+ * a "Day 2" count, since that's what a crew actually needs to know (do I
+ * need to be here Saturday night or Sunday morning), not an abstract day
+ * number. Returns null if date/time aren't set yet. */
 export function formatEtaClock(raceDateStr: string, raceStartTime: string, elapsedMinutes: number): string | null {
   const arrival = predictedArrivalDate(raceDateStr, raceStartTime, elapsedMinutes);
   if (!arrival) return null;
-  const start = predictedArrivalDate(raceDateStr, raceStartTime, 0)!;
-
-  const dayIndex = Math.floor((arrival.getTime() - start.getTime()) / 86400000) + 1;
+  const weekday = arrival.toLocaleDateString('en-US', { weekday: 'long' });
   const timeLabel = arrival.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  return dayIndex > 1 ? `Day ${dayIndex}, ${timeLabel}` : timeLabel;
+  return `${weekday} ${timeLabel}`;
 }
 
 /** "6h 42m" style label for a minutes duration — used for the elapsed-time

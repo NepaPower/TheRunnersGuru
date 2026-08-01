@@ -200,6 +200,7 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
 export async function updateCrewPlan(
   userId: string,
   updates: {
+    raceDate?: string;
     raceStartTime?: string | null;
     goalFinishMinutes?: number | null;
     crewNotes?: Record<string, CrewNoteEntry>;
@@ -207,6 +208,7 @@ export async function updateCrewPlan(
   },
 ) {
   const patch: Record<string, unknown> = {};
+  if ('raceDate' in updates && updates.raceDate) patch.race_date = updates.raceDate;
   if ('raceStartTime' in updates) patch.race_start_time = updates.raceStartTime ?? null;
   if ('goalFinishMinutes' in updates) patch.goal_finish_minutes = updates.goalFinishMinutes ?? null;
   if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
