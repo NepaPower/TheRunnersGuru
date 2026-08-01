@@ -83,39 +83,6 @@ export const RUNNING_QUOTES = [
   'You are stronger than you think, and more capable than you know.',
 ];
 
-/** Mocked "distance from signup address" table — a real backend would replace
- * this with an actual race-finder API keyed off geocoded address + radius. */
-export const RACES_BY_DISTANCE: Record<DistanceGoal, { name: string; miles: number }[]> = {
-  '5k': [
-    { name: 'Turkey Trot 5K', miles: 6 },
-    { name: 'Color Run 5K', miles: 18 },
-    { name: 'Local Parkrun 5K', miles: 3 },
-    { name: 'Downtown Dash 5K', miles: 52 },
-  ],
-  '10k': [
-    { name: 'Great River 10K', miles: 11 },
-    { name: 'City Pulse 10K', miles: 24 },
-    { name: 'Bridge Run 10K', miles: 61 },
-  ],
-  half: [
-    { name: 'Riverside Half Marathon', miles: 9 },
-    { name: 'Sunrise Half', miles: 33 },
-    { name: 'Coastal Half Marathon', miles: 78 },
-  ],
-  full: [
-    { name: 'Chicago Marathon', miles: 14 },
-    { name: 'Boston Marathon', miles: 145 },
-    { name: 'New York City Marathon', miles: 210 },
-  ],
-  ultra: [
-    { name: 'Local 50K Trail Ultra', miles: 27 },
-    { name: 'Western States 100', miles: 310 },
-    { name: 'Leadville 100', miles: 420 },
-  ],
-};
-
-export const NEARBY_RADIUS_MI = 40;
-
 export const SEED_MATCHES: PartnerMatch[] = [
   { id: 'maya', name: 'Maya Chen', initials: 'MC', pace: 'Steady', distance: '0.6 mi', tags: ['Trail'], status: 'accepted' },
   { id: 'theo', name: 'Theo Grant', initials: 'TG', pace: 'Fast', distance: '1.2 mi', tags: ['Road', 'Early bird'], status: 'pending' },

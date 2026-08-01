@@ -67,9 +67,7 @@ export interface OnboardingState {
   distanceEditing: boolean;
   ultraDistanceId: UltraDistanceId;
   ultraCustomMiles: string; // typed miles when ultraDistanceId === 'custom', clamped to MAX_ULTRA_MILES
-  raceChoice: string; // dropdown value, or '__other__'
   raceName: string;
-  raceAddress: string; // may seed from signup address, editable inline if missing
   hillAccess: HillAccessAnswer; // only meaningful when distanceGoal === 'ultra'
   firstTime: FirstTimeAnswer;
   pace: PaceChoice;

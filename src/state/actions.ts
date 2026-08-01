@@ -32,9 +32,7 @@ export type Action =
   | { type: 'ONBOARDING_EDIT_DISTANCE' }
   | { type: 'ONBOARDING_SELECT_ULTRA_DISTANCE'; id: UltraDistanceId }
   | { type: 'ONBOARDING_SET_ULTRA_CUSTOM_MILES'; value: string }
-  | { type: 'ONBOARDING_SET_RACE_CHOICE'; value: string }
   | { type: 'ONBOARDING_SET_RACE_NAME'; value: string }
-  | { type: 'ONBOARDING_SET_RACE_ADDRESS'; value: string }
   | { type: 'ONBOARDING_SELECT_HILL_ACCESS'; id: HillAccessAnswer }
   | { type: 'ONBOARDING_SELECT_FIRST_TIME'; id: FirstTimeAnswer }
   | { type: 'ONBOARDING_SELECT_PACE_UNIT'; unit: PaceUnit }

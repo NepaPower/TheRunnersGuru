@@ -1,7 +1,7 @@
 import type { AppState } from '../types';
 import type { Action } from './actions';
 import { SEED_MATCHES } from '../data/constants';
-import { RACES_BY_DISTANCE, MAX_ULTRA_MILES } from '../data/constants';
+import { MAX_ULTRA_MILES } from '../data/constants';
 import { onboardingStepLabels } from '../lib/onboardingSteps';
 
 export const emptyLogForm = {
@@ -38,9 +38,7 @@ export function buildInitialState(): AppState {
       distanceEditing: false,
       ultraDistanceId: '',
       ultraCustomMiles: '',
-      raceChoice: '',
       raceName: '',
-      raceAddress: '',
       hillAccess: '',
       firstTime: '',
       pace: '',
@@ -74,15 +72,6 @@ export function buildInitialState(): AppState {
   };
 }
 
-function formatAddress(address: AppState['auth']['address']): string {
-  const parts = [
-    [address.street, address.unit].filter(Boolean).join(' '),
-    address.city,
-    [address.state, address.zip].filter(Boolean).join(' '),
-  ].filter(Boolean);
-  return parts.join(', ');
-}
-
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_SCREEN':
@@ -96,7 +85,6 @@ export function reducer(state: AppState, action: Action): AppState {
         userId: action.userId,
         screen: action.trainingPlan ? 'home' : 'onboarding',
         auth: { ...state.auth, name: action.name, firstName, address: action.address },
-        onboarding: { ...state.onboarding, raceAddress: formatAddress(action.address) },
         trainingPlan: action.trainingPlan,
         loggedRuns: action.loggedRuns,
         garminConnected: action.garminConnected,
@@ -120,7 +108,6 @@ export function reducer(state: AppState, action: Action): AppState {
           // standard clears it so Step 2 re-prompts for a specific distance.
           distanceGoal: action.category === 'ultra' ? 'ultra' : '',
           distanceEditing: false,
-          raceChoice: '',
           raceName: '',
           ultraDistanceId: '',
           ultraCustomMiles: '',
@@ -134,7 +121,6 @@ export function reducer(state: AppState, action: Action): AppState {
         onboarding: {
           ...state.onboarding,
           distanceGoal: action.id,
-          raceChoice: '',
           raceName: '',
           distanceEditing: false,
           hillAccess: '',
@@ -148,7 +134,6 @@ export function reducer(state: AppState, action: Action): AppState {
           ...state.onboarding,
           ultraDistanceId: action.id,
           ultraCustomMiles: action.id === 'custom' ? state.onboarding.ultraCustomMiles : '',
-          raceChoice: '',
           raceName: '',
         },
       };
@@ -164,24 +149,8 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ONBOARDING_EDIT_DISTANCE':
       return { ...state, onboarding: { ...state.onboarding, distanceEditing: true } };
 
-    case 'ONBOARDING_SET_RACE_CHOICE':
-      return {
-        ...state,
-        onboarding: {
-          ...state.onboarding,
-          raceChoice: action.value,
-          raceName: action.value === '__other__' ? '' : action.value,
-        },
-      };
-
     case 'ONBOARDING_SET_RACE_NAME':
       return { ...state, onboarding: { ...state.onboarding, raceName: action.value } };
-
-    case 'ONBOARDING_SET_RACE_ADDRESS':
-      return {
-        ...state,
-        onboarding: { ...state.onboarding, raceAddress: action.value, raceChoice: '', raceName: '' },
-      };
 
     case 'ONBOARDING_SELECT_HILL_ACCESS':
       return { ...state, onboarding: { ...state.onboarding, hillAccess: action.id } };
@@ -297,11 +266,7 @@ export function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'ADDRESS_SAVED':
-      return {
-        ...state,
-        onboarding: { ...state.onboarding, raceAddress: formatAddress(state.auth.address) },
-        addressSaved: true,
-      };
+      return { ...state, addressSaved: true };
 
     case 'JOIN_EVENT_TOGGLE':
       return { ...state, joinedEvent: !state.joinedEvent };
@@ -309,11 +274,4 @@ export function reducer(state: AppState, action: Action): AppState {
     default:
       return state;
   }
-}
-
-/** Mocked "races within 40 miles" lookup for onboarding step 1 — a real
- * backend would replace this with an actual race-finder API. */
-export function nearbyRaces(distanceGoal: AppState['onboarding']['distanceGoal']) {
-  if (!distanceGoal) return [];
-  return (RACES_BY_DISTANCE[distanceGoal] || []).filter((r) => r.miles <= 40);
 }
