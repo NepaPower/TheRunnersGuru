@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { Field, Input, TextArea } from '../components/ui/Form';
+import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateCrewPlan } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
@@ -9,7 +9,7 @@ import { formatEtaClock, formatElapsedLabel, predictedElapsedMinutes } from '../
 import type { CrewNoteEntry } from '../types';
 import './crewplan.css';
 
-const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '' };
+const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '', crewAccess: '', cutoffDay: '', cutoffTime: '' };
 
 export function CrewPlan() {
   const { state, dispatch } = useApp();
@@ -41,8 +41,13 @@ export function CrewPlan() {
   const totalMiles = plan.gpxRoute?.distanceMiles ?? 0;
   const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
 
-  function updateNote(key: string, field: keyof CrewNoteEntry, value: string) {
+  function updateNoteField(key: string, field: 'nutrition' | 'hydration' | 'gear' | 'cutoffDay' | 'cutoffTime', value: string) {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: value } }));
+    setSaved(false);
+  }
+
+  function setCrewAccess(key: string, value: 'yes' | 'no') {
+    setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), crewAccess: value } }));
     setSaved(false);
   }
 
@@ -195,6 +200,22 @@ export function CrewPlan() {
                         Mile {wp.mile}
                         {wp.elevationFt != null ? ` · ${wp.elevationFt.toLocaleString()} ft` : ''}
                       </div>
+                      {(wp.description || wp.comment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
+                        <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          {wp.description && <div>{wp.description}</div>}
+                          {wp.comment && <div>Note: {wp.comment}</div>}
+                          {(wp.symbol || wp.waypointType) && (
+                            <div>
+                              {[wp.symbol, wp.waypointType].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                          {wp.lat != null && wp.lon != null && (
+                            <div>
+                              {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     {elapsed != null && (
                       <div className="rg-cp-station-eta">
@@ -205,15 +226,38 @@ export function CrewPlan() {
                       </div>
                     )}
                   </div>
+
+                  <div className="rg-cp-station-fields">
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Crew access</div>
+                      <div className="seg" style={{ maxWidth: 160 }}>
+                        <SegOption name={`crew-${key}`} checked={note.crewAccess === 'yes'} onChange={() => setCrewAccess(key, 'yes')} label="Yes" />
+                        <SegOption name={`crew-${key}`} checked={note.crewAccess === 'no'} onChange={() => setCrewAccess(key, 'no')} label="No" />
+                      </div>
+                    </div>
+                    <Field label="Cutoff — day">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="e.g. 1"
+                        value={note.cutoffDay}
+                        onChange={(e) => updateNoteField(key, 'cutoffDay', e.target.value.replace(/[^\d]/g, ''))}
+                      />
+                    </Field>
+                    <Field label="Cutoff — time">
+                      <Input type="time" value={note.cutoffTime} onChange={(e) => updateNoteField(key, 'cutoffTime', e.target.value)} />
+                    </Field>
+                  </div>
+
                   <div className="rg-cp-station-notes">
                     <Field label="Nutrition">
-                      <TextArea rows={2} value={note.nutrition} onChange={(e) => updateNote(key, 'nutrition', e.target.value)} />
+                      <TextArea rows={2} value={note.nutrition} onChange={(e) => updateNoteField(key, 'nutrition', e.target.value)} />
                     </Field>
                     <Field label="Hydration">
-                      <TextArea rows={2} value={note.hydration} onChange={(e) => updateNote(key, 'hydration', e.target.value)} />
+                      <TextArea rows={2} value={note.hydration} onChange={(e) => updateNoteField(key, 'hydration', e.target.value)} />
                     </Field>
                     <Field label="Gear change">
-                      <TextArea rows={2} value={note.gear} onChange={(e) => updateNote(key, 'gear', e.target.value)} />
+                      <TextArea rows={2} value={note.gear} onChange={(e) => updateNoteField(key, 'gear', e.target.value)} />
                     </Field>
                   </div>
                 </div>

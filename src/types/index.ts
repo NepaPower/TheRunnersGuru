@@ -40,6 +40,14 @@ export interface GpxWaypoint {
   name: string;
   mile: number;
   elevationFt: number | null;
+  lat: number | null;
+  lon: number | null;
+  // The rest are optional — only set if the source GPX actually included
+  // them. Race organizer files vary a lot in how much they annotate.
+  description?: string; // <desc>
+  comment?: string; // <cmt> — some organizers put cutoff times or crew notes here
+  symbol?: string; // <sym> — e.g. "Water Source", "Flag, Blue"
+  waypointType?: string; // <type>
 }
 
 export interface GpxRoute {
@@ -127,6 +135,9 @@ export interface CrewNoteEntry {
   nutrition: string;
   hydration: string;
   gear: string;
+  crewAccess: 'yes' | 'no' | ''; // whether crew can meet the runner at this station
+  cutoffDay: string; // race day number this cutoff falls on, e.g. "1", "2" — race organizer's own numbering
+  cutoffTime: string; // HH:MM, 24h — cutoff clock time on that day
 }
 
 export interface TrainingPlan {

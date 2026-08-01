@@ -78,6 +78,10 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
       const eleText = el.getElementsByTagName('ele')[0]?.textContent;
       const eleM = eleText ? parseFloat(eleText) : NaN;
       const elevationFt = Number.isFinite(eleM) ? Math.round(eleM * METERS_TO_FEET) : null;
+      const description = el.getElementsByTagName('desc')[0]?.textContent?.trim() || undefined;
+      const comment = el.getElementsByTagName('cmt')[0]?.textContent?.trim() || undefined;
+      const symbol = el.getElementsByTagName('sym')[0]?.textContent?.trim() || undefined;
+      const waypointType = el.getElementsByTagName('type')[0]?.textContent?.trim() || undefined;
 
       let nearestIdx = 0;
       let nearestDist = Infinity;
@@ -90,7 +94,17 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
           }
         }
       }
-      return { name, mile: Math.round(cumMiles[nearestIdx] * 10) / 10, elevationFt };
+      return {
+        name,
+        mile: Math.round(cumMiles[nearestIdx] * 10) / 10,
+        elevationFt,
+        lat: Number.isFinite(lat) ? lat : null,
+        lon: Number.isFinite(lon) ? lon : null,
+        description,
+        comment,
+        symbol,
+        waypointType,
+      };
     })
     .sort((a, b) => a.mile - b.mile);
 
