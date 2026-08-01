@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Address, CrewNoteEntry, LoggedRun, TrainingPlan } from '../types';
+import type { Address, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
 import { buildPhaseSummary } from './planGenerator';
 
@@ -199,12 +199,18 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
  * on top of it does. */
 export async function updateCrewPlan(
   userId: string,
-  updates: { raceStartTime?: string | null; goalFinishMinutes?: number | null; crewNotes?: Record<string, CrewNoteEntry> },
+  updates: {
+    raceStartTime?: string | null;
+    goalFinishMinutes?: number | null;
+    crewNotes?: Record<string, CrewNoteEntry>;
+    gpxRoute?: GpxRoute | null;
+  },
 ) {
   const patch: Record<string, unknown> = {};
   if ('raceStartTime' in updates) patch.race_start_time = updates.raceStartTime ?? null;
   if ('goalFinishMinutes' in updates) patch.goal_finish_minutes = updates.goalFinishMinutes ?? null;
   if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
+  if ('gpxRoute' in updates) patch.gpx_route = updates.gpxRoute ?? null;
 
   const { error } = await supabase.from('training_plans').update(patch).eq('user_id', userId);
   if (error) throw error;

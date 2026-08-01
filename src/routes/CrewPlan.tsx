@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field, Input, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateCrewPlan } from '../lib/api';
+import { parseGpxFile } from '../lib/gpx';
 import { formatEtaClock, formatElapsedLabel, predictedElapsedMinutes } from '../lib/crewPlan';
 import type { CrewNoteEntry } from '../types';
 import './crewplan.css';
@@ -21,6 +22,9 @@ export function CrewPlan() {
   const [notes, setNotes] = useState<Record<string, CrewNoteEntry>>(plan?.crewNotes ?? {});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [gpxLoading, setGpxLoading] = useState(false);
+  const [gpxError, setGpxError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!plan) {
     return (
@@ -54,6 +58,29 @@ export function CrewPlan() {
     }
   }
 
+  async function handleGpxReplace(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !state.userId) return;
+    setGpxError(null);
+    setGpxLoading(true);
+    try {
+      const route = await parseGpxFile(file);
+      // The aid station list is very likely different from whatever came
+      // with the old GPX, so notes keyed to the old waypoint indices would
+      // silently point at the wrong stations — clear them rather than risk
+      // that, same as the warning shown next to the upload button.
+      await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: {} });
+      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: {} } });
+      setNotes({});
+      setSaved(false);
+    } catch (err) {
+      setGpxError(err instanceof Error ? err.message : "Couldn't read that file.");
+    } finally {
+      setGpxLoading(false);
+    }
+  }
+
   return (
     <>
       <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
@@ -70,6 +97,34 @@ export function CrewPlan() {
             </div>
           )}
         </div>
+
+        <div className="rg-cp-gpx-row">
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Course file</div>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              {plan.gpxRoute
+                ? `${plan.gpxRoute.fileName} — ${waypoints.length} aid station${waypoints.length === 1 ? '' : 's'} found`
+                : 'No GPX uploaded yet.'}
+            </div>
+          </div>
+          <div style={{ flex: 'none' }}>
+            <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
+              {gpxLoading ? 'Reading file…' : plan.gpxRoute ? 'Replace GPX' : 'Upload GPX'}
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpxReplace} style={{ display: 'none' }} />
+          </div>
+        </div>
+        {plan.gpxRoute && (
+          <p className="text-muted" style={{ fontSize: 12, padding: '0 var(--space-6) var(--space-4)', margin: 0 }}>
+            Replacing the course file clears any aid station notes already added below, since the new file's stations
+            may not match up with the old ones.
+          </p>
+        )}
+        {gpxError && (
+          <div className="rg-auth-error" style={{ margin: '0 var(--space-6) var(--space-4)' }}>
+            {gpxError}
+          </div>
+        )}
 
         <div className="rg-cp-setup-grid">
           <Field label="Race start time">
@@ -111,14 +166,11 @@ export function CrewPlan() {
 
       {waypoints.length === 0 ? (
         <div className="rg-cp-empty-card">
-          <p className="text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+          <p className="text-muted" style={{ marginBottom: 0 }}>
             {plan.gpxRoute
-              ? "Your uploaded GPX didn't include any named aid stations, so there's nothing to plan against yet. Some race organizers publish aid stations as a separate GPX from the main course file — worth checking for one."
-              : "No GPX was uploaded for this race, so there are no aid stations to plan against yet."}
+              ? "This course file doesn't have any named aid stations. Some race organizers publish those as a separate GPX from the main course file — use \"Replace GPX\" above if you find one."
+              : 'Upload a course GPX above to build out aid station pacing and crew notes.'}
           </p>
-          <Button variant="secondary" onClick={() => navigate('/training-plan')}>
-            Back to Training Plan
-          </Button>
         </div>
       ) : (
         <>
