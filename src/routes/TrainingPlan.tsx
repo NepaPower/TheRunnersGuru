@@ -45,9 +45,6 @@ export function TrainingPlan() {
           <div className="rg-tp-race-name">Your training plan for {plan.raceName}</div>
           <div className="rg-tp-weeks">{plan.totalWeeks} week training plan</div>
           <div className="rg-tp-quote">"{plan.quote}"</div>
-          <Button variant="secondary" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Collapse full plan' : 'Expand full plan'}
-          </Button>
         </div>
 
         <div className="rg-tp-info-grid">
@@ -116,6 +113,12 @@ export function TrainingPlan() {
               </ul>
             )}
           </div>
+        </div>
+
+        <div className="rg-tp-expand-footer">
+          <Button variant="secondary" className="rg-tp-expand-btn" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Collapse full plan' : 'Expand full plan'}
+          </Button>
         </div>
       </div>
 

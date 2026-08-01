@@ -49,9 +49,18 @@
   font-size: 16px;
   max-width: 480px;
 }
-.rg-tp-header-top .btn {
+
+.rg-tp-expand-footer {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-top: 1px solid var(--color-divider);
+  display: flex;
+  justify-content: center;
+}
+.rg-tp-expand-btn.btn {
   border-radius: 999px;
-  margin-top: var(--space-2);
+  font-size: 17px;
+  font-weight: 600;
+  padding: 14px 32px;
 }
 
 .rg-tp-info-grid {
