@@ -1,4 +1,4 @@
-import type { DistanceGoal, FirstTimeAnswer, HillAccessAnswer, PhaseSummaryItem, TrainingPlan, TrainingPlanRow } from '../types';
+import type { DistanceGoal, FirstTimeAnswer, GpxRoute, HillAccessAnswer, PhaseSummaryItem, TrainingPlan, TrainingPlanRow } from '../types';
 import { DISTANCE_LABELS, RUNNING_QUOTES } from '../data/constants';
 
 /**
@@ -325,6 +325,11 @@ export function buildTrainingPlan(
   // distance in miles (50K/100K/.../300mi preset or a custom entry, capped
   // at 500). Null falls back to the generic 31-mile ultra default.
   ultraMiles: number | null = null,
+  // Only meaningful for distanceGoal === 'ultra' — the parsed course GPX
+  // (distance/elevation/aid stations), if the person uploaded one. Not
+  // used by the row generator yet — stored on the plan for the future
+  // Crew Plan / aid-station ETA screen.
+  gpxRoute: GpxRoute | null = null,
 ): TrainingPlan | null {
   if (!raceDateStr || !distanceGoal) return null;
   const race = new Date(raceDateStr + 'T00:00:00');
@@ -380,6 +385,7 @@ export function buildTrainingPlan(
     distanceGoal,
     firstTime,
     hillAccess: distanceGoal === 'ultra' ? hillAccess : '',
+    gpxRoute: distanceGoal === 'ultra' ? gpxRoute : null,
     raceDate: raceDateStr,
     totalWeeks,
     rows,

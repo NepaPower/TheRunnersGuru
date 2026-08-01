@@ -2,6 +2,7 @@ import type {
   Address,
   DistanceGoal,
   FirstTimeAnswer,
+  GpxRoute,
   HillAccessAnswer,
   LoggedRun,
   PaceChoice,
@@ -33,6 +34,7 @@ export type Action =
   | { type: 'ONBOARDING_SELECT_ULTRA_DISTANCE'; id: UltraDistanceId }
   | { type: 'ONBOARDING_SET_ULTRA_CUSTOM_MILES'; value: string }
   | { type: 'ONBOARDING_SET_RACE_NAME'; value: string }
+  | { type: 'ONBOARDING_SET_GPX_ROUTE'; route: GpxRoute | null }
   | { type: 'ONBOARDING_SELECT_HILL_ACCESS'; id: HillAccessAnswer }
   | { type: 'ONBOARDING_SELECT_FIRST_TIME'; id: FirstTimeAnswer }
   | { type: 'ONBOARDING_SELECT_PACE_UNIT'; unit: PaceUnit }

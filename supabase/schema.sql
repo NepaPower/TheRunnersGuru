@@ -69,6 +69,10 @@ create table public.training_plans (
   -- climbing-specific sessions are prescribed as outdoor hills or their
   -- treadmill-incline / StairMaster equivalents. Null for all other distances.
   hill_access text check (hill_access in ('yes','no')),
+  -- Parsed summary (distance, elevation gain/loss, named waypoints) of an
+  -- optional uploaded race GPX — never the raw file, see lib/gpx.ts. Null
+  -- if not provided or not applicable (non-ultra plans).
+  gpx_route jsonb,
   race_date date not null,
   total_weeks int not null,
   pace text,
@@ -91,6 +95,7 @@ create policy "training plans are owner-only"
 --   alter table public.training_plans add column hill_access text
 --     check (hill_access in ('yes','no'));
 --   alter table public.training_plan_weeks add column total_hours numeric;
+--   alter table public.training_plans add column gpx_route jsonb;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

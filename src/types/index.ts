@@ -30,6 +30,25 @@ export type RaceCategory = 'standard' | 'ultra' | '';
  * data/constants.ts). */
 export type UltraDistanceId = '50k' | '100k' | '100mi' | '135mi' | '200mi' | '300mi' | 'custom' | '';
 
+/** Only used when distanceGoal === 'ultra' — the official race GPX, parsed
+ * client-side (see lib/gpx.ts). We store the parsed summary (distance,
+ * elevation, named waypoints), never the raw file — keeps this small
+ * regardless of source file size, and it's the parsed data the future
+ * Crew Plan / aid-station ETA screen actually needs. */
+export interface GpxWaypoint {
+  name: string;
+  mile: number;
+  elevationFt: number | null;
+}
+
+export interface GpxRoute {
+  fileName: string;
+  distanceMiles: number;
+  elevationGainFt: number;
+  elevationLossFt: number;
+  waypoints: GpxWaypoint[];
+}
+
 export type FirstTimeAnswer = 'yes' | 'no' | '';
 
 /** Only asked when distanceGoal === 'ultra' — determines whether the plan's
@@ -68,6 +87,7 @@ export interface OnboardingState {
   ultraDistanceId: UltraDistanceId;
   ultraCustomMiles: string; // typed miles when ultraDistanceId === 'custom', clamped to MAX_ULTRA_MILES
   raceName: string;
+  gpxRoute: GpxRoute | null; // only offered/used when raceCategory === 'ultra'
   hillAccess: HillAccessAnswer; // only meaningful when distanceGoal === 'ultra'
   firstTime: FirstTimeAnswer;
   pace: PaceChoice;
@@ -104,6 +124,7 @@ export interface TrainingPlan {
   distanceGoal: DistanceGoal;
   firstTime: FirstTimeAnswer;
   hillAccess: HillAccessAnswer; // '' for non-ultra plans
+  gpxRoute: GpxRoute | null; // '' for non-ultra plans, null if not provided
   raceDate: string;
   totalWeeks: number;
   rows: TrainingPlanRow[];

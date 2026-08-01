@@ -63,6 +63,7 @@ export function Onboarding() {
         state.onboarding.raceName,
         state.onboarding.hillAccess,
         isUltra ? ultraDistanceMiles(state.onboarding) : null,
+        isUltra ? state.onboarding.gpxRoute : null,
       );
       if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
       await saveTrainingPlan(liveUserId, plan);

@@ -39,6 +39,7 @@ export function buildInitialState(): AppState {
       ultraDistanceId: '',
       ultraCustomMiles: '',
       raceName: '',
+      gpxRoute: null,
       hillAccess: '',
       firstTime: '',
       pace: '',
@@ -109,6 +110,7 @@ export function reducer(state: AppState, action: Action): AppState {
           distanceGoal: action.category === 'ultra' ? 'ultra' : '',
           distanceEditing: false,
           raceName: '',
+          gpxRoute: null,
           ultraDistanceId: '',
           ultraCustomMiles: '',
           hillAccess: action.category === 'ultra' ? state.onboarding.hillAccess : '',
@@ -151,6 +153,9 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'ONBOARDING_SET_RACE_NAME':
       return { ...state, onboarding: { ...state.onboarding, raceName: action.value } };
+
+    case 'ONBOARDING_SET_GPX_ROUTE':
+      return { ...state, onboarding: { ...state.onboarding, gpxRoute: action.route } };
 
     case 'ONBOARDING_SELECT_HILL_ACCESS':
       return { ...state, onboarding: { ...state.onboarding, hillAccess: action.id } };

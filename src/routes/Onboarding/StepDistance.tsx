@@ -1,13 +1,18 @@
+import { useRef, useState } from 'react';
 import { Field, Input, RadioOption } from '../../components/ui/Form';
 import { Button } from '../../components/ui/Button';
 import { useApp } from '../../state/AppContext';
 import { DISTANCE_LABELS, MAX_ULTRA_MILES, STANDARD_DISTANCES, ULTRA_DISTANCES } from '../../data/constants';
 import { ultraDistanceLabel, ultraDistanceMiles } from '../../lib/ultraDistance';
+import { parseGpxFile } from '../../lib/gpx';
 
 export function StepDistance() {
   const { state, dispatch } = useApp();
   const { onboarding } = state;
   const isUltra = onboarding.raceCategory === 'ultra';
+  const [gpxLoading, setGpxLoading] = useState(false);
+  const [gpxError, setGpxError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hasDistance = isUltra
     ? !!onboarding.ultraDistanceId && (onboarding.ultraDistanceId !== 'custom' || ultraDistanceMiles(onboarding) !== null)
@@ -17,6 +22,22 @@ export function StepDistance() {
   const distanceSummaryLabel = isUltra
     ? ultraDistanceLabel(onboarding)
     : DISTANCE_LABELS[onboarding.distanceGoal as keyof typeof DISTANCE_LABELS];
+
+  async function handleGpxSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file after removing it
+    if (!file) return;
+    setGpxError(null);
+    setGpxLoading(true);
+    try {
+      const route = await parseGpxFile(file);
+      dispatch({ type: 'ONBOARDING_SET_GPX_ROUTE', route });
+    } catch (err) {
+      setGpxError(err instanceof Error ? err.message : "Couldn't read that file.");
+    } finally {
+      setGpxLoading(false);
+    }
+  }
 
   return (
     <>
@@ -94,7 +115,7 @@ export function StepDistance() {
             Enter the name of your race.
           </p>
 
-          <Field label="Race name" style={{ marginBottom: 'var(--space-4)' }}>
+          <Field label="Race name" style={{ marginBottom: isUltra ? 'var(--space-6)' : 'var(--space-4)' }}>
             <Input
               type="text"
               placeholder="e.g. Big Sur Marathon"
@@ -102,6 +123,51 @@ export function StepDistance() {
               onChange={(e) => dispatch({ type: 'ONBOARDING_SET_RACE_NAME', value: e.target.value })}
             />
           </Field>
+
+          {isUltra && (
+            <>
+              <h6 style={{ marginBottom: 'var(--space-2)' }}>Race GPX (optional)</h6>
+              <p className="text-muted" style={{ marginBottom: 'var(--space-4)', fontSize: 13 }}>
+                Have the official course file? Upload it and we'll pull distance, elevation, and aid stations for
+                crew and pace planning later. Skip this if you don't have it yet — you can add it anytime.
+              </p>
+
+              {gpxError && (
+                <p style={{ color: 'var(--color-danger, #b3261e)', fontSize: 13, marginBottom: 'var(--space-3)' }}>{gpxError}</p>
+              )}
+
+              {onboarding.gpxRoute ? (
+                <div style={{ border: '1px solid var(--color-accent-300)', padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{onboarding.gpxRoute.fileName}</span>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        dispatch({ type: 'ONBOARDING_SET_GPX_ROUTE', route: null });
+                        setGpxError(null);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
+                    {onboarding.gpxRoute.distanceMiles} mi course · {onboarding.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
+                    {onboarding.gpxRoute.elevationLossFt.toLocaleString()} ft loss
+                    {onboarding.gpxRoute.waypoints.length > 0
+                      ? ` · ${onboarding.gpxRoute.waypoints.length} aid station${onboarding.gpxRoute.waypoints.length === 1 ? '' : 's'} found`
+                      : ' · no named aid stations in this file'}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ marginBottom: 'var(--space-6)' }}>
+                  <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
+                    {gpxLoading ? 'Reading file…' : 'Upload GPX file'}
+                  </Button>
+                  <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpxSelect} style={{ display: 'none' }} />
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
     </>
