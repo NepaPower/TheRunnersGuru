@@ -40,15 +40,40 @@ function extractPoints(els: Element[]): TrackPoint[] {
  * track) if present, falling back to <rte>/<rtept> (a planned route) —
  * official "course" files from race organizers are often exported as
  * routes rather than recorded tracks, and have no <trkpt> at all.
- * Browser-only (uses DOMParser). Throws on malformed XML or a file with no
- * usable points in either form. */
+ *
+ * If the file bundles multiple <trk> (or <rte>) elements — e.g. a
+ * full-course track plus separate per-leg tracks for individual
+ * sections, which race organizers commonly include in one file — only
+ * the single one with the most points is used. Concatenating every
+ * track in the file into one path creates phantom distance jumping
+ * between otherwise-unrelated tracks, which is what inflates course
+ * distance far beyond the real thing (and scrambles aid station order,
+ * since "forward along the course" stops meaning anything once separate
+ * tracks are stitched together).
+ *
+ * Browser-only (uses DOMParser). Throws on malformed XML or a file with
+ * no usable points in either form. */
 export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error("That file couldn't be read as GPX — please check it's a valid GPX export.");
   }
 
-  let points = extractPoints(Array.from(doc.getElementsByTagName('trkpt')));
+  const largestPointSet = (containers: Element[], tag: string): TrackPoint[] =>
+    containers
+      .map((el) => extractPoints(Array.from(el.getElementsByTagName(tag))))
+      .reduce((best, cur) => (cur.length > best.length ? cur : best), [] as TrackPoint[]);
+
+  let points = largestPointSet(Array.from(doc.getElementsByTagName('trk')), 'trkpt');
+  if (points.length < 2) {
+    points = largestPointSet(Array.from(doc.getElementsByTagName('rte')), 'rtept');
+  }
+  // Last-resort fallback for malformed files with loose trkpt/rtept not
+  // properly nested in a <trk>/<rte> container (technically invalid GPX,
+  // but worth not hard-failing on).
+  if (points.length < 2) {
+    points = extractPoints(Array.from(doc.getElementsByTagName('trkpt')));
+  }
   if (points.length < 2) {
     points = extractPoints(Array.from(doc.getElementsByTagName('rtept')));
   }
