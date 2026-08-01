@@ -147,6 +147,12 @@ export interface CrewNoteEntry {
   // lib/crewPlan.ts computeElapsedWithRests.
   restHours: string;
   restMinutes: string;
+  // Avg min/mile pace override for the segment AFTER this station —
+  // reflects how the runner is actually doing (vs. the flat initial pace
+  // from goal time ÷ distance), and cascades forward until the next
+  // station overrides it again. See lib/crewPlan.ts computeStationTimings.
+  avgPaceMin: string;
+  avgPaceSec: string;
 }
 
 export interface TrainingPlan {

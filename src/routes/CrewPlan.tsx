@@ -8,8 +8,9 @@ import { parseGpxFile } from '../lib/gpx';
 import {
   formatEtaClock,
   formatElapsedLabel,
+  formatPaceMinPerMile,
   predictedArrivalDate,
-  computeElapsedWithRests,
+  computeStationTimings,
   parseCutoffOrderMinutes,
 } from '../lib/crewPlan';
 import {
@@ -23,7 +24,17 @@ import {
 import type { CrewNoteEntry, GpxWaypoint } from '../types';
 import './crewplan.css';
 
-const emptyNote: CrewNoteEntry = { nutrition: '', hydration: '', gear: '', crewAccess: '', cutoff: '', restHours: '', restMinutes: '' };
+const emptyNote: CrewNoteEntry = {
+  nutrition: '',
+  hydration: '',
+  gear: '',
+  crewAccess: '',
+  cutoff: '',
+  restHours: '',
+  restMinutes: '',
+  avgPaceMin: '',
+  avgPaceSec: '',
+};
 
 interface StationWeather {
   climate: ClimateAverage | null;
@@ -77,18 +88,31 @@ export function CrewPlan() {
   const waypoints = plan?.gpxRoute?.waypoints ?? [];
   const totalMiles = plan?.gpxRoute?.distanceMiles ?? 0;
   const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
-  // Each station's rest/sleep time delays every station after it — see
-  // lib/crewPlan.ts computeElapsedWithRests. Recomputed from current
-  // `notes` state on every render; cheap even for a long aid-station list.
-  const elapsedByIndex: (number | null)[] =
+  // The pace implied by the goal finish time, before any per-station
+  // override — this is what the "Average mins per mile" ends up being if
+  // nobody enters an override anywhere, and it's what each pace field's
+  // placeholder shows.
+  const initialPaceMinPerMile = goalFinishMinutes != null && totalMiles > 0 ? goalFinishMinutes / totalMiles : null;
+  // Each station's rest/sleep time delays every station after it, and any
+  // avg-pace override entered at a station applies to every segment AFTER
+  // it (until overridden again) — see lib/crewPlan.ts
+  // computeStationTimings. Recomputed from current `notes` state on every
+  // render; cheap even for a long aid-station list.
+  const timings =
     goalFinishMinutes != null
-      ? computeElapsedWithRests(
+      ? computeStationTimings(
           waypoints.map((wp) => wp.mile),
           totalMiles,
           goalFinishMinutes,
           waypoints.map((_, i) => (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0)),
+          waypoints.map((_, i) => {
+            const note = notes[String(i)];
+            if (!note?.avgPaceMin && !note?.avgPaceSec) return null;
+            return (Number(note.avgPaceMin) || 0) + (Number(note.avgPaceSec) || 0) / 60;
+          }),
         )
-      : waypoints.map(() => null);
+      : null;
+  const elapsedByIndex: (number | null)[] = timings ? timings.map((t) => t.elapsedMinutes) : waypoints.map(() => null);
   // Cutoff times only ever move forward through a race — if a station's
   // cutoff (as typed/detected, in geographic mile order) is earlier than
   // an earlier station's, that's independent evidence something's out of
@@ -107,10 +131,16 @@ export function CrewPlan() {
       return outOfOrder;
     });
   })();
-  // Weather should re-fetch when rest times shift arrival times, but NOT
-  // on every keystroke in the Nutrition/Hydration/Gear textareas — this
-  // isolates just the two fields that actually affect the math.
-  const restSignature = waypoints.map((_, i) => `${notes[String(i)]?.restHours || ''}:${notes[String(i)]?.restMinutes || ''}`).join(',');
+  // Weather should re-fetch when rest times or pace overrides shift
+  // arrival times, but NOT on every keystroke in the Nutrition/Hydration/
+  // Gear textareas — this isolates just the fields that actually affect
+  // the math.
+  const restSignature = waypoints
+    .map(
+      (_, i) =>
+        `${notes[String(i)]?.restHours || ''}:${notes[String(i)]?.restMinutes || ''}:${notes[String(i)]?.avgPaceMin || ''}:${notes[String(i)]?.avgPaceSec || ''}`,
+    )
+    .join(',');
 
   // Fetches weather for every station once there's enough to compute a
   // predicted arrival date/time for it (a start time and goal finish time).
@@ -181,7 +211,11 @@ export function CrewPlan() {
     );
   }
 
-  function updateNoteField(key: string, field: 'nutrition' | 'hydration' | 'gear' | 'cutoff' | 'restHours' | 'restMinutes', value: string) {
+  function updateNoteField(
+    key: string,
+    field: 'nutrition' | 'hydration' | 'gear' | 'cutoff' | 'restHours' | 'restMinutes' | 'avgPaceMin' | 'avgPaceSec',
+    value: string,
+  ) {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: value } }));
     setSaved(false);
   }
@@ -335,7 +369,7 @@ export function CrewPlan() {
         <>
           <p className="rg-cp-muted" style={{ marginBottom: 'var(--space-4)', fontSize: 13 }}>
             {goalFinishMinutes
-              ? 'Predicted arrival times assume even effort across the whole course, adjusted for any rest/sleep time you add below — treat these as a starting estimate, not a guarantee, especially on technical terrain.'
+              ? `Predicted arrival times start from an initial average pace of ${initialPaceMinPerMile != null ? formatPaceMinPerMile(initialPaceMinPerMile) : '—'} (your goal finish time ÷ course distance). Enter an updated avg pace at any station below to reflect how the race is actually going — it carries forward from there until you update it again.`
               : 'Enter a goal finish time above to see predicted arrival times at each aid station.'}
           </p>
 
@@ -378,7 +412,7 @@ export function CrewPlan() {
                           <>
                             <div className="rg-cp-eta-value">You'll reach here on {eta}</div>
                             <div className="rg-cp-station-meta" style={{ fontSize: 12 }}>
-                              +{formatElapsedLabel(elapsed)} from start
+                              +{formatElapsedLabel(elapsed)} from start · {formatPaceMinPerMile(timings![i].paceUsedMinPerMile)} pace
                             </div>
                           </>
                         ) : (
@@ -433,6 +467,32 @@ export function CrewPlan() {
                       {(Number(note.restHours) > 0 || Number(note.restMinutes) > 0) && (
                         <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
                           Adds {formatElapsedLabel((Number(note.restHours) || 0) * 60 + (Number(note.restMinutes) || 0))} to every station after this one
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Avg pace from here</div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder={initialPaceMinPerMile != null ? String(Math.floor(initialPaceMinPerMile)) : 'min'}
+                          value={note.avgPaceMin}
+                          onChange={(e) => updateNoteField(key, 'avgPaceMin', e.target.value.replace(/[^\d]/g, ''))}
+                        />
+                        <span className="rg-cp-muted" style={{ fontSize: 13 }}>:</span>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="sec"
+                          value={note.avgPaceSec}
+                          onChange={(e) => updateNoteField(key, 'avgPaceSec', e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                        />
+                        <span className="rg-cp-muted" style={{ fontSize: 13 }}>/mi</span>
+                      </div>
+                      {(note.avgPaceMin || note.avgPaceSec) && (
+                        <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          Applies to every station after this one, until updated again
                         </div>
                       )}
                     </div>

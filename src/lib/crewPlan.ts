@@ -24,25 +24,43 @@ export function predictedArrivalDate(raceDateStr: string, raceStartTime: string,
   return new Date(start.getTime() + elapsedMinutes * 60000);
 }
 
+export interface StationTiming {
+  elapsedMinutes: number;
+  /** The avg min/mile pace actually used for the segment ending at this
+   * station — shown as context so it's clear what's currently assumed
+   * before someone overrides it. */
+  paceUsedMinPerMile: number;
+}
+
 /** Computes each station's predicted elapsed minutes from race start,
- * accounting for planned rest/sleep time at EARLIER stations. Ultra
- * runners don't just pass through aid stations — a normal stop costs
- * 10-15 minutes, and a sleep stop can cost 1-3 hours, and that time pushes
- * back every station after it. `miles` and `restMinutesByIndex` must be
- * the same length and in course order (station i's rest only affects
- * stations after it, never itself or earlier ones). */
-export function computeElapsedWithRests(
+ * using a segment-by-segment pace rather than one flat average for the
+ * whole race. The starting pace is derived from goal finish time ÷ course
+ * distance (the "initial" plan). At any station where an avg min/mile
+ * override is entered, that pace takes over for every segment AFTER that
+ * station — reflecting how the runner is actually doing, not just the
+ * original plan — until another station overrides it again. Rest/sleep
+ * time at a station still adds on top, delaying every later station the
+ * same way regardless of pace. `miles`, `restMinutesByIndex`, and
+ * `paceOverrideByIndex` must all be the same length and in course order. */
+export function computeStationTimings(
   miles: number[],
   totalMiles: number,
   goalFinishMinutes: number,
   restMinutesByIndex: number[],
-): number[] {
-  const result: number[] = [];
-  let cumulativeRest = 0;
+  paceOverrideByIndex: (number | null)[],
+): StationTiming[] {
+  const initialPace = totalMiles > 0 ? goalFinishMinutes / totalMiles : 0;
+  const result: StationTiming[] = [];
+  let elapsed = 0;
+  let currentPace = initialPace;
+  let prevMile = 0;
   for (let i = 0; i < miles.length; i++) {
-    const basePace = predictedElapsedMinutes(miles[i], totalMiles, goalFinishMinutes);
-    result.push(basePace + cumulativeRest);
-    cumulativeRest += restMinutesByIndex[i] || 0;
+    const segmentDist = Math.max(0, miles[i] - prevMile);
+    elapsed += segmentDist * currentPace;
+    result.push({ elapsedMinutes: Math.round(elapsed), paceUsedMinPerMile: currentPace });
+    elapsed += restMinutesByIndex[i] || 0;
+    if (paceOverrideByIndex[i] != null) currentPace = paceOverrideByIndex[i]!;
+    prevMile = miles[i];
   }
   return result;
 }
@@ -87,6 +105,15 @@ export function formatEtaClock(raceDateStr: string, raceStartTime: string, elaps
   const weekday = arrival.toLocaleDateString('en-US', { weekday: 'long' });
   const timeLabel = arrival.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return `${weekday} ${timeLabel}`;
+}
+
+/** "14:32/mi" style label for a decimal minutes-per-mile pace value. */
+export function formatPaceMinPerMile(minPerMile: number): string {
+  const m = Math.floor(minPerMile);
+  const s = Math.round((minPerMile - m) * 60);
+  const mm = s === 60 ? m + 1 : m;
+  const ss = s === 60 ? 0 : s;
+  return `${mm}:${String(ss).padStart(2, '0')}/mi`;
 }
 
 /** "6h 42m" style label for a minutes duration — used for the elapsed-time
