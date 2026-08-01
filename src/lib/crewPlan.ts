@@ -47,6 +47,35 @@ export function computeElapsedWithRests(
   return result;
 }
 
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+/** Best-effort parse of a cutoff's weekday + time into minutes-since-race-
+ * start — e.g. "Cut Off: Monday, 1:00 PM" with a Friday race start becomes
+ * day 3 (Fri→Sat→Sun→Mon) × 1440 + 13:00. Returns null if no weekday or no
+ * time could be found in the text. Assumes the cutoff falls within the
+ * next 7 days of the race start; races longer than a week would need a
+ * different disambiguation, but none currently supported here run that
+ * long. */
+export function parseCutoffOrderMinutes(cutoffText: string, raceStartWeekdayIndex: number): number | null {
+  const weekdayMatch = cutoffText.match(/\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+  if (!weekdayMatch) return null;
+  const wd = WEEKDAYS.indexOf(weekdayMatch[1].toLowerCase());
+  let dayOffset = wd - raceStartWeekdayIndex;
+  if (dayOffset < 0) dayOffset += 7;
+
+  const timeMatch = cutoffText.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  let minutesOfDay = 0;
+  if (timeMatch) {
+    let h = parseInt(timeMatch[1], 10);
+    const m = parseInt(timeMatch[2], 10);
+    const ap = timeMatch[3].toUpperCase();
+    if (ap === 'PM' && h !== 12) h += 12;
+    if (ap === 'AM' && h === 12) h = 0;
+    minutesOfDay = h * 60 + m;
+  }
+  return dayOffset * 1440 + minutesOfDay;
+}
+
 /** Combines a race date + start time (HH:MM) + elapsed minutes into a
  * "Saturday 1:57 AM" style display string — the actual weekday rather than
  * a "Day 2" count, since that's what a crew actually needs to know (do I

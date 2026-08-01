@@ -5,7 +5,13 @@ import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateCrewPlan } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
-import { formatEtaClock, formatElapsedLabel, predictedArrivalDate, computeElapsedWithRests } from '../lib/crewPlan';
+import {
+  formatEtaClock,
+  formatElapsedLabel,
+  predictedArrivalDate,
+  computeElapsedWithRests,
+  parseCutoffOrderMinutes,
+} from '../lib/crewPlan';
 import {
   fetchClimateAverage,
   fetchShortRangeForecast,
@@ -83,6 +89,24 @@ export function CrewPlan() {
           waypoints.map((_, i) => (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0)),
         )
       : waypoints.map(() => null);
+  // Cutoff times only ever move forward through a race — if a station's
+  // cutoff (as typed/detected, in geographic mile order) is earlier than
+  // an earlier station's, that's independent evidence something's out of
+  // sequence, since cutoff time and course position are set by the race
+  // organizer from two completely different sources of truth.
+  const raceStartWeekdayIndex = raceDate ? new Date(raceDate + 'T00:00:00').getDay() : null;
+  const cutoffOutOfOrder: boolean[] = (() => {
+    if (raceStartWeekdayIndex == null) return waypoints.map(() => false);
+    let maxSoFar = -Infinity;
+    return waypoints.map((_, i) => {
+      const text = notes[String(i)]?.cutoff || '';
+      const v = text ? parseCutoffOrderMinutes(text, raceStartWeekdayIndex) : null;
+      if (v == null) return false;
+      const outOfOrder = v < maxSoFar;
+      maxSoFar = Math.max(maxSoFar, v);
+      return outOfOrder;
+    });
+  })();
   // Weather should re-fetch when rest times shift arrival times, but NOT
   // on every keystroke in the Nutrition/Hydration/Gear textareas — this
   // isolates just the two fields that actually affect the math.
@@ -382,6 +406,11 @@ export function CrewPlan() {
                         value={note.cutoff}
                         onChange={(e) => updateNoteField(key, 'cutoff', e.target.value)}
                       />
+                      {cutoffOutOfOrder[i] && (
+                        <div style={{ fontSize: 12, color: 'var(--color-accent-2-800, #92400e)', marginTop: 4 }}>
+                          ⚠ Earlier than a prior station's cutoff — this station may be out of order
+                        </div>
+                      )}
                     </Field>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Rest/Sleep time</div>
