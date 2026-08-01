@@ -1,0 +1,102 @@
+/* Crew Plan — same rounded-card treatment as Training Plan/Dashboard. */
+
+.rg-cp-header-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+.rg-cp-header-top {
+  padding: var(--space-6) var(--space-6) var(--space-4);
+}
+.rg-cp-race-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+.rg-cp-setup-grid {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-top: 1px solid var(--color-divider);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+.rg-cp-empty-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.rg-cp-stations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.rg-cp-station-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+}
+.rg-cp-station-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+.rg-cp-station-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-text);
+}
+.rg-cp-station-eta {
+  text-align: right;
+  flex: none;
+}
+.rg-cp-eta-value {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--color-accent-700);
+}
+.rg-cp-station-notes {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-4);
+}
+.rg-cp-station-notes textarea {
+  resize: vertical;
+}
+
+.rg-cp-save-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: var(--space-8);
+}
+
+@media (max-width: 720px) {
+  .rg-cp-setup-grid,
+  .rg-cp-station-notes {
+    grid-template-columns: 1fr;
+  }
+  .rg-cp-station-head {
+    flex-direction: column;
+  }
+  .rg-cp-station-eta {
+    text-align: left;
+  }
+}

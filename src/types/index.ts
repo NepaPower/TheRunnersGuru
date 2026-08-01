@@ -9,6 +9,7 @@ export type Screen =
   | 'onboarding'
   | 'home'
   | 'trainingPlan'
+  | 'crewPlan'
   | 'logRun'
   | 'partners'
   | 'run'
@@ -119,6 +120,15 @@ export interface PhaseSummaryItem {
   title: string; // "Aerobic Foundation & Endurance Base"
 }
 
+/** Free-text crew notes for one aid station on the Crew Plan screen, keyed
+ * by that waypoint's index in gpxRoute.waypoints (as a string, since object
+ * keys are always strings — see routes/CrewPlan.tsx). */
+export interface CrewNoteEntry {
+  nutrition: string;
+  hydration: string;
+  gear: string;
+}
+
 export interface TrainingPlan {
   raceName: string;
   distanceGoal: DistanceGoal;
@@ -126,6 +136,13 @@ export interface TrainingPlan {
   hillAccess: HillAccessAnswer; // '' for non-ultra plans
   gpxRoute: GpxRoute | null; // '' for non-ultra plans, null if not provided
   raceDate: string;
+  // Race-day start time (HH:MM, 24h) — set on the Crew Plan screen, not
+  // during onboarding, since it's often confirmed later than sign-up.
+  raceStartTime: string | null;
+  // Total goal finish time in minutes, from onboarding's goal-time step.
+  // Used by the Crew Plan screen to predict aid-station arrival times.
+  goalFinishMinutes: number | null;
+  crewNotes: Record<string, CrewNoteEntry>;
   totalWeeks: number;
   rows: TrainingPlanRow[];
   phases: PhaseSummaryItem[];

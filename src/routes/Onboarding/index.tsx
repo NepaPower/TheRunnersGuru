@@ -56,6 +56,12 @@ export function Onboarding() {
       if (!liveUserId) {
         throw new Error("Your session isn't active — please sign in again before finishing setup.");
       }
+      const goalHours = Number(state.onboarding.goalHours);
+      const goalMinutes = Number(state.onboarding.goalMinutes);
+      const goalFinishMinutes =
+        state.onboarding.goalHours || state.onboarding.goalMinutes
+          ? (Number.isNaN(goalHours) ? 0 : goalHours) * 60 + (Number.isNaN(goalMinutes) ? 0 : goalMinutes)
+          : null;
       const plan = buildTrainingPlan(
         state.onboarding.raceDate,
         state.onboarding.distanceGoal || '5k',
@@ -64,6 +70,7 @@ export function Onboarding() {
         state.onboarding.hillAccess,
         isUltra ? ultraDistanceMiles(state.onboarding) : null,
         isUltra ? state.onboarding.gpxRoute : null,
+        goalFinishMinutes,
       );
       if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
       await saveTrainingPlan(liveUserId, plan);

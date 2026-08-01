@@ -69,4 +69,5 @@ export type Action =
   | { type: 'AUTH_NAME_CHANGE'; value: string }
   // Dispatched after the address has been successfully saved to Supabase.
   | { type: 'ADDRESS_SAVED' }
+  | { type: 'TRAINING_PLAN_UPDATED'; patch: Partial<TrainingPlan> }
   | { type: 'JOIN_EVENT_TOGGLE' };

@@ -273,6 +273,9 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ADDRESS_SAVED':
       return { ...state, addressSaved: true };
 
+    case 'TRAINING_PLAN_UPDATED':
+      return state.trainingPlan ? { ...state, trainingPlan: { ...state.trainingPlan, ...action.patch } } : state;
+
     case 'JOIN_EVENT_TOGGLE':
       return { ...state, joinedEvent: !state.joinedEvent };
 

@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Address, LoggedRun, TrainingPlan } from '../types';
+import type { Address, CrewNoteEntry, LoggedRun, TrainingPlan } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
 import { buildPhaseSummary } from './planGenerator';
 
@@ -109,6 +109,9 @@ export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
         hill_access: plan.hillAccess || null,
         gpx_route: plan.gpxRoute ?? null,
         race_date: plan.raceDate,
+        race_start_time: plan.raceStartTime ?? null,
+        goal_finish_minutes: plan.goalFinishMinutes ?? null,
+        crew_notes: plan.crewNotes ?? {},
         total_weeks: plan.totalWeeks,
         quote: plan.quote,
       },
@@ -166,6 +169,9 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
     hillAccess: planRow.hill_access ?? '',
     gpxRoute: planRow.gpx_route ?? null,
     raceDate: planRow.race_date,
+    raceStartTime: planRow.race_start_time ?? null,
+    goalFinishMinutes: planRow.goal_finish_minutes ?? null,
+    crewNotes: planRow.crew_notes ?? {},
     totalWeeks: planRow.total_weeks,
     quote: planRow.quote ?? '',
     phases: buildPhaseSummary(planRow.total_weeks),
@@ -184,6 +190,24 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
       isRaceWeek: w.is_race_week,
     })),
   };
+}
+
+/** Saves edits made on the Crew Plan screen — race start time, goal finish
+ * time, and per-aid-station notes. Deliberately separate from
+ * saveTrainingPlan: this never touches training_plan_weeks, since the plan
+ * generated from onboarding never changes, only this crew-logistics layer
+ * on top of it does. */
+export async function updateCrewPlan(
+  userId: string,
+  updates: { raceStartTime?: string | null; goalFinishMinutes?: number | null; crewNotes?: Record<string, CrewNoteEntry> },
+) {
+  const patch: Record<string, unknown> = {};
+  if ('raceStartTime' in updates) patch.race_start_time = updates.raceStartTime ?? null;
+  if ('goalFinishMinutes' in updates) patch.goal_finish_minutes = updates.goalFinishMinutes ?? null;
+  if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
+
+  const { error } = await supabase.from('training_plans').update(patch).eq('user_id', userId);
+  if (error) throw error;
 }
 
 // ─── Logged runs ─────────────────────────────────────────────────────────

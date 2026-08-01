@@ -93,6 +93,22 @@ export function Dashboard() {
   const week = weeklyMileageSeries(state);
   const hasPlan = !!state.trainingPlan;
   const hasAnyRuns = state.loggedRuns.length > 0;
+  const isUltra = state.trainingPlan?.distanceGoal === 'ultra';
+
+  const navCards = isUltra
+    ? [
+        NAV_CARDS[0], // Your Training Plan
+        {
+          key: 'crewPlan',
+          title: 'Crew Plan',
+          subtitle: 'Aid stations, pacing & crew notes',
+          to: '/crew-plan',
+          enabled: true,
+          icon: <path d="M6 21V4M6 4h11l-3 4 3 4H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+        },
+        ...NAV_CARDS.slice(1),
+      ]
+    : NAV_CARDS;
 
   return (
     <>
@@ -143,7 +159,7 @@ export function Dashboard() {
 
       {hasPlan && (
         <div className="rg-dash-nav-grid">
-          {NAV_CARDS.map((c) => (
+          {navCards.map((c) => (
             <button
               key={c.key}
               type="button"

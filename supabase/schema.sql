@@ -74,6 +74,15 @@ create table public.training_plans (
   -- if not provided or not applicable (non-ultra plans).
   gpx_route jsonb,
   race_date date not null,
+  -- Set on the Crew Plan screen (not onboarding) since race start time is
+  -- often confirmed later than sign-up. HH:MM, 24h.
+  race_start_time text,
+  -- Total goal finish time in minutes, from onboarding's goal-time step —
+  -- used by the Crew Plan screen's aid-station ETA predictions.
+  goal_finish_minutes int,
+  -- Free-text nutrition/hydration/gear notes per aid station, keyed by
+  -- waypoint index (as a string) into gpx_route's waypoints array.
+  crew_notes jsonb not null default '{}'::jsonb,
   total_weeks int not null,
   pace text,
   pace_unit text,
@@ -96,6 +105,9 @@ create policy "training plans are owner-only"
 --     check (hill_access in ('yes','no'));
 --   alter table public.training_plan_weeks add column total_hours numeric;
 --   alter table public.training_plans add column gpx_route jsonb;
+--   alter table public.training_plans add column race_start_time text;
+--   alter table public.training_plans add column goal_finish_minutes int;
+--   alter table public.training_plans add column crew_notes jsonb not null default '{}'::jsonb;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

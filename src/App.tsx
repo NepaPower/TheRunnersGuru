@@ -9,6 +9,7 @@ import { SignIn } from './routes/SignIn';
 import { Onboarding } from './routes/Onboarding';
 import { Dashboard } from './routes/Dashboard';
 import { TrainingPlan } from './routes/TrainingPlan';
+import { CrewPlan } from './routes/CrewPlan';
 import { LogRun } from './routes/LogRun';
 import { Partners } from './routes/Partners';
 import { Run } from './routes/Run';
@@ -30,6 +31,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/home" element={<Dashboard />} />
               <Route path="/training-plan" element={<TrainingPlan />} />
+              <Route path="/crew-plan" element={<CrewPlan />} />
               <Route path="/log-run" element={<LogRun />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/run" element={<Run />} />

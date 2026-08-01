@@ -330,6 +330,9 @@ export function buildTrainingPlan(
   // used by the row generator yet — stored on the plan for the future
   // Crew Plan / aid-station ETA screen.
   gpxRoute: GpxRoute | null = null,
+  // Total goal finish time in minutes (from onboarding's Total hours +
+  // Minutes step), used by the Crew Plan screen's ETA predictions.
+  goalFinishMinutes: number | null = null,
 ): TrainingPlan | null {
   if (!raceDateStr || !distanceGoal) return null;
   const race = new Date(raceDateStr + 'T00:00:00');
@@ -387,6 +390,9 @@ export function buildTrainingPlan(
     hillAccess: distanceGoal === 'ultra' ? hillAccess : '',
     gpxRoute: distanceGoal === 'ultra' ? gpxRoute : null,
     raceDate: raceDateStr,
+    raceStartTime: null,
+    goalFinishMinutes,
+    crewNotes: {},
     totalWeeks,
     rows,
     phases: buildPhaseSummary(totalWeeks),
