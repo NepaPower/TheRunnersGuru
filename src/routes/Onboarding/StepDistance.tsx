@@ -132,9 +132,7 @@ export function StepDistance() {
                 crew and pace planning later. Skip this if you don't have it yet — you can add it anytime.
               </p>
 
-              {gpxError && (
-                <p style={{ color: 'var(--color-danger, #b3261e)', fontSize: 13, marginBottom: 'var(--space-3)' }}>{gpxError}</p>
-              )}
+              {gpxError && <div className="rg-auth-error">{gpxError}</div>}
 
               {onboarding.gpxRoute ? (
                 <div style={{ border: '1px solid var(--color-accent-300)', padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>

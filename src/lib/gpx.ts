@@ -21,19 +21,8 @@ interface TrackPoint {
   elevationFt: number | null;
 }
 
-/** Parses raw GPX XML text into a route summary — distance, elevation
- * gain/loss, and any named <wpt> waypoints (many official race GPX files
- * use these for aid stations), each matched to the nearest track point to
- * estimate its mile marker. Browser-only (uses DOMParser). Throws on
- * malformed XML or a file with no usable track points. */
-export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
-  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
-  if (doc.getElementsByTagName('parsererror').length > 0) {
-    throw new Error("That file couldn't be read as GPX — please check it's a valid GPX export.");
-  }
-
-  const trkptEls = Array.from(doc.getElementsByTagName('trkpt'));
-  const points: TrackPoint[] = trkptEls
+function extractPoints(els: Element[]): TrackPoint[] {
+  return els
     .map((el) => {
       const lat = parseFloat(el.getAttribute('lat') || '');
       const lon = parseFloat(el.getAttribute('lon') || '');
@@ -42,9 +31,29 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
       return { lat, lon, elevationFt: Number.isFinite(eleM) ? eleM * METERS_TO_FEET : null };
     })
     .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+}
 
+/** Parses raw GPX XML text into a route summary — distance, elevation
+ * gain/loss, and any named <wpt> waypoints (many official race GPX files
+ * use these for aid stations), each matched to the nearest track point to
+ * estimate its mile marker. Reads points from <trk>/<trkpt> (a recorded
+ * track) if present, falling back to <rte>/<rtept> (a planned route) —
+ * official "course" files from race organizers are often exported as
+ * routes rather than recorded tracks, and have no <trkpt> at all.
+ * Browser-only (uses DOMParser). Throws on malformed XML or a file with no
+ * usable points in either form. */
+export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length > 0) {
+    throw new Error("That file couldn't be read as GPX — please check it's a valid GPX export.");
+  }
+
+  let points = extractPoints(Array.from(doc.getElementsByTagName('trkpt')));
   if (points.length < 2) {
-    throw new Error('No track points found in this GPX file — is it a route/course file rather than a track?');
+    points = extractPoints(Array.from(doc.getElementsByTagName('rtept')));
+  }
+  if (points.length < 2) {
+    throw new Error('No track or route points found in this GPX file.');
   }
 
   const cumMiles: number[] = [0];
