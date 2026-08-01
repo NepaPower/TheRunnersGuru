@@ -59,14 +59,38 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
     throw new Error("That file couldn't be read as GPX — please check it's a valid GPX export.");
   }
 
-  const largestPointSet = (containers: Element[], tag: string): TrackPoint[] =>
-    containers
-      .map((el) => extractPoints(Array.from(el.getElementsByTagName(tag))))
-      .reduce((best, cur) => (cur.length > best.length ? cur : best), [] as TrackPoint[]);
+  const trackDistance = (pts: TrackPoint[]): number => {
+    let d = 0;
+    for (let i = 1; i < pts.length; i++) d += haversineMiles(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon);
+    return d;
+  };
 
-  let points = largestPointSet(Array.from(doc.getElementsByTagName('trk')), 'trkpt');
+  // If the file bundles multiple <trk> (or <rte>) elements, pick the one
+  // spanning the longest actual distance — NOT the one with the most
+  // points. Point count measures recording density, not course length: a
+  // track sampled every second through a slow, technical section can
+  // easily rack up more points over a couple of miles than a sparser
+  // file covering the entire 200-mile course. Picking by point count was
+  // choosing a short, dense track, which made every waypoint beyond that
+  // track's real extent collapse onto its last point — the same mile
+  // number repeating for every aid station after a certain point.
+  const longestPointSet = (containers: Element[], tag: string): TrackPoint[] => {
+    let best: TrackPoint[] = [];
+    let bestDist = -1;
+    for (const el of containers) {
+      const pts = extractPoints(Array.from(el.getElementsByTagName(tag)));
+      const dist = trackDistance(pts);
+      if (dist > bestDist) {
+        bestDist = dist;
+        best = pts;
+      }
+    }
+    return best;
+  };
+
+  let points = longestPointSet(Array.from(doc.getElementsByTagName('trk')), 'trkpt');
   if (points.length < 2) {
-    points = largestPointSet(Array.from(doc.getElementsByTagName('rte')), 'rtept');
+    points = longestPointSet(Array.from(doc.getElementsByTagName('rte')), 'rtept');
   }
   // Last-resort fallback for malformed files with loose trkpt/rtept not
   // properly nested in a <trk>/<rte> container (technically invalid GPX,
