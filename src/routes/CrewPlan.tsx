@@ -57,6 +57,23 @@ function detectCutoffText(wp: GpxWaypoint): string {
   return match ? match[1].trim() : '';
 }
 
+/** Builds the notes map for a set of waypoints, auto-filling the Cutoff
+ * field from the GPX's own text wherever one is found and the person
+ * hasn't already typed something in. Used both for the initial page load
+ * and after replacing the GPX — a station's cutoff should be picked up
+ * automatically either way, not just on first load. */
+function buildNotesWithDetectedCutoffs(waypoints: GpxWaypoint[], existingNotes: Record<string, CrewNoteEntry>): Record<string, CrewNoteEntry> {
+  const withDefaults: Record<string, CrewNoteEntry> = { ...existingNotes };
+  waypoints.forEach((wp, i) => {
+    const key = String(i);
+    if (!withDefaults[key]?.cutoff) {
+      const detected = detectCutoffText(wp);
+      if (detected) withDefaults[key] = { ...(withDefaults[key] ?? emptyNote), cutoff: detected };
+    }
+  });
+  return withDefaults;
+}
+
 export function CrewPlan() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -66,18 +83,9 @@ export function CrewPlan() {
   const [raceStartTime, setRaceStartTime] = useState(plan?.raceStartTime ?? '');
   const [goalHours, setGoalHours] = useState(plan?.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
   const [goalMinutes, setGoalMinutes] = useState(plan?.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
-  const [notes, setNotes] = useState<Record<string, CrewNoteEntry>>(() => {
-    const base = plan?.crewNotes ?? {};
-    const withDefaults: Record<string, CrewNoteEntry> = { ...base };
-    (plan?.gpxRoute?.waypoints ?? []).forEach((wp, i) => {
-      const key = String(i);
-      if (!withDefaults[key]?.cutoff) {
-        const detected = detectCutoffText(wp);
-        if (detected) withDefaults[key] = { ...(withDefaults[key] ?? emptyNote), cutoff: detected };
-      }
-    });
-    return withDefaults;
-  });
+  const [notes, setNotes] = useState<Record<string, CrewNoteEntry>>(() =>
+    buildNotesWithDetectedCutoffs(plan?.gpxRoute?.waypoints ?? [], plan?.crewNotes ?? {}),
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [gpxLoading, setGpxLoading] = useState(false);
@@ -252,10 +260,14 @@ export function CrewPlan() {
       // The aid station list is very likely different from whatever came
       // with the old GPX, so notes keyed to the old waypoint indices would
       // silently point at the wrong stations — clear them rather than risk
-      // that, same as the warning shown next to the upload button.
-      await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: {} });
-      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: {} } });
-      setNotes({});
+      // that, same as the warning shown next to the upload button. Still
+      // auto-fill Cutoff from the new file's own text where present, same
+      // as the initial page load does — a replaced file's cutoffs
+      // shouldn't have to be retyped by hand.
+      const freshNotes = buildNotesWithDetectedCutoffs(route.waypoints, {});
+      await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: freshNotes });
+      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes } });
+      setNotes(freshNotes);
       setSaved(false);
     } catch (err) {
       setGpxError(err instanceof Error ? err.message : "Couldn't read that file.");
