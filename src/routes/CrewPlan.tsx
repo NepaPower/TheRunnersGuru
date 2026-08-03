@@ -392,6 +392,8 @@ export function CrewPlan() {
               const elapsed = elapsedByIndex[i];
               const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed) : null;
               const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed) : null;
+              const prevMile = i === 0 ? 0 : waypoints[i - 1].mile;
+              const segmentMiles = Math.max(0, Math.round((wp.mile - prevMile) * 10) / 10);
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
@@ -400,6 +402,7 @@ export function CrewPlan() {
                       <div className="rg-cp-station-meta">
                         Mile {wp.mile}
                         {wp.elevationFt != null ? ` · ${wp.elevationFt.toLocaleString()} ft` : ''}
+                        {` · ${segmentMiles} mi from ${i === 0 ? 'start' : 'previous stop'}`}
                       </div>
                       {(wp.description || wp.comment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
                         <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
