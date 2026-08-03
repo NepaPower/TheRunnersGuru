@@ -401,8 +401,8 @@ export function CrewPlan() {
                       <div className="rg-cp-station-name">{wp.name}</div>
                       <div className="rg-cp-station-meta">
                         Mile {wp.mile}
-                        {wp.elevationFt != null ? ` · ${wp.elevationFt.toLocaleString()} ft` : ''}
-                        {` · ${segmentMiles} mi from ${i === 0 ? 'start' : 'previous stop'}`}
+                        {wp.elevationFt != null ? ` | ${wp.elevationFt.toLocaleString()} ft` : ''}
+                        {` | ${segmentMiles} mi from ${i === 0 ? 'start' : 'previous stop'}`}
                       </div>
                       {(wp.description || wp.comment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
                         <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
