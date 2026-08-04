@@ -137,19 +137,25 @@ export function TrainingPlan() {
                 {plan.rows.map((row, i) => {
                   const rowClass = row.isRaceWeek ? 'rg-tp-race' : row.phase === 'Recovery Week' ? 'rg-tp-recovery' : '';
                   const bg = !row.isRaceWeek && row.phase !== 'Recovery Week' ? MONTH_BG[i % 2] : undefined;
+                  const phaseClass = `rg-tp-phase-tag rg-tp-phase-${row.phase.replace(/\s+/g, '-').toLowerCase()}`;
+                  const dayCell = (value: string) => <td className={value === 'Rest' ? 'rg-tp-rest' : ''}>{value}</td>;
                   return (
                     <tr key={row.week} className={rowClass} style={bg ? { background: bg } : undefined}>
-                      <td style={{ fontWeight: 600 }}>{row.week}</td>
-                      <td style={{ fontWeight: 600 }}>{row.phase}</td>
-                      <td>{row.mon}</td>
-                      <td>{row.tue}</td>
-                      <td>{row.wed}</td>
-                      <td>{row.thu}</td>
-                      <td>{row.fri}</td>
+                      <td className="rg-tp-week-cell">
+                        <span className="rg-tp-week-badge">{row.week}</span>
+                      </td>
+                      <td>
+                        <span className={phaseClass}>{row.phase}</span>
+                      </td>
+                      {dayCell(row.mon)}
+                      {dayCell(row.tue)}
+                      {dayCell(row.wed)}
+                      {dayCell(row.thu)}
+                      {dayCell(row.fri)}
                       <td style={{ fontWeight: 600 }}>{row.sat}</td>
-                      <td>{row.sun}</td>
-                      <td style={{ fontWeight: 600 }}>
-                        {isUltra && row.totalHours != null ? `${row.totalHours.toFixed(1)} hrs` : `${row.totalMiles.toFixed(1)} Miles`}
+                      {dayCell(row.sun)}
+                      <td className="rg-tp-total-cell">
+                        {isUltra && row.totalHours != null ? `${row.totalHours.toFixed(1)} hrs` : `${row.totalMiles.toFixed(1)} mi`}
                       </td>
                     </tr>
                   );

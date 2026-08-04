@@ -105,7 +105,7 @@
   background: var(--color-bg);
   border: 1px solid var(--color-divider);
   border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 .rg-tp-table-scroll {
@@ -114,8 +114,10 @@
 }
 .rg-tp-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 .rg-tp-table thead th {
   position: sticky;
@@ -123,19 +125,74 @@
   z-index: 1;
   background: var(--color-accent-800);
   color: var(--color-bg);
-  padding: 10px;
+  padding: 13px 12px;
   text-align: left;
   font-weight: 600;
-  font-size: 12.5px;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, #d9a441 65%, transparent);
+  white-space: nowrap;
 }
+.rg-tp-table thead th:first-child { text-align: center; }
+.rg-tp-table thead th:last-child { text-align: right; }
+
 .rg-tp-table td {
-  padding: 10px;
+  padding: 12px;
   color: var(--color-text);
+  text-align: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-divider) 70%, transparent);
+  vertical-align: middle;
 }
-.rg-tp-table tr.rg-tp-recovery { background: var(--color-accent-2-100); }
-.rg-tp-table tr.rg-tp-race {
+.rg-tp-table td:nth-child(2) { text-align: left; }
+.rg-tp-table tbody tr:last-child td { border-bottom: none; }
+.rg-tp-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+.rg-tp-week-cell { width: 1%; }
+.rg-tp-week-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.rg-tp-phase-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rg-tp-phase-base-building { background: color-mix(in srgb, var(--color-text) 9%, transparent); color: var(--color-text); }
+.rg-tp-phase-build-phase { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-accent-800); }
+.rg-tp-phase-recovery-week { background: color-mix(in srgb, var(--color-accent-2-600, #2563eb) 16%, transparent); color: var(--color-accent-2-800, #1e40af); }
+.rg-tp-phase-taper-phase { background: color-mix(in srgb, #d9a441 22%, transparent); color: #7a5417; }
+.rg-tp-phase-race-week { background: #16241f; color: #f7f7f1; }
+
+.rg-tp-rest { color: color-mix(in srgb, var(--color-text) 38%, transparent); font-style: italic; }
+
+.rg-tp-total-cell {
+  font-weight: 700;
+  text-align: right;
+  border-left: 1px solid color-mix(in srgb, var(--color-divider) 70%, transparent);
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
+
+.rg-tp-table tr.rg-tp-recovery td { background: var(--color-accent-2-100); }
+.rg-tp-table tr.rg-tp-race td {
   background: #d9a441;
   color: #16241f;
+  font-weight: 600;
+  border-bottom-color: color-mix(in srgb, #16241f 20%, transparent);
 }
-.rg-tp-table tr.rg-tp-race td { color: #16241f; font-weight: 600; }
+.rg-tp-table tr.rg-tp-race .rg-tp-total-cell { background: color-mix(in srgb, #16241f 8%, #d9a441); }
+.rg-tp-table tr.rg-tp-race .rg-tp-rest { color: color-mix(in srgb, #16241f 55%, transparent); }
