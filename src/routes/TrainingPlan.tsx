@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../state/AppContext';
+import { getTrainingTimeWarning } from '../lib/planGenerator';
 import './trainingplan.css';
 
 const MONTH_BG = ['var(--color-bg)', 'var(--color-neutral-100)'];
@@ -24,6 +25,7 @@ export function TrainingPlan() {
   }
 
   const isUltra = plan.distanceGoal === 'ultra';
+  const timeWarning = getTrainingTimeWarning(plan.distanceGoal, plan.totalWeeks);
   const tableHeaders = isUltra
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
     : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
@@ -33,6 +35,21 @@ export function TrainingPlan() {
       <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
         ← Back to summary
       </Button>
+
+      {timeWarning && (
+        <div
+          style={{
+            border: '1px solid color-mix(in srgb, #d9a441 55%, transparent)',
+            background: 'color-mix(in srgb, #d9a441 12%, transparent)',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            borderRadius: 10,
+            fontSize: 14,
+          }}
+        >
+          ⚠ {timeWarning}
+        </div>
+      )}
 
       <div className="rg-tp-header-card">
         <div className="rg-tp-header-top">

@@ -1,7 +1,7 @@
 import { Field, Input, Select } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import { formatRaceDateReadout, goalTimeBreakdownLabel } from '../../lib/format';
-import { monthsLeftLabel } from '../../lib/planGenerator';
+import { monthsLeftLabel, isTrainingTimeShort } from '../../lib/planGenerator';
 
 const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
@@ -11,6 +11,7 @@ export function StepDateGoal() {
   const { onboarding } = state;
   const isUltra = onboarding.distanceGoal === 'ultra';
   const months = monthsLeftLabel(onboarding.raceDate);
+  const isShort = !isUltra && isTrainingTimeShort(onboarding.raceDate);
   const breakdown = isUltra ? goalTimeBreakdownLabel(onboarding.goalHours, onboarding.goalMinutes) : '';
 
   return (
@@ -78,10 +79,23 @@ export function StepDateGoal() {
       )}
 
       {months && (
-        <div style={{ border: '1px solid var(--color-accent-300)', background: 'var(--color-accent-100)', padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+        <div
+          style={{
+            border: `1px solid ${isShort ? 'color-mix(in srgb, #d9a441 55%, transparent)' : 'var(--color-accent-300)'}`,
+            background: isShort ? 'color-mix(in srgb, #d9a441 12%, transparent)' : 'var(--color-accent-100)',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-4)',
+          }}
+        >
           <p style={{ margin: 0 }}>
             You have <strong>{months}</strong> to train if you start next week.
           </p>
+          {isShort && (
+            <p style={{ margin: '6px 0 0', fontSize: 13 }}>
+              That's a compressed timeline — under 2 months. We'll still build you a full plan, just expect a faster
+              ramp-up in volume than a longer buildup would allow.
+            </p>
+          )}
         </div>
       )}
     </>

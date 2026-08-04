@@ -4,8 +4,10 @@ import { DISTANCE_LABELS, RUNNING_QUOTES } from '../data/constants';
 /**
  * Ported from the user-supplied Python function `generate_dynamic_marathon_plan`
  * (via the prototype's JS port, `generateDynamicPlan`). Keep the phase logic
- * and mileage formulas exactly as-is if you touch this file — the numbers
- * here are the product's actual training methodology, not placeholder values.
+ * as-is if you touch this file. PLAN_TARGETS.peakLong values ARE an
+ * intentional product spec (5K->3mi, 10K->6mi, Half->12mi, Marathon->24mi)
+ * set directly by the user — not placeholders, but also not fixed forever;
+ * change them again only on an explicit request, same as this one was.
  */
 
 interface PlanTargets {
@@ -16,11 +18,18 @@ interface PlanTargets {
   raceMiles: number;
 }
 
+// Peak long-run distances are an explicit product spec (not derived): the
+// longest training run should reach 5K->3mi, 10K->6mi, Half->12mi,
+// Marathon->24mi — i.e. matching (or, for the marathon, deliberately
+// exceeding) race distance, rather than the more conservative "cap around
+// 20-22mi" convention some marathon plans use. Ultra is untouched — its
+// long runs are generated separately (see generateUltraPlan) and were
+// never distance-capped the same way.
 const PLAN_TARGETS: Record<DistanceGoal, PlanTargets> = {
-  '5k': { startLong: 3, peakLong: 6, startWeekly: 10, peakWeekly: 20, raceMiles: 3.1 },
-  '10k': { startLong: 4, peakLong: 8, startWeekly: 12, peakWeekly: 25, raceMiles: 6.2 },
+  '5k': { startLong: 2, peakLong: 3, startWeekly: 10, peakWeekly: 20, raceMiles: 3.1 },
+  '10k': { startLong: 3, peakLong: 6, startWeekly: 12, peakWeekly: 25, raceMiles: 6.2 },
   half: { startLong: 5, peakLong: 12, startWeekly: 15, peakWeekly: 32, raceMiles: 13.1 },
-  full: { startLong: 6, peakLong: 20, startWeekly: 16, peakWeekly: 45, raceMiles: 26.2 },
+  full: { startLong: 8, peakLong: 24, startWeekly: 16, peakWeekly: 48, raceMiles: 26.2 },
   ultra: { startLong: 8, peakLong: 26, startWeekly: 20, peakWeekly: 60, raceMiles: 31 },
 };
 
@@ -106,9 +115,17 @@ function generateDynamicPlan(
     const linearRatio = buildWeeks > 1 ? Math.min(1, (week - 1) / (buildWeeks - 1)) : 1;
 
     if (phase === 'Taper Phase') {
+      // Scales down FROM this distance's own peak, not fixed absolute
+      // numbers — those were tuned for marathon-scale mileage and could
+      // end up exceeding the actual peak for shorter races (e.g. a taper
+      // week showing more mileage than the 5K's own 3mi peak long run).
+      // taperStep counts down to 1 as race week approaches; each step
+      // reduces the fraction of peak used.
       const taperStep = totalWeeks - week;
-      longRun = 8 + taperStep * 4;
-      totalMiles = 22 + taperStep * 7;
+      const longRunFraction = Math.min(1, 0.4 + taperStep * 0.2);
+      const weeklyFraction = Math.min(1, 0.35 + taperStep * 0.2);
+      longRun = Math.round(peakLongRun * longRunFraction);
+      totalMiles = Math.round(peakWeeklyMiles * weeklyFraction);
     } else if (phase === 'Race Week') {
       longRun = raceMiles;
       totalMiles = raceMiles + 9;
@@ -398,6 +415,29 @@ export function buildTrainingPlan(
     phases: buildPhaseSummary(totalWeeks),
     quote: RUNNING_QUOTES[Math.floor(Math.random() * RUNNING_QUOTES.length)],
   };
+}
+
+/** Whether a standard (5K-Marathon) plan's timeline is compressed — under
+ * roughly 2 months (9 weeks, given plans start the following Monday) —
+ * and the message to show if so. The plan still gets built regardless;
+ * this is a heads-up, not a block. Ultra is deliberately excluded here —
+ * it has its own separate planning considerations, not this warning. */
+export function getTrainingTimeWarning(distanceGoal: DistanceGoal, totalWeeks: number): string | null {
+  if (distanceGoal === 'ultra' || totalWeeks >= 9) return null;
+  return `Your race is only ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} away — that's less than the 2 months most training plans assume. You'll still get a full plan below, but expect a faster ramp-up in volume and less margin for missed days or setbacks than a longer buildup would allow.`;
+}
+
+/** Same ~2-month threshold as getTrainingTimeWarning, but usable during
+ * onboarding before a plan (and its totalWeeks) exists yet — just needs a
+ * race date. Uses the same "start = next Monday" reference point as
+ * monthsLeftLabel so the two stay consistent with each other. */
+export function isTrainingTimeShort(raceDateStr: string): boolean {
+  if (!raceDateStr) return false;
+  const start = new Date();
+  start.setDate(start.getDate() + 7);
+  const race = new Date(raceDateStr + 'T00:00:00');
+  const totalDays = Math.round((race.getTime() - start.getTime()) / 86400000);
+  return totalDays > 0 && totalDays < 60;
 }
 
 /** "You have X months to train if you start next week" helper for onboarding step 4. */
