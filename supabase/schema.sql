@@ -98,6 +98,64 @@ create policy "training plans are owner-only"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- ─── crew_plan_access ────────────────────────────────────────────────────
+-- Grants a specific person (by email) collaborate access to one plan's
+-- Crew Plan screen — NOT the weekly training schedule in
+-- training_plan_weeks, which stays owner-only. A row starts 'pending'
+-- (crew_user_id unknown yet) and becomes 'accepted' once someone signs in
+-- with a matching email — see claimPendingInvites in lib/api.ts, called
+-- on every sign-in.
+create table public.crew_plan_access (
+  id uuid primary key default gen_random_uuid(),
+  plan_id uuid not null references public.training_plans(id) on delete cascade,
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  invited_email text not null,
+  crew_user_id uuid references auth.users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted')),
+  created_at timestamptz not null default now(),
+  unique (plan_id, invited_email)
+);
+
+alter table public.crew_plan_access enable row level security;
+
+create policy "owners manage their plan's crew access"
+  on public.crew_plan_access for all
+  using (owner_user_id = auth.uid())
+  with check (owner_user_id = auth.uid());
+
+create policy "crew can see invites addressed to them"
+  on public.crew_plan_access for select
+  using (crew_user_id = auth.uid() or lower(invited_email) = lower(auth.jwt() ->> 'email'));
+
+create policy "crew can claim their own pending invite"
+  on public.crew_plan_access for update
+  using (lower(invited_email) = lower(auth.jwt() ->> 'email') and status = 'pending')
+  with check (crew_user_id = auth.uid() and status = 'accepted');
+
+-- Separate SELECT/UPDATE policies (in addition to "training plans are
+-- owner-only" above — Postgres combines multiple permissive policies for
+-- the same command with OR) let an accepted crew member view and edit the
+-- plan's Crew Plan fields (race timing, GPX, crew_notes). They get no
+-- access to training_plan_weeks — that policy isn't touched, so the
+-- weekly training schedule stays owner-only regardless.
+create policy "crew members can view shared plans"
+  on public.training_plans for select
+  using (
+    exists (
+      select 1 from public.crew_plan_access ca
+      where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
+    )
+  );
+
+create policy "crew members can edit shared plans"
+  on public.training_plans for update
+  using (
+    exists (
+      select 1 from public.crew_plan_access ca
+      where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
+    )
+  );
+
 -- Migration for an already-deployed database (this table already exists in
 -- Supabase): run this once in the SQL editor instead of the CREATE TABLE
 -- above.
@@ -108,6 +166,45 @@ create policy "training plans are owner-only"
 --   alter table public.training_plans add column race_start_time text;
 --   alter table public.training_plans add column goal_finish_minutes int;
 --   alter table public.training_plans add column crew_notes jsonb not null default '{}'::jsonb;
+--
+--   create table public.crew_plan_access (
+--     id uuid primary key default gen_random_uuid(),
+--     plan_id uuid not null references public.training_plans(id) on delete cascade,
+--     owner_user_id uuid not null references auth.users(id) on delete cascade,
+--     invited_email text not null,
+--     crew_user_id uuid references auth.users(id) on delete cascade,
+--     status text not null default 'pending' check (status in ('pending', 'accepted')),
+--     created_at timestamptz not null default now(),
+--     unique (plan_id, invited_email)
+--   );
+--   alter table public.crew_plan_access enable row level security;
+--   create policy "owners manage their plan's crew access"
+--     on public.crew_plan_access for all
+--     using (owner_user_id = auth.uid())
+--     with check (owner_user_id = auth.uid());
+--   create policy "crew can see invites addressed to them"
+--     on public.crew_plan_access for select
+--     using (crew_user_id = auth.uid() or lower(invited_email) = lower(auth.jwt() ->> 'email'));
+--   create policy "crew can claim their own pending invite"
+--     on public.crew_plan_access for update
+--     using (lower(invited_email) = lower(auth.jwt() ->> 'email') and status = 'pending')
+--     with check (crew_user_id = auth.uid() and status = 'accepted');
+--   create policy "crew members can view shared plans"
+--     on public.training_plans for select
+--     using (
+--       exists (
+--         select 1 from public.crew_plan_access ca
+--         where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
+--       )
+--     );
+--   create policy "crew members can edit shared plans"
+--     on public.training_plans for update
+--     using (
+--       exists (
+--         select 1 from public.crew_plan_access ca
+--         where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
+--       )
+--     );
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

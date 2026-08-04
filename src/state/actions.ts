@@ -10,6 +10,7 @@ import type {
   ProfileTab,
   RaceCategory,
   Screen,
+  SharedPlanEntry,
   TrainingPlan,
   UltraDistanceId,
 } from '../types';
@@ -26,6 +27,7 @@ export type Action =
       garminConnected: boolean;
       trainingPlan: TrainingPlan | null;
       loggedRuns: LoggedRun[];
+      sharedPlans: SharedPlanEntry[];
     }
   | { type: 'LOGOUT' }
   | { type: 'ONBOARDING_SELECT_RACE_CATEGORY'; category: RaceCategory }

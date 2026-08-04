@@ -10,6 +10,7 @@ import { Onboarding } from './routes/Onboarding';
 import { Dashboard } from './routes/Dashboard';
 import { TrainingPlan } from './routes/TrainingPlan';
 import { CrewPlan } from './routes/CrewPlan';
+import { SharedPlans } from './routes/SharedPlans';
 import { LogRun } from './routes/LogRun';
 import { Partners } from './routes/Partners';
 import { Run } from './routes/Run';
@@ -26,6 +27,8 @@ export default function App() {
 
         <Route element={<RequireAuth />}>
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/shared-plans" element={<SharedPlans />} />
+          <Route path="/crew-plan/shared/:planId" element={<CrewPlan />} />
 
           <Route element={<RequirePlan />}>
             <Route element={<AppLayout />}>

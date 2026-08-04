@@ -10,6 +10,7 @@ export type Screen =
   | 'home'
   | 'trainingPlan'
   | 'crewPlan'
+  | 'sharedPlans' // list of plans this user crews for — landing spot for a pure crew member with no plan of their own
   | 'logRun'
   | 'partners'
   | 'run'
@@ -128,6 +129,17 @@ export interface PhaseSummaryItem {
   title: string; // "Aerobic Foundation & Endurance Base"
 }
 
+/** One row of crew_plan_access — a person granted collaborate access to a
+ * plan's Crew Plan screen. 'pending' until someone signs in with a
+ * matching email, at which point it becomes 'accepted' and that person
+ * can view/edit the plan's Crew Plan fields (not the weekly training
+ * schedule — that stays owner-only). */
+export interface CrewAccessEntry {
+  id: string;
+  invitedEmail: string;
+  status: 'pending' | 'accepted';
+}
+
 /** Free-text crew notes for one aid station on the Crew Plan screen, keyed
  * by that waypoint's index in gpxRoute.waypoints (as a string, since object
  * keys are always strings — see routes/CrewPlan.tsx). */
@@ -156,6 +168,10 @@ export interface CrewNoteEntry {
 }
 
 export interface TrainingPlan {
+  // The DB row's own id — undefined only in the brief window between
+  // building a fresh plan (buildTrainingPlan) and it actually being saved.
+  // Needed to invite crew members and to route to a specific shared plan.
+  id?: string;
   raceName: string;
   distanceGoal: DistanceGoal;
   firstTime: FirstTimeAnswer;
@@ -215,6 +231,14 @@ export interface RunSession {
 
 export type ProfileTab = 'stats' | 'leaderboard' | 'challenges' | 'settings';
 
+/** One plan shared with the current user as a crew member (not their own
+ * plan) — see fetchSharedPlans in lib/api.ts. */
+export interface SharedPlanEntry {
+  accessId: string;
+  ownerUserId: string;
+  plan: TrainingPlan;
+}
+
 export interface AppState {
   screen: Screen;
   isAuthenticated: boolean;
@@ -222,6 +246,7 @@ export interface AppState {
   auth: AuthState;
   onboarding: OnboardingState;
   trainingPlan: TrainingPlan | null; // generated ONCE, persisted, never recomputed
+  sharedPlans: SharedPlanEntry[]; // plans this user crews for, not their own
   matches: PartnerMatch[];
   activeChatId: string;
   chatMessages: ChatThreads;

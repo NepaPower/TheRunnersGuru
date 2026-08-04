@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
-import { updateCrewPlan } from '../lib/api';
+import {
+  updateCrewPlan,
+  updateCrewPlanById,
+  fetchTrainingPlanById,
+  inviteCrewMember,
+  fetchCrewAccessList,
+  removeCrewAccess,
+} from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
 import {
   formatEtaClock,
@@ -21,7 +28,7 @@ import {
   type ClimateAverage,
   type ShortRangeForecast,
 } from '../lib/weather';
-import type { CrewNoteEntry, GpxWaypoint } from '../types';
+import type { CrewAccessEntry, CrewNoteEntry, GpxWaypoint, TrainingPlan } from '../types';
 import './crewplan.css';
 
 const emptyNote: CrewNoteEntry = {
@@ -77,7 +84,62 @@ function buildNotesWithDetectedCutoffs(waypoints: GpxWaypoint[], existingNotes: 
 export function CrewPlan() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
-  const plan = state.trainingPlan;
+  const { planId: sharedPlanId } = useParams<{ planId: string }>();
+  const isShared = !!sharedPlanId;
+
+  // Shared mode: this plan isn't the signed-in user's own — fetch it by id
+  // (RLS only lets this succeed for an accepted crew member) into local
+  // state, never into the global state.trainingPlan slot, which is
+  // reserved for the signed-in user's own plan.
+  const [sharedPlan, setSharedPlan] = useState<TrainingPlan | null>(null);
+  const [sharedPlanLoading, setSharedPlanLoading] = useState(isShared);
+  const [sharedPlanError, setSharedPlanError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isShared || !sharedPlanId) return;
+    let cancelled = false;
+    setSharedPlanLoading(true);
+    setSharedPlanError(null);
+    fetchTrainingPlanById(sharedPlanId)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result) {
+          setSharedPlanError("This plan isn't available — you may not have access to it, or it may have been removed.");
+          return;
+        }
+        setSharedPlan(result.plan);
+      })
+      .catch((err) => {
+        if (!cancelled) setSharedPlanError(err instanceof Error ? err.message : 'Could not load this plan.');
+      })
+      .finally(() => {
+        if (!cancelled) setSharedPlanLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isShared, sharedPlanId]);
+
+  const plan = isShared ? sharedPlan : state.trainingPlan;
+
+  // Invite management — owner mode only. Fetched once the owner's plan id
+  // is known.
+  const [crewAccessList, setCrewAccessList] = useState<CrewAccessEntry[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSaving, setInviteSaving] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isShared || !plan?.id) return;
+    let cancelled = false;
+    fetchCrewAccessList(plan.id).then((list) => {
+      if (!cancelled) setCrewAccessList(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShared, plan?.id]);
 
   const [raceDate, setRaceDate] = useState(plan?.raceDate ?? '');
   const [raceStartTime, setRaceStartTime] = useState(plan?.raceStartTime ?? '');
@@ -208,11 +270,33 @@ export function CrewPlan() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature]);
 
+  if (isShared && sharedPlanLoading) {
+    return (
+      <>
+        <Button variant="ghost" onClick={() => navigate('/shared-plans')} style={{ marginBottom: 'var(--space-4)' }}>
+          ← Back to shared plans
+        </Button>
+        <p className="rg-cp-muted">Loading…</p>
+      </>
+    );
+  }
+
+  if (isShared && sharedPlanError) {
+    return (
+      <>
+        <Button variant="ghost" onClick={() => navigate('/shared-plans')} style={{ marginBottom: 'var(--space-4)' }}>
+          ← Back to shared plans
+        </Button>
+        <div className="rg-auth-error">{sharedPlanError}</div>
+      </>
+    );
+  }
+
   if (!plan) {
     return (
       <>
-        <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
-          ← Back to summary
+        <Button variant="ghost" onClick={() => navigate(isShared ? '/shared-plans' : '/home')} style={{ marginBottom: 'var(--space-4)' }}>
+          ← Back
         </Button>
         <p className="rg-cp-muted">No training plan yet — finish onboarding to generate one.</p>
       </>
@@ -238,11 +322,15 @@ export function CrewPlan() {
     setSaving(true);
     try {
       const raceDateToSave = raceDate || plan.raceDate;
-      await updateCrewPlan(state.userId, { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes });
-      dispatch({
-        type: 'TRAINING_PLAN_UPDATED',
-        patch: { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes },
-      });
+      const updates = { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes };
+      if (isShared) {
+        if (!plan.id) return;
+        await updateCrewPlanById(plan.id, updates);
+        setSharedPlan((prev) => (prev ? { ...prev, ...updates } : prev));
+      } else {
+        await updateCrewPlan(state.userId, updates);
+        dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: updates });
+      }
       setSaved(true);
     } finally {
       setSaving(false);
@@ -252,7 +340,7 @@ export function CrewPlan() {
   async function handleGpxReplace(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !state.userId) return;
+    if (!file || !state.userId || !plan) return;
     setGpxError(null);
     setGpxLoading(true);
     try {
@@ -265,8 +353,14 @@ export function CrewPlan() {
       // as the initial page load does — a replaced file's cutoffs
       // shouldn't have to be retyped by hand.
       const freshNotes = buildNotesWithDetectedCutoffs(route.waypoints, {});
-      await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: freshNotes });
-      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes } });
+      if (isShared) {
+        if (!plan.id) return;
+        await updateCrewPlanById(plan.id, { gpxRoute: route, crewNotes: freshNotes });
+        setSharedPlan((prev) => (prev ? { ...prev, gpxRoute: route, crewNotes: freshNotes } : prev));
+      } else {
+        await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: freshNotes });
+        dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes } });
+      }
       setNotes(freshNotes);
       setSaved(false);
     } catch (err) {
@@ -276,10 +370,31 @@ export function CrewPlan() {
     }
   }
 
+  async function handleInvite() {
+    if (!state.userId || !plan?.id || !inviteEmail.trim()) return;
+    setInviteSaving(true);
+    setInviteError(null);
+    try {
+      await inviteCrewMember(state.userId, plan.id, inviteEmail.trim());
+      setInviteEmail('');
+      setCrewAccessList(await fetchCrewAccessList(plan.id));
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Could not send that invite.');
+    } finally {
+      setInviteSaving(false);
+    }
+  }
+
+  async function handleRemoveAccess(accessId: string) {
+    if (!plan?.id) return;
+    await removeCrewAccess(accessId);
+    setCrewAccessList(await fetchCrewAccessList(plan.id));
+  }
+
   return (
     <>
-      <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
-        ← Back to summary
+      <Button variant="ghost" onClick={() => navigate(isShared ? '/shared-plans' : '/home')} style={{ marginBottom: 'var(--space-4)' }}>
+        ← Back to {isShared ? 'shared plans' : 'summary'}
       </Button>
 
       <div className="rg-cp-header-card">
@@ -368,6 +483,62 @@ export function CrewPlan() {
           </Field>
         </div>
       </div>
+
+      {!isShared && (
+        <div className="rg-cp-header-card">
+          <div className="rg-cp-header-top">
+            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Crew members</div>
+            <p className="rg-cp-muted" style={{ fontSize: 13, marginBottom: 0 }}>
+              Invite people to view and edit this Crew Plan. They'll get access automatically the next time they sign
+              in with this email — there's no email sent by the app, so let them know directly.
+            </p>
+          </div>
+          <div className="rg-cp-gpx-row" style={{ flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <Input
+                type="email"
+                placeholder="crew@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <Button variant="secondary" disabled={inviteSaving || !inviteEmail.trim() || !plan.id} onClick={handleInvite}>
+              {inviteSaving ? 'Sending…' : 'Send invite'}
+            </Button>
+          </div>
+          {inviteError && (
+            <div className="rg-auth-error" style={{ margin: '0 var(--space-6) var(--space-4)' }}>
+              {inviteError}
+            </div>
+          )}
+          {crewAccessList.length > 0 && (
+            <div style={{ padding: '0 var(--space-6) var(--space-6)' }}>
+              {crewAccessList.map((c) => (
+                <div
+                  key={c.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 'var(--space-2) 0',
+                    borderTop: '1px solid var(--color-divider)',
+                  }}
+                >
+                  <div style={{ fontSize: 14 }}>
+                    {c.invitedEmail}{' '}
+                    <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                      ({c.status === 'accepted' ? 'active' : 'invited, not yet signed in'})
+                    </span>
+                  </div>
+                  <Button variant="ghost" onClick={() => handleRemoveAccess(c.id)}>
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {waypoints.length === 0 ? (
         <div className="rg-cp-empty-card">

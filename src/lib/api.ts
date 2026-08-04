@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Address, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
+import type { Address, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
 import { buildPhaseSummary } from './planGenerator';
 
@@ -42,12 +42,27 @@ export async function getCurrentUserId(): Promise<string | null> {
 /** Fetches everything needed to hydrate local state for a signed-in user
  * in one call. Used both by AppContext (on load / on auth state change)
  * and directly by SignIn (so it can decide whether to route to onboarding
- * or the dashboard without racing the auth-state-change listener). */
+ * or the dashboard without racing the auth-state-change listener). Also
+ * claims any pending crew invites addressed to this user's email — see
+ * claimPendingInvites — so accepting an invite requires nothing more than
+ * signing in with the invited address. */
 export async function hydrateUserData(userId: string) {
-  const [profile, trainingPlan, loggedRuns] = await Promise.all([
+  const { data: sessionData } = await supabase.auth.getSession();
+  const email = sessionData.session?.user.email ?? '';
+  if (email) {
+    // Best-effort — a failure here shouldn't block the rest of sign-in.
+    try {
+      await claimPendingInvites(userId, email);
+    } catch {
+      // ignore
+    }
+  }
+
+  const [profile, trainingPlan, loggedRuns, sharedPlans] = await Promise.all([
     fetchProfile(userId),
     fetchTrainingPlan(userId),
     fetchLoggedRuns(userId),
+    fetchSharedPlans(userId),
   ]);
   return {
     name: profile?.name ?? '',
@@ -62,6 +77,7 @@ export async function hydrateUserData(userId: string) {
     garminConnected: profile?.garmin_connected ?? false,
     trainingPlan,
     loggedRuns,
+    sharedPlans,
   };
 }
 
@@ -146,15 +162,7 @@ export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
   return planRow;
 }
 
-export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | null> {
-  const { data: planRow, error: planErr } = await supabase
-    .from('training_plans')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (planErr) throw planErr;
-  if (!planRow) return null;
-
+async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
   const { data: weekRows, error: weeksErr } = await supabase
     .from('training_plan_weeks')
     .select('*')
@@ -163,6 +171,7 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
   if (weeksErr) throw weeksErr;
 
   return {
+    id: planRow.id,
     raceName: planRow.race_name,
     distanceGoal: planRow.distance_goal,
     firstTime: planRow.first_time,
@@ -192,6 +201,31 @@ export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | 
   };
 }
 
+export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | null> {
+  const { data: planRow, error: planErr } = await supabase
+    .from('training_plans')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (planErr) throw planErr;
+  if (!planRow) return null;
+  return mapPlanRow(planRow);
+}
+
+/** Fetches a plan by its id rather than by owner — used for the Crew Plan
+ * screen when viewed by an accepted crew member, who doesn't own the plan
+ * themselves. RLS ("crew members can view shared plans") is what actually
+ * enforces that only accepted crew can read it; this function doesn't
+ * check that itself. Returns null if the plan doesn't exist or RLS denies
+ * access (Supabase returns no row rather than an error in that case). */
+export async function fetchTrainingPlanById(planId: string): Promise<{ plan: TrainingPlan; ownerUserId: string } | null> {
+  const { data: planRow, error: planErr } = await supabase.from('training_plans').select('*').eq('id', planId).maybeSingle();
+  if (planErr) throw planErr;
+  if (!planRow) return null;
+  const plan = await mapPlanRow(planRow);
+  return { plan, ownerUserId: planRow.user_id };
+}
+
 /** Saves edits made on the Crew Plan screen — race start time, goal finish
  * time, and per-aid-station notes. Deliberately separate from
  * saveTrainingPlan: this never touches training_plan_weeks, since the plan
@@ -216,6 +250,99 @@ export async function updateCrewPlan(
 
   const { error } = await supabase.from('training_plans').update(patch).eq('user_id', userId);
   if (error) throw error;
+}
+
+/** Same as updateCrewPlan, but scoped by plan id instead of owner user id
+ * — for an accepted crew member editing a plan that isn't their own. RLS
+ * ("crew members can edit shared plans") is what actually enforces they
+ * only succeed on plans they've been granted access to. */
+export async function updateCrewPlanById(
+  planId: string,
+  updates: {
+    raceDate?: string;
+    raceStartTime?: string | null;
+    goalFinishMinutes?: number | null;
+    crewNotes?: Record<string, CrewNoteEntry>;
+    gpxRoute?: GpxRoute | null;
+  },
+) {
+  const patch: Record<string, unknown> = {};
+  if ('raceDate' in updates && updates.raceDate) patch.race_date = updates.raceDate;
+  if ('raceStartTime' in updates) patch.race_start_time = updates.raceStartTime ?? null;
+  if ('goalFinishMinutes' in updates) patch.goal_finish_minutes = updates.goalFinishMinutes ?? null;
+  if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
+  if ('gpxRoute' in updates) patch.gpx_route = updates.gpxRoute ?? null;
+
+  const { error } = await supabase.from('training_plans').update(patch).eq('id', planId);
+  if (error) throw error;
+}
+
+// ─── Crew Plan collaboration ─────────────────────────────────────────────
+
+/** Invites someone (by email) to collaborate on a plan's Crew Plan screen.
+ * Creates a 'pending' row — it becomes 'accepted' automatically the next
+ * time anyone signs in with that email (see claimPendingInvites). There's
+ * no email sent by the app itself — the person needs to know to sign up
+ * or sign in with that exact address. */
+export async function inviteCrewMember(ownerUserId: string, planId: string, email: string) {
+  const { error } = await supabase
+    .from('crew_plan_access')
+    .upsert(
+      { plan_id: planId, owner_user_id: ownerUserId, invited_email: email.trim().toLowerCase() },
+      { onConflict: 'plan_id,invited_email', ignoreDuplicates: true },
+    );
+  if (error) throw error;
+}
+
+export async function fetchCrewAccessList(planId: string): Promise<CrewAccessEntry[]> {
+  const { data, error } = await supabase
+    .from('crew_plan_access')
+    .select('id, invited_email, status')
+    .eq('plan_id', planId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ id: r.id, invitedEmail: r.invited_email, status: r.status }));
+}
+
+export async function removeCrewAccess(accessId: string) {
+  const { error } = await supabase.from('crew_plan_access').delete().eq('id', accessId);
+  if (error) throw error;
+}
+
+/** Called on every sign-in (see AppContext). Claims any pending invite(s)
+ * addressed to this user's email by attaching their user id and flipping
+ * status to 'accepted' — that's what actually activates the RLS policies
+ * granting them access to the plan. A no-op if there are none, so it's
+ * safe to call unconditionally every time. */
+export async function claimPendingInvites(userId: string, email: string) {
+  if (!email) return;
+  const { error } = await supabase
+    .from('crew_plan_access')
+    .update({ crew_user_id: userId, status: 'accepted' })
+    .eq('invited_email', email.trim().toLowerCase())
+    .eq('status', 'pending');
+  if (error) throw error;
+}
+
+/** All plans (accepted invites only) shared with this user as crew —
+ * someone could conceivably be crewing for more than one runner. */
+export async function fetchSharedPlans(userId: string): Promise<{ accessId: string; ownerUserId: string; plan: TrainingPlan }[]> {
+  const { data: accessRows, error: accessErr } = await supabase
+    .from('crew_plan_access')
+    .select('id, plan_id, owner_user_id')
+    .eq('crew_user_id', userId)
+    .eq('status', 'accepted');
+  if (accessErr) throw accessErr;
+  if (!accessRows || accessRows.length === 0) return [];
+
+  const results = await Promise.all(
+    accessRows.map(async (row) => {
+      const fetched = await fetchTrainingPlanById(row.plan_id);
+      if (!fetched) return null;
+      return { accessId: row.id, ownerUserId: row.owner_user_id, plan: fetched.plan };
+    }),
+  );
+  return results.filter((r): r is { accessId: string; ownerUserId: string; plan: TrainingPlan } => r !== null);
 }
 
 // ─── Logged runs ─────────────────────────────────────────────────────────

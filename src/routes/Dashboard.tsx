@@ -110,6 +110,33 @@ export function Dashboard() {
       ]
     : NAV_CARDS;
 
+  // Someone can have their own plan AND crew for someone else's — surface
+  // that separately, since it's not otherwise reachable once they land on
+  // their own Dashboard (the auto-redirect to /shared-plans only fires for
+  // a plan-less crew-only user).
+  const navCardsWithShared =
+    state.sharedPlans.length > 0
+      ? [
+          ...navCards,
+          {
+            key: 'sharedPlans',
+            title: 'Crews I\u2019m Helping',
+            subtitle: `${state.sharedPlans.length} shared plan${state.sharedPlans.length === 1 ? '' : 's'}`,
+            to: '/shared-plans',
+            enabled: true,
+            icon: (
+              <path
+                d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M15 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 20v-1a3.5 3.5 0 0 0-2.5-3.36M15.5 3.13a3.5 3.5 0 0 1 0 6.75"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            ),
+          },
+        ]
+      : navCards;
+
   return (
     <>
       <div className="rg-dash-header">
@@ -159,7 +186,7 @@ export function Dashboard() {
 
       {hasPlan && (
         <div className="rg-dash-nav-grid">
-          {navCards.map((c) => (
+          {navCardsWithShared.map((c) => (
             <button
               key={c.key}
               type="button"

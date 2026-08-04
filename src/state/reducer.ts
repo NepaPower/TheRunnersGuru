@@ -50,6 +50,7 @@ export function buildInitialState(): AppState {
       goalMinutes: '',
     },
     trainingPlan: null,
+    sharedPlans: [],
     // Partner matching and chat are still mocked client-side — see README
     // "Next steps" for the phased plan to move these onto real tables too.
     matches: SEED_MATCHES.map((m) => ({ ...m })),
@@ -80,13 +81,15 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'AUTH_HYDRATE': {
       const firstName = action.name.trim().split(' ')[0] || 'Runner';
+      const screen: AppState['screen'] = action.trainingPlan ? 'home' : action.sharedPlans.length > 0 ? 'sharedPlans' : 'onboarding';
       return {
         ...state,
         isAuthenticated: true,
         userId: action.userId,
-        screen: action.trainingPlan ? 'home' : 'onboarding',
+        screen,
         auth: { ...state.auth, name: action.name, firstName, address: action.address },
         trainingPlan: action.trainingPlan,
+        sharedPlans: action.sharedPlans,
         loggedRuns: action.loggedRuns,
         garminConnected: action.garminConnected,
       };

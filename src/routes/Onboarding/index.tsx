@@ -73,8 +73,8 @@ export function Onboarding() {
         goalFinishMinutes,
       );
       if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
-      await saveTrainingPlan(liveUserId, plan);
-      dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan });
+      const savedRow = await saveTrainingPlan(liveUserId, plan);
+      dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan: { ...plan, id: savedRow.id } });
       navigate('/home');
     } catch (e) {
       // Supabase's PostgrestError isn't an instanceof Error, so the old
