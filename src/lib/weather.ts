@@ -25,13 +25,24 @@ export async function fetchTemperatureForZipAndDate(zip: string, dateStr: string
   try {
     const place = await geocodeZip(zip);
     if (!place) throw new Error('no geocode result');
+    return await fetchTemperatureForCoordsAndDate(place.latitude, place.longitude, dateStr);
+  } catch {
+    return `${mockTemperature(dateStr)}°F (est.)`;
+  }
+}
 
+/** Same lookup as fetchTemperatureForZipAndDate, but for a known lat/lon —
+ * used when a GPX import already carries the run's real coordinates,
+ * which is more accurate than falling back to the runner's home zip for a
+ * run that may have happened somewhere else entirely. */
+export async function fetchTemperatureForCoordsAndDate(lat: number, lon: number, dateStr: string): Promise<string> {
+  try {
     const date = dateStr || new Date().toISOString().slice(0, 10);
     const isPast = new Date(date) < new Date(new Date().toISOString().slice(0, 10));
     const base = isPast ? 'https://archive-api.open-meteo.com/v1/archive' : 'https://api.open-meteo.com/v1/forecast';
 
     const wRes = await fetch(
-      `${base}?latitude=${place.latitude}&longitude=${place.longitude}&start_date=${date}&end_date=${date}&daily=temperature_2m_mean&temperature_unit=fahrenheit&timezone=auto`,
+      `${base}?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}&daily=temperature_2m_mean&temperature_unit=fahrenheit&timezone=auto`,
     );
     const w = await wRes.json();
     const temp = w?.daily?.temperature_2m_mean?.[0];

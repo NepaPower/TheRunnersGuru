@@ -372,6 +372,7 @@ export async function fetchLoggedRuns(userId: string): Promise<LoggedRun[]> {
       electrolytes: r.electrolytes_count > 0 && r.electrolytes_brand ? `${r.electrolytes_count}x ${r.electrolytes_brand}` : '—',
       nutrition: r.nutrition_count > 0 && r.nutrition_brand ? `${r.nutrition_count}x ${r.nutrition_brand}` : '—',
       comment: r.comment ?? '',
+      routePoints: r.route_points ?? undefined,
     };
   });
 }
@@ -391,6 +392,7 @@ export interface NewRunInput {
   nutritionCount: number;
   nutritionBrand: string;
   comment: string;
+  routePoints?: { lat: number; lon: number }[]; // only set for GPX-imported runs
 }
 
 export async function insertLoggedRun(userId: string, run: NewRunInput): Promise<LoggedRun> {
@@ -410,6 +412,7 @@ export async function insertLoggedRun(userId: string, run: NewRunInput): Promise
       nutrition_count: run.nutritionCount,
       nutrition_brand: run.nutritionBrand,
       comment: run.comment,
+      route_points: run.routePoints ?? null,
     })
     .select()
     .single();
@@ -426,6 +429,7 @@ export async function insertLoggedRun(userId: string, run: NewRunInput): Promise
     electrolytes: run.electrolytesCount > 0 && run.electrolytesBrand ? `${run.electrolytesCount}x ${run.electrolytesBrand}` : '—',
     nutrition: run.nutritionCount > 0 && run.nutritionBrand ? `${run.nutritionCount}x ${run.nutritionBrand}` : '—',
     comment: data.comment ?? '',
+    routePoints: data.route_points ?? undefined,
   };
 }
 

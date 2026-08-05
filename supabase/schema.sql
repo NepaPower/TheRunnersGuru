@@ -205,6 +205,7 @@ create policy "crew members can edit shared plans"
 --         where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
 --       )
 --     );
+--   alter table public.logged_runs add column route_points jsonb;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the
@@ -257,6 +258,10 @@ create table public.logged_runs (
   nutrition_count int default 0,
   nutrition_brand text,
   comment text,
+  -- Downsampled lat/lon path from a GPX import — for a route-shape
+  -- thumbnail only, not a full-precision track. Null for manually-entered
+  -- runs (no GPX behind them).
+  route_points jsonb,
   created_at timestamptz not null default now()
 );
 

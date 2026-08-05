@@ -202,6 +202,7 @@ export interface LoggedRun {
   electrolytes: string; // "2x GU Energy" | "—"
   nutrition: string; // "1x Clif Bar" | "—"
   comment: string;
+  routePoints?: { lat: number; lon: number }[]; // only present for GPX-imported runs
 }
 
 export type MatchStatus = 'pending' | 'accepted' | 'passed';

@@ -6,8 +6,9 @@ import { useApp } from '../state/AppContext';
 import { ELECTROLYTE_BRANDS, NUTRITION_BRANDS } from '../data/constants';
 import { insertLoggedRun } from '../lib/api';
 import { paceLabelFromMinutes } from '../lib/format';
-import { mockTemperature } from '../lib/weather';
+import { mockTemperature, fetchTemperatureForCoordsAndDate } from '../lib/weather';
 import { parseRunGpxFile } from '../lib/runGpx';
+import { buildRoutePath, type LatLon } from '../lib/routeMap';
 import './logrun.css';
 
 const DAY_OPTIONS = Array.from({ length: 8 }, (_, i) => i);
@@ -26,6 +27,19 @@ function SectionLabel({ icon, children }: { icon: React.ReactNode; children: Rea
   );
 }
 
+/** Small route-shape preview — same projection used for the logged-runs
+ * table thumbnails below, just larger. Shape only, no basemap (see
+ * lib/routeMap.ts). */
+function RoutePreview({ points, width, height }: { points: LatLon[]; width: number; height: number }) {
+  const d = buildRoutePath(points, width, height);
+  if (!d) return null;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block' }}>
+      <path d={d} fill="none" stroke="var(--color-accent-700)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function LogRun() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -36,6 +50,8 @@ export function LogRun() {
   const [gpxLoading, setGpxLoading] = useState(false);
   const [gpxError, setGpxError] = useState<string | null>(null);
   const [gpxFileName, setGpxFileName] = useState<string | null>(null);
+  const [gpxRoutePoints, setGpxRoutePoints] = useState<LatLon[] | null>(null);
+  const [gpxTempLoading, setGpxTempLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -47,6 +63,7 @@ export function LogRun() {
     if (!file) return;
     setGpxError(null);
     setGpxLoading(true);
+    setGpxRoutePoints(null);
     try {
       const run = await parseRunGpxFile(file);
       dispatch({
@@ -62,9 +79,26 @@ export function LogRun() {
         },
       });
       setGpxFileName(run.fileName);
+      setGpxRoutePoints(run.routePoints);
+      setGpxLoading(false);
+
+      // Temperature at the run's actual coordinates — more accurate than
+      // the home-zip fallback the manual-entry path uses, since a run
+      // (especially while traveling or racing) may not have happened at
+      // home. Runs after the fields above are already filled in, so
+      // there's no reason to make the person wait on it.
+      if (run.startLat != null && run.startLon != null) {
+        setGpxTempLoading(true);
+        try {
+          const label = await fetchTemperatureForCoordsAndDate(run.startLat, run.startLon, run.date);
+          const digits = label.match(/-?\d+/)?.[0];
+          if (digits) dispatch({ type: 'LOG_FORM_SET_FIELD', field: 'temperature', value: digits });
+        } finally {
+          setGpxTempLoading(false);
+        }
+      }
     } catch (err) {
       setGpxError(err instanceof Error ? err.message : "Couldn't read that file.");
-    } finally {
       setGpxLoading(false);
     }
   }
@@ -101,8 +135,11 @@ export function LogRun() {
         nutritionCount: Number(f.nutritionCount),
         nutritionBrand: f.nutritionBrand,
         comment: f.comment,
+        routePoints: gpxRoutePoints ?? undefined,
       });
       dispatch({ type: 'LOG_RUN_ADDED', run });
+      setGpxFileName(null);
+      setGpxRoutePoints(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save this run.');
     } finally {
@@ -151,15 +188,33 @@ export function LogRun() {
             <div style={{ fontWeight: 600, fontSize: 14 }}>Import from GPX</div>
             <div className="text-muted" style={{ fontSize: 13, wordBreak: 'break-word' }}>
               {gpxFileName
-                ? `Filled in from ${gpxFileName} — check the fields below, then adjust anything that's off.`
-                : 'From Garmin Connect, Strava, or any watch export — fills in date, time, distance, and duration.'}
+                ? `Filled in from ${gpxFileName} — check the fields below, then adjust anything that's off.${gpxTempLoading ? ' Looking up temperature…' : ''}`
+                : 'From Garmin Connect, Strava, or any watch export — fills in date, time, distance, duration, and temperature.'}
             </div>
+            {gpxFileName && f.distance && (Number(f.days) || Number(f.hours) || Number(f.minutes) || Number(f.seconds)) ? (
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-accent-700)', marginTop: 4 }}>
+                {paceLabelFromMinutes(
+                  Number(f.days) * 24 * 60 + Number(f.hours) * 60 + Number(f.minutes) + Number(f.seconds) / 60,
+                  parseFloat(f.distance) || 0,
+                )}{' '}
+                avg pace
+              </div>
+            ) : null}
           </div>
+          {gpxRoutePoints && gpxRoutePoints.length > 1 && (
+            <div style={{ flex: 'none', border: '1px solid var(--color-divider)', borderRadius: 8, background: 'var(--color-bg)', padding: 4 }}>
+              <RoutePreview points={gpxRoutePoints} width={100} height={70} />
+            </div>
+          )}
           <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
             {gpxLoading ? 'Reading file…' : 'Upload GPX'}
           </Button>
           <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpxImport} style={{ display: 'none' }} />
         </div>
+        <p className="text-muted" style={{ fontSize: 12, marginTop: -8, marginBottom: 'var(--space-4)' }}>
+          Why upload instead of "Connect Garmin"? No subscription fees, and it works with any device — Garmin, Coros,
+          Suunto, Polar, whatever you're running with.
+        </p>
         {gpxError && (
           <div
             style={{
@@ -282,6 +337,7 @@ export function LogRun() {
                 <th>Distance</th>
                 <th>Mins/mile</th>
                 <th>Temp</th>
+                <th>Route</th>
                 <th>Gels/Electrolytes</th>
                 <th>Nutrition</th>
                 <th>Comments</th>
@@ -296,6 +352,13 @@ export function LogRun() {
                   <td>{r.distance} mi</td>
                   <td>{r.paceLabel}</td>
                   <td>{r.temperature}</td>
+                  <td>
+                    {r.routePoints && r.routePoints.length > 1 ? (
+                      <RoutePreview points={r.routePoints} width={60} height={40} />
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td>{r.electrolytes}</td>
                   <td>{r.nutrition}</td>
                   <td>{r.comment || '—'}</td>

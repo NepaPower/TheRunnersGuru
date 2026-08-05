@@ -1,4 +1,5 @@
 import { haversineMiles } from './gpx';
+import { downsamplePoints, type LatLon } from './routeMap';
 
 export interface ParsedRun {
   fileName: string;
@@ -9,6 +10,9 @@ export interface ParsedRun {
   hours: number;
   minutes: number;
   seconds: number;
+  startLat: number | null;
+  startLon: number | null;
+  routePoints: LatLon[]; // downsampled, for a route-shape thumbnail
 }
 
 function pad2(n: number): string {
@@ -83,6 +87,12 @@ export function parseRunGpxText(xmlText: string, fileName: string): ParsedRun {
     hours: Math.floor((totalSeconds % 86400) / 3600),
     minutes: Math.floor((totalSeconds % 3600) / 60),
     seconds: totalSeconds % 60,
+    startLat: points[0].lat,
+    startLon: points[0].lon,
+    routePoints: downsamplePoints(
+      points.map((p) => ({ lat: p.lat, lon: p.lon })),
+      80,
+    ),
   };
 }
 
