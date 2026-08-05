@@ -5,6 +5,7 @@ import type {
   GpxRoute,
   HillAccessAnswer,
   LoggedRun,
+  LogRunFormState,
   PaceChoice,
   PaceUnit,
   ProfileTab,
@@ -64,6 +65,7 @@ export type Action =
   | { type: 'GARMIN_CONNECT' }
   | { type: 'GARMIN_DISCONNECT' }
   | { type: 'LOG_FORM_SET_FIELD'; field: string; value: string }
+  | { type: 'LOG_FORM_SET_MANY'; fields: Partial<LogRunFormState> }
   // Dispatched by the Log a Run screen after a successful insert into Supabase.
   | { type: 'LOG_RUN_ADDED'; run: LoggedRun }
   | { type: 'LOG_RUN_SET_TEMP'; id: string; label: string }

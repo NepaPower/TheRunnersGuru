@@ -7,7 +7,7 @@ const METERS_TO_FEET = 3.28084;
 // elevation jitter can inflate total gain by 2-3x on a long course.
 const ELEVATION_NOISE_THRESHOLD_FT = 3;
 
-function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);

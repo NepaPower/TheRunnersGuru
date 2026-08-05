@@ -259,6 +259,9 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, logForm: { ...state.logForm, [action.field]: value } };
     }
 
+    case 'LOG_FORM_SET_MANY':
+      return { ...state, logForm: { ...state.logForm, ...action.fields } };
+
     case 'LOG_RUN_ADDED':
       return { ...state, loggedRuns: [action.run, ...state.loggedRuns], logForm: { ...emptyLogForm } };
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
@@ -7,6 +7,7 @@ import { ELECTROLYTE_BRANDS, NUTRITION_BRANDS } from '../data/constants';
 import { insertLoggedRun } from '../lib/api';
 import { paceLabelFromMinutes } from '../lib/format';
 import { mockTemperature } from '../lib/weather';
+import { parseRunGpxFile } from '../lib/runGpx';
 import './logrun.css';
 
 const DAY_OPTIONS = Array.from({ length: 8 }, (_, i) => i);
@@ -32,9 +33,41 @@ export function LogRun() {
   const submitDisabled = !f.distance || !f.date;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gpxLoading, setGpxLoading] = useState(false);
+  const [gpxError, setGpxError] = useState<string | null>(null);
+  const [gpxFileName, setGpxFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     dispatch({ type: 'LOG_FORM_SET_FIELD', field, value: e.target.value });
+
+  async function handleGpxImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setGpxError(null);
+    setGpxLoading(true);
+    try {
+      const run = await parseRunGpxFile(file);
+      dispatch({
+        type: 'LOG_FORM_SET_MANY',
+        fields: {
+          date: run.date,
+          timeOfDay: run.timeOfDay,
+          distance: String(run.distanceMiles),
+          days: String(run.days),
+          hours: String(run.hours),
+          minutes: String(run.minutes),
+          seconds: String(run.seconds),
+        },
+      });
+      setGpxFileName(run.fileName);
+    } catch (err) {
+      setGpxError(err instanceof Error ? err.message : "Couldn't read that file.");
+    } finally {
+      setGpxLoading(false);
+    }
+  }
 
   async function handleAddRun() {
     if (!state.userId) {
@@ -100,6 +133,47 @@ export function LogRun() {
         </div>
 
         <div style={{ height: 'var(--space-4)' }} />
+
+        <div
+          style={{
+            border: '1px solid var(--color-accent-300)',
+            background: 'var(--color-accent-100)',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 'var(--space-3)',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Import from GPX</div>
+            <div className="text-muted" style={{ fontSize: 13, wordBreak: 'break-word' }}>
+              {gpxFileName
+                ? `Filled in from ${gpxFileName} — check the fields below, then adjust anything that's off.`
+                : 'From Garmin Connect, Strava, or any watch export — fills in date, time, distance, and duration.'}
+            </div>
+          </div>
+          <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
+            {gpxLoading ? 'Reading file…' : 'Upload GPX'}
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpxImport} style={{ display: 'none' }} />
+        </div>
+        {gpxError && (
+          <div
+            style={{
+              border: '1px solid var(--color-accent-2-600)',
+              background: 'var(--color-accent-2-100)',
+              padding: 'var(--space-3)',
+              marginBottom: 'var(--space-4)',
+              fontSize: 13,
+              borderRadius: 8,
+            }}
+          >
+            {gpxError}
+          </div>
+        )}
 
         <div className="rg-grid-2" style={{ marginBottom: 'var(--space-4)' }}>
           <Field label="Date" required>
