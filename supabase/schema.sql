@@ -112,9 +112,19 @@ create table public.crew_plan_access (
   invited_email text not null,
   crew_user_id uuid references auth.users(id) on delete cascade,
   status text not null default 'pending' check (status in ('pending', 'accepted')),
+  -- 'chief' is the only role allowed to replace the course GPX file (see
+  -- the trigger below) — everything else a crew member can do (notes,
+  -- pace, rest times, race timing) is unrestricted by role.
+  role text not null default 'crew' check (role in ('crew', 'chief')),
   created_at timestamptz not null default now(),
   unique (plan_id, invited_email)
 );
+
+-- Enforces "only one Chief Crew per plan" at the database level — a
+-- partial unique index only counts rows where role = 'chief', so a
+-- second attempt to insert/update a second chief for the same plan fails
+-- outright rather than relying on application code to check first.
+create unique index crew_plan_access_one_chief_per_plan on public.crew_plan_access (plan_id) where role = 'chief';
 
 alter table public.crew_plan_access enable row level security;
 
@@ -155,6 +165,41 @@ create policy "crew members can edit shared plans"
       where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
     )
   );
+
+-- Column-level restriction RLS alone can't express (a USING/WITH CHECK
+-- clause applies to the whole row, not one column) — a crew member can
+-- freely edit race timing and every station's notes via the policy
+-- above, but changing gpx_route specifically requires being the owner or
+-- the plan's one Chief Crew. security definer so the function can check
+-- crew_plan_access regardless of that table's own RLS from inside the
+-- trigger.
+create or replace function public.enforce_gpx_route_chief_only()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.gpx_route is distinct from old.gpx_route then
+    if auth.uid() = old.user_id then
+      return new;
+    end if;
+    if exists (
+      select 1 from public.crew_plan_access ca
+      where ca.plan_id = old.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted' and ca.role = 'chief'
+    ) then
+      return new;
+    end if;
+    raise exception 'Only the plan owner or Chief Crew can replace the course GPX file';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_enforce_gpx_route_chief_only
+  before update on public.training_plans
+  for each row
+  execute function public.enforce_gpx_route_chief_only();
 
 -- Migration for an already-deployed database (this table already exists in
 -- Supabase): run this once in the SQL editor instead of the CREATE TABLE
@@ -215,6 +260,37 @@ create policy "crew members can edit shared plans"
 --   alter table public.logged_runs add column max_cadence int;
 --   alter table public.logged_runs add column elevation_gain_ft int;
 --   alter table public.logged_runs add column elevation_loss_ft int;
+--
+--   alter table public.crew_plan_access add column role text not null default 'crew'
+--     check (role in ('crew', 'chief'));
+--   create unique index crew_plan_access_one_chief_per_plan
+--     on public.crew_plan_access (plan_id) where role = 'chief';
+--   create or replace function public.enforce_gpx_route_chief_only()
+--   returns trigger
+--   language plpgsql
+--   security definer
+--   set search_path = public
+--   as $$
+--   begin
+--     if new.gpx_route is distinct from old.gpx_route then
+--       if auth.uid() = old.user_id then
+--         return new;
+--       end if;
+--       if exists (
+--         select 1 from public.crew_plan_access ca
+--         where ca.plan_id = old.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted' and ca.role = 'chief'
+--       ) then
+--         return new;
+--       end if;
+--       raise exception 'Only the plan owner or Chief Crew can replace the course GPX file';
+--     end if;
+--     return new;
+--   end;
+--   $$;
+--   create trigger trg_enforce_gpx_route_chief_only
+--     before update on public.training_plans
+--     for each row
+--     execute function public.enforce_gpx_route_chief_only();
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

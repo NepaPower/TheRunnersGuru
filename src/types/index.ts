@@ -138,6 +138,10 @@ export interface CrewAccessEntry {
   id: string;
   invitedEmail: string;
   status: 'pending' | 'accepted';
+  // 'chief' is the only role allowed to replace the course GPX file —
+  // enforced at the database level (a trigger + a partial unique index
+  // guaranteeing at most one chief per plan), not just hidden in the UI.
+  role: 'crew' | 'chief';
 }
 
 /** Free-text crew notes for one aid station on the Crew Plan screen, keyed

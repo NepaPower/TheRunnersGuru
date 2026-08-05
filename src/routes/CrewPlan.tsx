@@ -10,6 +10,8 @@ import {
   inviteCrewMember,
   fetchCrewAccessList,
   removeCrewAccess,
+  promoteToChief,
+  fetchMyCrewRole,
 } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
 import {
@@ -128,8 +130,27 @@ export function CrewPlan() {
   // is known.
   const [crewAccessList, setCrewAccessList] = useState<CrewAccessEntry[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteAsChief, setInviteAsChief] = useState(false);
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+
+  // Shared mode only — this crew member's own role, used to decide
+  // whether to show the Upload/Replace GPX control at all. The real
+  // restriction is enforced server-side regardless (see schema.sql's
+  // enforce_gpx_route_chief_only trigger); this is just so a regular
+  // crew member doesn't see a button that would fail if they clicked it.
+  const [myCrewRole, setMyCrewRole] = useState<'crew' | 'chief' | null>(null);
+  useEffect(() => {
+    if (!isShared || !sharedPlanId || !state.userId) return;
+    let cancelled = false;
+    fetchMyCrewRole(sharedPlanId, state.userId).then((role) => {
+      if (!cancelled) setMyCrewRole(role);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isShared, sharedPlanId, state.userId]);
 
   useEffect(() => {
     if (isShared || !plan?.id) return;
@@ -432,13 +453,27 @@ export function CrewPlan() {
     setInviteSaving(true);
     setInviteError(null);
     try {
-      await inviteCrewMember(state.userId, plan.id, inviteEmail.trim());
+      await inviteCrewMember(state.userId, plan.id, inviteEmail.trim(), inviteAsChief);
       setInviteEmail('');
+      setInviteAsChief(false);
       setCrewAccessList(await fetchCrewAccessList(plan.id));
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Could not send that invite.');
     } finally {
       setInviteSaving(false);
+    }
+  }
+
+  async function handlePromote(accessId: string) {
+    if (!plan?.id) return;
+    setPromotingId(accessId);
+    try {
+      await promoteToChief(plan.id, accessId);
+      setCrewAccessList(await fetchCrewAccessList(plan.id));
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Could not update Chief Crew.');
+    } finally {
+      setPromotingId(null);
     }
   }
 
@@ -473,13 +508,20 @@ export function CrewPlan() {
                 ? `${plan.gpxRoute.fileName} — ${waypoints.length} aid station${waypoints.length === 1 ? '' : 's'} found`
                 : 'No GPX uploaded yet.'}
             </div>
+            {isShared && myCrewRole !== null && myCrewRole !== 'chief' && (
+              <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                Only the plan owner or Chief Crew can replace this file.
+              </div>
+            )}
           </div>
-          <div style={{ flex: 'none' }}>
-            <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
-              {gpxLoading ? 'Reading file…' : plan.gpxRoute ? 'Replace GPX' : 'Upload GPX'}
-            </Button>
-            <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpxReplace} style={{ display: 'none' }} />
-          </div>
+          {(!isShared || myCrewRole === 'chief') && (
+            <div style={{ flex: 'none' }}>
+              <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
+                {gpxLoading ? 'Reading file…' : plan.gpxRoute ? 'Replace GPX' : 'Upload GPX'}
+              </Button>
+              <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpxReplace} style={{ display: 'none' }} />
+            </div>
+          )}
         </div>
         {plan.gpxRoute && (
           <p className="rg-cp-muted" style={{ fontSize: 12, padding: '0 var(--space-6) var(--space-4)', margin: 0 }}>
@@ -563,6 +605,17 @@ export function CrewPlan() {
               {inviteSaving ? 'Sending…' : 'Send invite'}
             </Button>
           </div>
+          <div style={{ padding: '0 var(--space-6) var(--space-4)' }}>
+            <label className="rg-cp-flag">
+              <input type="checkbox" checked={inviteAsChief} onChange={(e) => setInviteAsChief(e.target.checked)} />
+              Make Chief Crew — only they can upload/replace the course GPX file
+            </label>
+            {inviteAsChief && crewAccessList.some((c) => c.role === 'chief') && (
+              <p className="rg-cp-muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
+                There's only one Chief Crew per plan — sending this will hand the role over from whoever has it now.
+              </p>
+            )}
+          </div>
           {inviteError && (
             <div className="rg-auth-error" style={{ margin: '0 var(--space-6) var(--space-4)' }}>
               {inviteError}
@@ -586,12 +639,20 @@ export function CrewPlan() {
                   <div style={{ fontSize: 14, wordBreak: 'break-word', minWidth: 0 }}>
                     {c.invitedEmail}{' '}
                     <span className="rg-cp-muted" style={{ fontSize: 12 }}>
-                      ({c.status === 'accepted' ? 'active' : 'invited, not yet signed in'})
+                      ({c.status === 'accepted' ? 'active' : 'invited, not yet signed in'}
+                      {c.role === 'chief' ? ' · Chief Crew' : ''})
                     </span>
                   </div>
-                  <Button variant="ghost" onClick={() => handleRemoveAccess(c.id)}>
-                    Remove
-                  </Button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {c.role !== 'chief' && (
+                      <Button variant="ghost" disabled={promotingId === c.id} onClick={() => handlePromote(c.id)}>
+                        {promotingId === c.id ? 'Making chief…' : 'Make Chief'}
+                      </Button>
+                    )}
+                    <Button variant="ghost" onClick={() => handleRemoveAccess(c.id)}>
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -676,7 +737,14 @@ export function CrewPlan() {
                           )}
                           {wp.lat != null && wp.lon != null && (
                             <div>
-                              {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)}
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${wp.lat},${wp.lon}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'inherit', textDecoration: 'underline' }}
+                              >
+                                {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} — directions
+                              </a>
                             </div>
                           )}
                         </div>

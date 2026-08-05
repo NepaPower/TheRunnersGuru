@@ -284,24 +284,69 @@ export async function updateCrewPlanById(
  * time anyone signs in with that email (see claimPendingInvites). There's
  * no email sent by the app itself — the person needs to know to sign up
  * or sign in with that exact address. */
-export async function inviteCrewMember(ownerUserId: string, planId: string, email: string) {
+export async function inviteCrewMember(ownerUserId: string, planId: string, email: string, makeChief: boolean = false) {
+  const normalizedEmail = email.trim().toLowerCase();
   const { error } = await supabase
     .from('crew_plan_access')
     .upsert(
-      { plan_id: planId, owner_user_id: ownerUserId, invited_email: email.trim().toLowerCase() },
+      { plan_id: planId, owner_user_id: ownerUserId, invited_email: normalizedEmail },
       { onConflict: 'plan_id,invited_email', ignoreDuplicates: true },
     );
   if (error) throw error;
+
+  if (makeChief) {
+    // ignoreDuplicates means the upsert above silently did nothing if
+    // this email was already invited — fetch the row's id either way and
+    // promote it explicitly, rather than trying to fold role-setting
+    // into the upsert itself.
+    const { data: row, error: fetchErr } = await supabase
+      .from('crew_plan_access')
+      .select('id')
+      .eq('plan_id', planId)
+      .eq('invited_email', normalizedEmail)
+      .single();
+    if (fetchErr) throw fetchErr;
+    await promoteToChief(planId, row.id);
+  }
+}
+
+/** Promotes one crew member to Chief Crew, demoting whoever currently
+ * holds it first — the database's partial unique index (one chief per
+ * plan) would reject inserting/updating a second one, so the existing
+ * chief has to step down before the new one can step up, not after. */
+export async function promoteToChief(planId: string, accessId: string) {
+  const { error: demoteErr } = await supabase.from('crew_plan_access').update({ role: 'crew' }).eq('plan_id', planId).eq('role', 'chief');
+  if (demoteErr) throw demoteErr;
+
+  const { error: promoteErr } = await supabase.from('crew_plan_access').update({ role: 'chief' }).eq('id', accessId);
+  if (promoteErr) throw promoteErr;
 }
 
 export async function fetchCrewAccessList(planId: string): Promise<CrewAccessEntry[]> {
   const { data, error } = await supabase
     .from('crew_plan_access')
-    .select('id, invited_email, status')
+    .select('id, invited_email, status, role')
     .eq('plan_id', planId)
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((r) => ({ id: r.id, invitedEmail: r.invited_email, status: r.status }));
+  return (data ?? []).map((r) => ({ id: r.id, invitedEmail: r.invited_email, status: r.status, role: r.role ?? 'crew' }));
+}
+
+/** A crew member's own role for a shared plan — used to decide whether
+ * to show the Upload/Replace GPX control at all in shared mode. This is
+ * a UI convenience only; the actual restriction is enforced server-side
+ * by the enforce_gpx_route_chief_only trigger regardless of what this
+ * returns. */
+export async function fetchMyCrewRole(planId: string, userId: string): Promise<'crew' | 'chief' | null> {
+  const { data, error } = await supabase
+    .from('crew_plan_access')
+    .select('role')
+    .eq('plan_id', planId)
+    .eq('crew_user_id', userId)
+    .eq('status', 'accepted')
+    .maybeSingle();
+  if (error) throw error;
+  return data?.role ?? null;
 }
 
 export async function removeCrewAccess(accessId: string) {
