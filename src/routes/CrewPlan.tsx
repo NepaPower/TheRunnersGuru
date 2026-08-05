@@ -767,18 +767,28 @@ export function CrewPlan() {
                         </div>
                       )}
                     </div>
-                    {elapsed != null && (
+                    {(elapsed != null || note.cutoff) && (
                       <div className="rg-cp-station-eta">
-                        {eta ? (
-                          <>
-                            <div className="rg-cp-eta-value">You'll reach here on {eta}</div>
-                            <div className="rg-cp-station-meta" style={{ fontSize: 12 }}>
-                              +{formatElapsedLabel(elapsed)} from start · {formatPaceMinPerMile(timings![i].paceUsedMinPerMile)} pace
+                        {elapsed != null &&
+                          (eta ? (
+                            <>
+                              <div className="rg-cp-eta-value">You'll reach here on {eta}</div>
+                              <div className="rg-cp-station-meta" style={{ fontSize: 12 }}>
+                                +{formatElapsedLabel(elapsed)} from start · {formatPaceMinPerMile(timings![i].paceUsedMinPerMile)} pace
+                              </div>
+                            </>
+                          ) : (
+                            <div className="rg-cp-station-meta" style={{ fontSize: 13 }}>
+                              Set a race start time above to see your predicted arrival time
                             </div>
-                          </>
-                        ) : (
-                          <div className="rg-cp-station-meta" style={{ fontSize: 13 }}>
-                            Set a race start time above to see your predicted arrival time
+                          ))}
+                        {note.cutoff && (
+                          <div className="rg-cp-cutoff-warning">
+                            <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                              <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                              <path d="M12 7v5l3.5 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Cutoff: {note.cutoff}
                           </div>
                         )}
                       </div>
@@ -794,19 +804,21 @@ export function CrewPlan() {
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'sleep'} onChange={() => setCrewAccess(key, 'sleep')} label="Sleep" />
                       </div>
                     </div>
-                    <Field label="Cutoff (Day, Time)">
-                      <Input
-                        type="text"
-                        placeholder="e.g. Day 1, 10:00 PM"
-                        value={note.cutoff}
-                        onChange={(e) => updateNoteField(key, 'cutoff', e.target.value)}
-                      />
-                      {cutoffOutOfOrder[i] && (
-                        <div style={{ fontSize: 12, color: 'var(--color-accent-2-800, #92400e)', marginTop: 4 }}>
-                          ⚠ Earlier than a prior station's cutoff — this station may be out of order
-                        </div>
-                      )}
-                    </Field>
+                    <div className="rg-cp-cutoff-field">
+                      <Field label="Cutoff (Day, Time)">
+                        <Input
+                          type="text"
+                          placeholder="e.g. Day 1, 10:00 PM"
+                          value={note.cutoff}
+                          onChange={(e) => updateNoteField(key, 'cutoff', e.target.value)}
+                        />
+                        {cutoffOutOfOrder[i] && (
+                          <div style={{ fontSize: 12, color: 'var(--color-accent-2-800, #92400e)', marginTop: 4 }}>
+                            ⚠ Earlier than a prior station's cutoff — this station may be out of order
+                          </div>
+                        )}
+                      </Field>
+                    </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Rest/Sleep time</div>
                       <div style={{ display: 'flex', gap: 6 }}>

@@ -137,6 +137,31 @@
   color: var(--color-text);
   margin-top: 2px;
 }
+
+/* Cutoff times get their own color language — a firm red, distinct from
+   the gold used for general emphasis elsewhere — because missing one
+   isn't a minor inconvenience, it can end the race. Both where it's
+   shown (the station card) and where it's entered (the field label)
+   carry the same color, so it reads as consistently urgent everywhere. */
+.rg-cp-cutoff-warning {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #c0392b;
+}
+.rg-cp-cutoff-field label {
+  color: #c0392b;
+  font-weight: 700;
+}
+.rg-cp-cutoff-field input {
+  border-color: color-mix(in srgb, #c0392b 45%, var(--color-divider));
+}
+.rg-cp-cutoff-field input:focus-visible {
+  border-color: #c0392b;
+}
 .rg-cp-muted {
   color: color-mix(in srgb, var(--color-text) 82%, transparent);
 }
