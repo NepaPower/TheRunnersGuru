@@ -32,6 +32,17 @@
   word-break: break-word;
 }
 
+.rg-cp-pace-callout {
+  padding: var(--space-4) var(--space-6) 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.rg-cp-pace-callout strong {
+  color: var(--color-accent-700);
+  font-weight: 700;
+}
+
 .rg-cp-setup-grid {
   padding: var(--space-6) var(--space-6) var(--space-6);
   border-top: 1px solid var(--color-divider);

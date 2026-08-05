@@ -436,6 +436,13 @@ export function CrewPlan() {
           </div>
         )}
 
+        {goalFinishMinutes != null && initialPaceMinPerMile != null && (
+          <div className="rg-cp-pace-callout">
+            Your pace should be <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
+            <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
+          </div>
+        )}
+
         <div className="rg-cp-setup-grid">
           <Field label="Race start date">
             <Input
