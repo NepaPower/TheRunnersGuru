@@ -34,6 +34,8 @@
 
 .rg-cp-pace-callout {
   padding: var(--space-4) var(--space-6) 0;
+}
+.rg-cp-pace-callout-primary {
   font-size: 18px;
   font-weight: 500;
   color: var(--color-text);
@@ -41,6 +43,11 @@
 .rg-cp-pace-callout strong {
   color: var(--color-accent-700);
   font-weight: 700;
+}
+.rg-cp-pace-callout-secondary {
+  margin-top: 4px;
+  font-size: 15px;
+  color: color-mix(in srgb, var(--color-text) 78%, transparent);
 }
 
 .rg-cp-setup-grid {

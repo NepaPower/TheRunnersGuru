@@ -183,6 +183,34 @@ export function CrewPlan() {
         )
       : null;
   const elapsedByIndex: (number | null)[] = timings ? timings.map((t) => t.elapsedMinutes) : waypoints.map(() => null);
+  // The actual projected finish time, accounting for every rest/sleep
+  // entry and pace override on the course — not just the flat goal. When
+  // there are no named aid stations there's nowhere to enter an override,
+  // so this collapses to the flat goal exactly. Extends the same
+  // cascading calculation one mile further than the last named station if
+  // that station isn't already right at the finish line, so this stays
+  // correct even when a course file's last waypoint falls short of the
+  // true finish.
+  const projectedFinishMinutes = (() => {
+    if (goalFinishMinutes == null) return null;
+    if (waypoints.length === 0 || totalMiles <= 0) return goalFinishMinutes;
+    const miles = waypoints.map((wp) => wp.mile);
+    const rests = waypoints.map((_, i) => (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0));
+    const paceOverrides = waypoints.map((_, i) => {
+      const note = notes[String(i)];
+      if (!note?.avgPaceMin && !note?.avgPaceSec) return null;
+      return (Number(note.avgPaceMin) || 0) + (Number(note.avgPaceSec) || 0) / 60;
+    });
+    if (miles[miles.length - 1] < totalMiles - 0.05) {
+      miles.push(totalMiles);
+      rests.push(0);
+      paceOverrides.push(null);
+    }
+    const extended = computeStationTimings(miles, totalMiles, goalFinishMinutes, rests, paceOverrides);
+    return extended[extended.length - 1].elapsedMinutes;
+  })();
+  const projectedFinishEta =
+    projectedFinishMinutes != null && raceDate && raceStartTime ? formatEtaClock(raceDate, raceStartTime, projectedFinishMinutes) : null;
   // Cutoff times only ever move forward through a race — if a station's
   // cutoff (as typed/detected, in geographic mile order) is earlier than
   // an earlier station's, that's independent evidence something's out of
@@ -438,8 +466,15 @@ export function CrewPlan() {
 
         {goalFinishMinutes != null && initialPaceMinPerMile != null && (
           <div className="rg-cp-pace-callout">
-            Your pace should be <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
-            <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
+            <div className="rg-cp-pace-callout-primary">
+              Target pace: <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
+              <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
+            </div>
+            {projectedFinishEta && (
+              <div className="rg-cp-pace-callout-secondary">
+                At your current pace and rest plan, you're projected to finish on <strong>{projectedFinishEta}</strong>
+              </div>
+            )}
           </div>
         )}
 
