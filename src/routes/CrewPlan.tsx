@@ -68,6 +68,19 @@ function detectCutoffText(wp: GpxWaypoint): string {
   return match ? match[1].trim() : '';
 }
 
+/** Strips just the cutoff sentence out of a waypoint's raw description or
+ * comment text, leaving any other content in that field intact — the
+ * cutoff already gets its own prominent display (see the red Cutoff
+ * badge), so repeating the exact same sentence in the raw-text block
+ * below it is pure duplication for files where the description is
+ * nothing but the cutoff mention, without silently hiding genuinely
+ * different info for files where it's mixed in with other notes. */
+function stripCutoffMention(text: string | undefined): string | undefined {
+  if (!text) return text;
+  const stripped = text.replace(/cut[\s-]?off[:\s]*[^.;]+[.;]?/i, '').trim();
+  return stripped || undefined;
+}
+
 /** Builds the notes map for a set of waypoints, auto-filling the Cutoff
  * field from the GPX's own text wherever one is found and the person
  * hasn't already typed something in. Used both for the initial page load
@@ -743,29 +756,35 @@ export function CrewPlan() {
                       {nextSegmentMiles != null && (
                         <div className="rg-cp-station-next-leg">{nextSegmentMiles} mi to next stop</div>
                       )}
-                      {(wp.description || wp.comment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
-                        <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
-                          {wp.description && <div>{wp.description}</div>}
-                          {wp.comment && <div>Note: {wp.comment}</div>}
-                          {(wp.symbol || wp.waypointType) && (
-                            <div>
-                              {[wp.symbol, wp.waypointType].filter(Boolean).join(' · ')}
+                      {(() => {
+                        const cleanDescription = stripCutoffMention(wp.description);
+                        const cleanComment = stripCutoffMention(wp.comment);
+                        return (
+                          (cleanDescription || cleanComment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
+                            <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
+                              {cleanDescription && <div>{cleanDescription}</div>}
+                              {cleanComment && <div>Note: {cleanComment}</div>}
+                              {(wp.symbol || wp.waypointType) && (
+                                <div>
+                                  {[wp.symbol, wp.waypointType].filter(Boolean).join(' · ')}
+                                </div>
+                              )}
+                              {wp.lat != null && wp.lon != null && (
+                                <div>
+                                  <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${wp.lat},${wp.lon}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                                  >
+                                    {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} — directions
+                                  </a>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {wp.lat != null && wp.lon != null && (
-                            <div>
-                              <a
-                                href={`https://www.google.com/maps/dir/?api=1&destination=${wp.lat},${wp.lon}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: 'inherit', textDecoration: 'underline' }}
-                              >
-                                {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} — directions
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                          )
+                        );
+                      })()}
                     </div>
                     {(elapsed != null || note.cutoff) && (
                       <div className="rg-cp-station-eta">
