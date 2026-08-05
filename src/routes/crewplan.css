@@ -191,6 +191,49 @@
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--color-divider);
 }
+.rg-cp-crew-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #16241f 55%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+.rg-cp-crew-modal-card {
+  background: var(--color-bg);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.rg-cp-crew-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.rg-cp-crew-modal-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--color-divider);
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rg-cp-crew-modal-close:hover {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
 .rg-cp-flags-row {
   display: flex;
   flex-wrap: wrap;

@@ -147,6 +147,7 @@ export function CrewPlan() {
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [crewModalOpen, setCrewModalOpen] = useState(false);
 
   // Shared mode only — this crew member's own role, used to decide
   // whether to show the Upload/Replace GPX control at all. The real
@@ -518,13 +519,20 @@ export function CrewPlan() {
       </Button>
 
       <div className="rg-cp-header-card">
-        <div className="rg-cp-header-top">
-          <div className="rg-cp-race-name">Crew Plan for {plan.raceName}</div>
-          {plan.gpxRoute && (
-            <div className="rg-cp-muted">
-              {plan.gpxRoute.distanceMiles} mi course · {plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
-              {plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss
-            </div>
+        <div className="rg-cp-header-top" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <div className="rg-cp-race-name">Crew Plan for {plan.raceName}</div>
+            {plan.gpxRoute && (
+              <div className="rg-cp-muted">
+                {plan.gpxRoute.distanceMiles} mi course · {plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
+                {plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss
+              </div>
+            )}
+          </div>
+          {!isShared && (
+            <Button variant="secondary" onClick={() => setCrewModalOpen(true)}>
+              Manage Crew
+            </Button>
           )}
         </div>
 
@@ -611,29 +619,37 @@ export function CrewPlan() {
         </div>
       </div>
 
-      {!isShared && (
-        <div className="rg-cp-header-card">
-          <div className="rg-cp-header-top">
-            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Crew members</div>
-            <p className="rg-cp-muted" style={{ fontSize: 13, marginBottom: 0 }}>
-              Invite people to view and edit this Crew Plan. They'll get access automatically the next time they sign
-              in with this email — there's no email sent by the app, so let them know directly.
-            </p>
-          </div>
-          <div className="rg-cp-gpx-row" style={{ flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <Input
-                type="email"
-                placeholder="crew@example.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-              />
+      {!isShared && crewModalOpen && (
+        <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setCrewModalOpen(false)}>
+          <div className="rg-cp-crew-modal-card" role="dialog" aria-modal="true" aria-label="Manage crew">
+            <div className="rg-cp-crew-modal-header">
+              <div>
+                <h3 style={{ margin: 0 }}>Crew members</h3>
+                <p className="rg-cp-muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
+                  Invite people to view and edit this Crew Plan. They'll get access automatically the next time they
+                  sign in with this email — there's no email sent by the app, so let them know directly.
+                </p>
+              </div>
+              <button type="button" className="rg-cp-crew-modal-close" aria-label="Close" onClick={() => setCrewModalOpen(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                  <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
             </div>
-            <Button variant="secondary" disabled={inviteSaving || !inviteEmail.trim() || !plan.id} onClick={handleInvite}>
-              {inviteSaving ? 'Sending…' : 'Send invite'}
-            </Button>
-          </div>
-          <div style={{ padding: '0 var(--space-6) var(--space-4)' }}>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <Input
+                  type="email"
+                  placeholder="crew@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+              </div>
+              <Button variant="secondary" disabled={inviteSaving || !inviteEmail.trim() || !plan.id} onClick={handleInvite}>
+                {inviteSaving ? 'Sending…' : 'Send invite'}
+              </Button>
+            </div>
             <label className="rg-cp-flag">
               <input type="checkbox" checked={inviteAsChief} onChange={(e) => setInviteAsChief(e.target.checked)} />
               Make Chief Crew — only they can upload/replace the course GPX file
@@ -643,48 +659,48 @@ export function CrewPlan() {
                 There's only one Chief Crew per plan — sending this will hand the role over from whoever has it now.
               </p>
             )}
-          </div>
-          {inviteError && (
-            <div className="rg-auth-error" style={{ margin: '0 var(--space-6) var(--space-4)' }}>
-              {inviteError}
-            </div>
-          )}
-          {crewAccessList.length > 0 && (
-            <div style={{ padding: '0 var(--space-6) var(--space-6)' }}>
-              {crewAccessList.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    padding: 'var(--space-2) 0',
-                    borderTop: '1px solid var(--color-divider)',
-                  }}
-                >
-                  <div style={{ fontSize: 14, wordBreak: 'break-word', minWidth: 0 }}>
-                    {c.invitedEmail}{' '}
-                    <span className="rg-cp-muted" style={{ fontSize: 12 }}>
-                      ({c.status === 'accepted' ? 'active' : 'invited, not yet signed in'}
-                      {c.role === 'chief' ? ' · Chief Crew' : ''})
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {c.role !== 'chief' && (
-                      <Button variant="ghost" disabled={promotingId === c.id} onClick={() => handlePromote(c.id)}>
-                        {promotingId === c.id ? 'Making chief…' : 'Make Chief'}
+            {inviteError && (
+              <div className="rg-auth-error" style={{ marginTop: 'var(--space-3)' }}>
+                {inviteError}
+              </div>
+            )}
+            {crewAccessList.length > 0 && (
+              <div style={{ marginTop: 'var(--space-4)' }}>
+                {crewAccessList.map((c) => (
+                  <div
+                    key={c.id}
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: 'var(--space-2) 0',
+                      borderTop: '1px solid var(--color-divider)',
+                    }}
+                  >
+                    <div style={{ fontSize: 14, wordBreak: 'break-word', minWidth: 0 }}>
+                      {c.invitedEmail}{' '}
+                      <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                        ({c.status === 'accepted' ? 'active' : 'invited, not yet signed in'}
+                        {c.role === 'chief' ? ' · Chief Crew' : ''})
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {c.role !== 'chief' && (
+                        <Button variant="ghost" disabled={promotingId === c.id} onClick={() => handlePromote(c.id)}>
+                          {promotingId === c.id ? 'Making chief…' : 'Make Chief'}
+                        </Button>
+                      )}
+                      <Button variant="ghost" onClick={() => handleRemoveAccess(c.id)}>
+                        Remove
                       </Button>
-                    )}
-                    <Button variant="ghost" onClick={() => handleRemoveAccess(c.id)}>
-                      Remove
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
