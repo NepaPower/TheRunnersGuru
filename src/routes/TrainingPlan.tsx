@@ -1,16 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { getTrainingTimeWarning } from '../lib/planGenerator';
 import './trainingplan.css';
 
 const MONTH_BG = ['var(--color-bg)', 'var(--color-neutral-100)'];
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+
+/** Buckets a generated cell's free-text ("3 mi (Easy)", "Hill repeats — 30
+ * min steady climbing", "RACE DAY — 26.2 mi") into a workout type so the
+ * card view can color-code it consistently — same idea as Runna's
+ * always-means-the-same-thing colored dots, learned once and holding
+ * across every screen. */
+function classifyWorkout(text: string): 'rest' | 'easy' | 'quality' | 'long' | 'cross' | 'strength' | 'race' | 'plain' {
+  const t = text.toLowerCase();
+  if (t.includes('race day')) return 'race';
+  if (t === 'rest') return 'rest';
+  if (t.includes('long run')) return 'long';
+  if (t.includes('strength')) return 'strength';
+  if (t.includes('bike') || t.includes('swim') || t.includes('cross')) return 'cross';
+  if (t.includes('interval') || t.includes('tempo') || t.includes('hill') || t.includes('hiit') || t.includes('stairmaster')) return 'quality';
+  if (t.includes('easy') || t.includes('shakeout')) return 'easy';
+  return 'plain';
+}
 
 export function TrainingPlan() {
   const { state } = useApp();
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(false);
+  const [view, setView] = useState<'cards' | 'table'>('cards');
   const plan = state.trainingPlan;
 
   if (!plan) {
@@ -133,13 +152,41 @@ export function TrainingPlan() {
         </div>
 
         <div className="rg-tp-expand-footer">
-          <Button variant="secondary" className="rg-tp-expand-btn" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Collapse full plan' : 'Expand full plan'}
-          </Button>
+          <div className="seg">
+            <SegOption name="tp-view" checked={view === 'cards'} onChange={() => setView('cards')} label="Card view" />
+            <SegOption name="tp-view" checked={view === 'table'} onChange={() => setView('table')} label="Table view" />
+          </div>
         </div>
       </div>
 
-      {expanded && (
+      {view === 'cards' ? (
+        <div className="rg-tp-week-list">
+          {plan.rows.map((row) => {
+            const cardClass = row.isRaceWeek ? 'rg-tp-race' : row.phase === 'Recovery Week' ? 'rg-tp-recovery' : '';
+            const phaseClass = `rg-tp-phase-tag rg-tp-phase-${row.phase.replace(/\s+/g, '-').toLowerCase()}`;
+            const days = [row.mon, row.tue, row.wed, row.thu, row.fri, row.sat, row.sun];
+            return (
+              <div key={row.week} className={`rg-tp-week-card ${cardClass}`}>
+                <div className="rg-tp-week-card-head">
+                  <span className="rg-tp-week-badge">{row.week}</span>
+                  <span className={phaseClass}>{row.phase}</span>
+                  <span className="rg-tp-week-total">
+                    {isUltra && row.totalHours != null ? `${row.totalHours.toFixed(1)} hrs` : `${row.totalMiles.toFixed(1)} mi`}
+                  </span>
+                </div>
+                <div className="rg-tp-week-days">
+                  {days.map((text, i) => (
+                    <div key={DAY_LABELS[i]} className="rg-tp-day-cell">
+                      <div className="rg-tp-day-label">{DAY_LABELS[i]}</div>
+                      <div className={`rg-tp-day-chip rg-tp-chip-${classifyWorkout(text)}`}>{text}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
         <div className="rg-tp-table-card">
           <div className="rg-tp-table-scroll">
             <table className="rg-tp-table">

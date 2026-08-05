@@ -209,3 +209,90 @@
 }
 .rg-tp-table tr.rg-tp-race .rg-tp-total-cell { background: color-mix(in srgb, #16241f 8%, #d9a441); }
 .rg-tp-table tr.rg-tp-race .rg-tp-rest { color: color-mix(in srgb, #16241f 55%, transparent); }
+
+/* — Card view — the default, Runna-style week-at-a-glance layout. Same
+   phase-tag/week-badge language as the table view, but each day gets its
+   own small color-coded chip instead of a plain table cell, so workout
+   type reads at a glance without needing to parse text. */
+.rg-tp-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.rg-tp-week-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4) var(--space-5);
+}
+.rg-tp-week-card.rg-tp-recovery { background: var(--color-accent-2-100); }
+.rg-tp-week-card.rg-tp-race {
+  background: #d9a441;
+  border-color: color-mix(in srgb, #16241f 20%, transparent);
+}
+
+.rg-tp-week-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.rg-tp-week-total {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.rg-tp-week-card.rg-tp-race .rg-tp-week-total { color: #16241f; }
+
+.rg-tp-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.rg-tp-day-cell { min-width: 0; }
+.rg-tp-day-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  margin-bottom: 4px;
+}
+.rg-tp-week-card.rg-tp-race .rg-tp-day-label { color: color-mix(in srgb, #16241f 65%, transparent); }
+
+.rg-tp-day-chip {
+  border-radius: 8px;
+  padding: 7px 8px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  word-break: break-word;
+}
+
+/* Workout-type color coding — consistent meaning everywhere, same idea as
+   Runna's always-means-the-same-thing dots. */
+.rg-tp-chip-rest {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  font-style: italic;
+}
+.rg-tp-chip-easy { background: color-mix(in srgb, var(--color-accent) 15%, transparent); color: var(--color-accent-800); }
+.rg-tp-chip-quality { background: color-mix(in srgb, #d9534f 15%, transparent); color: #a3362f; font-weight: 600; }
+.rg-tp-chip-long { background: color-mix(in srgb, #d9a441 24%, transparent); color: #7a5417; font-weight: 700; }
+.rg-tp-chip-cross { background: color-mix(in srgb, var(--color-accent-2-600, #4a9ac0) 18%, transparent); color: var(--color-accent-2-800, #2a5f7d); }
+.rg-tp-chip-strength { background: color-mix(in srgb, #8e6cc7 18%, transparent); color: #5b3d99; }
+.rg-tp-chip-race { background: #16241f; color: #f7f7f1; font-weight: 700; }
+.rg-tp-chip-plain { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+
+@media (max-width: 900px) {
+  .rg-tp-week-days { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 560px) {
+  .rg-tp-week-days { grid-template-columns: repeat(2, 1fr); }
+  .rg-tp-week-card { padding: var(--space-4); }
+}
