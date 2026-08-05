@@ -3,13 +3,15 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { BrandHeader } from '../components/Logo';
-import { signUp, saveProfileAddress } from '../lib/api';
+import { signUp, saveProfileAddress, hydrateUserData } from '../lib/api';
+import { useApp } from '../state/AppContext';
 import type { Address } from '../types';
 import './auth.css';
 
 export function SignUp() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { dispatch } = useApp();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
@@ -34,7 +36,16 @@ export function SignUp() {
       }
 
       await saveProfileAddress(user.id, name, address);
-      navigate('/onboarding');
+
+      // A brand-new account might already have a pending crew invite
+      // waiting for this exact email (sent before the person ever signed
+      // up) — hydrateUserData claims it and tells us whether they have
+      // any shared plans, so a crew-only signup lands on Shared Plans
+      // instead of being forced through training-plan onboarding they
+      // never wanted.
+      const hydrated = await hydrateUserData(user.id);
+      dispatch({ type: 'AUTH_HYDRATE', userId: user.id, ...hydrated });
+      navigate(hydrated.sharedPlans.length > 0 ? '/shared-plans' : '/onboarding');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong signing up.');
       setSubmitting(false);

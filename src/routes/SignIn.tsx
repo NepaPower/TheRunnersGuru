@@ -25,7 +25,7 @@ export function SignIn() {
 
       const hydrated = await hydrateUserData(user.id);
       dispatch({ type: 'AUTH_HYDRATE', userId: user.id, ...hydrated });
-      navigate(hydrated.trainingPlan ? '/home' : '/onboarding');
+      navigate(hydrated.trainingPlan ? '/home' : hydrated.sharedPlans.length > 0 ? '/shared-plans' : '/onboarding');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign in.');
       setSubmitting(false);
