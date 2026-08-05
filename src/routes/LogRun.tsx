@@ -101,7 +101,7 @@ export function LogRun() {
 
         <div style={{ height: 'var(--space-4)' }} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="rg-grid-2" style={{ marginBottom: 'var(--space-4)' }}>
           <Field label="Date" required>
             <Input type="date" value={f.date} onChange={setField('date')} />
           </Field>
@@ -110,7 +110,7 @@ export function LogRun() {
           </Field>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="rg-grid-2" style={{ marginBottom: 'var(--space-4)' }}>
           <Field label="Distance (miles)" required>
             <Input type="number" step={0.1} min={0} placeholder="e.g. 5.2" value={f.distance} onChange={setField('distance')} />
           </Field>
@@ -122,7 +122,7 @@ export function LogRun() {
         <SectionLabel icon={<><circle cx="12" cy="13" r="8" strokeWidth="2" /><path d="M12 9v4l3 2M9 2h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>}>
           Time taken
         </SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="rg-grid-4" style={{ marginBottom: 'var(--space-4)' }}>
           <Select value={f.days} onChange={setField('days')}>
             {DAY_OPTIONS.map((d) => (
               <option key={d} value={d}>{d} d</option>
@@ -145,7 +145,7 @@ export function LogRun() {
           </Select>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="rg-grid-2" style={{ marginBottom: 'var(--space-4)' }}>
           <div>
             <SectionLabel icon={<path d="M13 3L5 13h5l-1 8 8-11h-5l1-7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}>
               Gels/Electrolytes

@@ -38,11 +38,13 @@ export function SharedPlans() {
                   border: '1px solid var(--color-accent-300)',
                   padding: 'var(--space-4)',
                   display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
-                <div>
+                <div style={{ minWidth: 0, wordBreak: 'break-word' }}>
                   <div style={{ fontWeight: 600 }}>{s.plan.raceName}</div>
                   <div className="text-muted" style={{ fontSize: 13 }}>
                     {s.plan.raceDate}

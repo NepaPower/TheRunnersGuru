@@ -111,6 +111,19 @@
 .rg-tp-table-scroll {
   max-height: 560px;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 760px) {
+  .rg-tp-table-scroll {
+    background:
+      linear-gradient(to right, var(--color-bg) 30%, transparent),
+      linear-gradient(to right, transparent, var(--color-bg) 70%) 100% 0,
+      linear-gradient(to right, rgba(0, 0, 0, 0.06), transparent 20px),
+      linear-gradient(to left, rgba(0, 0, 0, 0.06), transparent 20px) 100% 0;
+    background-repeat: no-repeat;
+    background-size: 40px 100%, 40px 100%, 20px 100%, 20px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
 }
 .rg-tp-table {
   width: 100%;

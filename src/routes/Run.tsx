@@ -15,13 +15,13 @@ export function Run() {
         {run.active ? 'Live — tracking your route and pace.' : 'Start a run to begin live tracking.'}
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-4)', alignItems: 'start' }}>
+      <div className="rg-grid-main-side">
         <Blueprint className="live-map-placeholder">
           <span className="live-map-label">LIVE MAP — GPS FEED PLACEHOLDER</span>
         </Blueprint>
 
         <div className="stack-4">
-          <Blueprint className="blueprint-card" style={{ border: '1px solid var(--color-divider)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+          <Blueprint className="blueprint-card rg-grid-2" style={{ border: '1px solid var(--color-divider)' }}>
             <div>
               <div className="card-kicker">Time</div>
               <div style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 600 }}>

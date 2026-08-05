@@ -77,7 +77,15 @@ export function SettingsTab() {
               {GARMIN_SAMPLE_ACTIVITIES.map((a) => (
                 <div
                   key={a.date + a.title}
-                  style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, padding: '8px 0', borderBottom: '1px solid var(--color-divider)' }}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '2px 12px',
+                    justifyContent: 'space-between',
+                    fontSize: 13.5,
+                    padding: '8px 0',
+                    borderBottom: '1px solid var(--color-divider)',
+                  }}
                 >
                   <span>
                     {a.date} · {a.title}
@@ -136,7 +144,7 @@ export function SettingsTab() {
           <Input type="text" placeholder="Apt 4B" value={address.unit} onChange={setField('unit')} />
         </Field>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="rg-grid-name" style={{ marginBottom: 'var(--space-4)' }}>
           <Field label="City">
             <Input type="text" placeholder="Austin" value={address.city} onChange={setField('city')} />
           </Field>

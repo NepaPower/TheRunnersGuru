@@ -418,16 +418,16 @@ export function buildTrainingPlan(
 }
 
 /** Whether a standard (5K-Marathon) plan's timeline is compressed — under
- * roughly 2 months (9 weeks, given plans start the following Monday) —
- * and the message to show if so. The plan still gets built regardless;
- * this is a heads-up, not a block. Ultra is deliberately excluded here —
- * it has its own separate planning considerations, not this warning. */
+ * the 12-week standard training period (roughly 3 months) — and the
+ * message to show if so. The plan still gets built regardless; this is a
+ * heads-up, not a block. Ultra is deliberately excluded here — it has its
+ * own separate planning considerations, not this warning. */
 export function getTrainingTimeWarning(distanceGoal: DistanceGoal, totalWeeks: number): string | null {
-  if (distanceGoal === 'ultra' || totalWeeks >= 9) return null;
-  return `Your race is only ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} away — that's less than the 2 months most training plans assume. You'll still get a full plan below, but expect a faster ramp-up in volume and less margin for missed days or setbacks than a longer buildup would allow.`;
+  if (distanceGoal === 'ultra' || totalWeeks >= 12) return null;
+  return `Your race is only ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} away — that's less than the standard 12-week (about 3 month) training period. You'll still get a full plan below, but expect a faster ramp-up in volume and less margin for missed days or setbacks than a longer buildup would allow.`;
 }
 
-/** Same ~2-month threshold as getTrainingTimeWarning, but usable during
+/** Same 12-week threshold as getTrainingTimeWarning, but usable during
  * onboarding before a plan (and its totalWeeks) exists yet — just needs a
  * race date. Uses the same "start = next Monday" reference point as
  * monthsLeftLabel so the two stay consistent with each other. */
@@ -437,7 +437,7 @@ export function isTrainingTimeShort(raceDateStr: string): boolean {
   start.setDate(start.getDate() + 7);
   const race = new Date(raceDateStr + 'T00:00:00');
   const totalDays = Math.round((race.getTime() - start.getTime()) / 86400000);
-  return totalDays > 0 && totalDays < 60;
+  return totalDays > 0 && totalDays < 12 * 7;
 }
 
 /** "You have X months to train if you start next week" helper for onboarding step 4. */

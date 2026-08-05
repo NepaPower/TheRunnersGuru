@@ -37,7 +37,7 @@ export function StepDateGoal() {
       <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>
         Target goal to finish race
       </label>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: isUltra ? 'var(--space-2)' : 'var(--space-6)' }}>
+      <div className="rg-grid-2" style={{ marginBottom: isUltra ? 'var(--space-2)' : 'var(--space-6)' }}>
         {isUltra ? (
           <Field label="Total hours">
             <Input
@@ -92,7 +92,8 @@ export function StepDateGoal() {
           </p>
           {isShort && (
             <p style={{ margin: '6px 0 0', fontSize: 13 }}>
-              That's a compressed timeline — under 2 months. We'll still build you a full plan, just expect a faster
+              That's a compressed timeline — under the standard 12-week (about 3 month) training period. We'll still
+              build you a full plan, just expect a faster
               ramp-up in volume than a longer buildup would allow.
             </p>
           )}

@@ -50,6 +50,8 @@ export function StepDistance() {
         <div
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
             alignItems: 'center',
             justifyContent: 'space-between',
             border: '1px solid var(--color-accent-300)',
@@ -136,8 +138,8 @@ export function StepDistance() {
 
               {onboarding.gpxRoute ? (
                 <div style={{ border: '1px solid var(--color-accent-300)', padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{onboarding.gpxRoute.fileName}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, wordBreak: 'break-word', minWidth: 0 }}>{onboarding.gpxRoute.fileName}</span>
                     <Button
                       variant="ghost"
                       onClick={() => {

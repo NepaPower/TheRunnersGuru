@@ -518,13 +518,15 @@ export function CrewPlan() {
                   key={c.id}
                   style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    gap: 8,
                     padding: 'var(--space-2) 0',
                     borderTop: '1px solid var(--color-divider)',
                   }}
                 >
-                  <div style={{ fontSize: 14 }}>
+                  <div style={{ fontSize: 14, wordBreak: 'break-word', minWidth: 0 }}>
                     {c.invitedEmail}{' '}
                     <span className="rg-cp-muted" style={{ fontSize: 12 }}>
                       ({c.status === 'accepted' ? 'active' : 'invited, not yet signed in'})

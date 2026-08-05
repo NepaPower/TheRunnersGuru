@@ -73,7 +73,7 @@ export function SignUp() {
           <Input type="text" placeholder="Apt 4B" value={address.unit} onChange={(e) => setAddress({ ...address, unit: e.target.value })} />
         </Field>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <div className="rg-grid-name" style={{ marginBottom: 'var(--space-4)' }}>
           <Field label="City">
             <Input type="text" placeholder="Austin" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
           </Field>
