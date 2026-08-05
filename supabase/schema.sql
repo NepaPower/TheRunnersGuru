@@ -206,6 +206,15 @@ create policy "crew members can edit shared plans"
 --       )
 --     );
 --   alter table public.logged_runs add column route_points jsonb;
+--   alter table public.logged_runs add column activity_name text;
+--   alter table public.logged_runs add column activity_type text;
+--   alter table public.logged_runs add column avg_heart_rate int;
+--   alter table public.logged_runs add column max_heart_rate int;
+--   alter table public.logged_runs add column min_heart_rate int;
+--   alter table public.logged_runs add column avg_cadence int;
+--   alter table public.logged_runs add column max_cadence int;
+--   alter table public.logged_runs add column elevation_gain_ft int;
+--   alter table public.logged_runs add column elevation_loss_ft int;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the
@@ -262,6 +271,18 @@ create table public.logged_runs (
   -- thumbnail only, not a full-precision track. Null for manually-entered
   -- runs (no GPX behind them).
   route_points jsonb,
+  -- Everything below is device-recorded metadata from a GPX import —
+  -- never a manual-entry field. Null for manually-entered runs, or for a
+  -- GPX that didn't happen to include that particular data.
+  activity_name text,
+  activity_type text,
+  avg_heart_rate int,
+  max_heart_rate int,
+  min_heart_rate int,
+  avg_cadence int,
+  max_cadence int,
+  elevation_gain_ft int,
+  elevation_loss_ft int,
   created_at timestamptz not null default now()
 );
 

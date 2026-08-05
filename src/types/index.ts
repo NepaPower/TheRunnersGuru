@@ -203,6 +203,34 @@ export interface LoggedRun {
   nutrition: string; // "1x Clif Bar" | "—"
   comment: string;
   routePoints?: { lat: number; lon: number }[]; // only present for GPX-imported runs
+  // Everything below is device-recorded metadata from a GPX import —
+  // never a manual-entry field (nobody types their own heart rate).
+  // Undefined for manually-entered runs.
+  activityName?: string;
+  activityType?: string;
+  avgHeartRate?: number;
+  maxHeartRate?: number;
+  minHeartRate?: number;
+  avgCadence?: number;
+  maxCadence?: number;
+  elevationGainFt?: number;
+  elevationLossFt?: number;
+  // Raw, form-shaped values for editing — everything above is
+  // display-formatted and not safe to parse back apart.
+  raw: {
+    distanceMiles: number;
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    timeOfDay: string;
+    temperature: string; // numeric string only, e.g. "78" — matches the manual entry field's format
+    electrolytesCount: number;
+    electrolytesBrand: string;
+    nutritionCount: number;
+    nutritionBrand: string;
+    comment: string;
+  };
 }
 
 export type MatchStatus = 'pending' | 'accepted' | 'passed';

@@ -265,6 +265,16 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'LOG_RUN_ADDED':
       return { ...state, loggedRuns: [action.run, ...state.loggedRuns], logForm: { ...emptyLogForm } };
 
+    case 'LOG_RUN_UPDATED':
+      return {
+        ...state,
+        loggedRuns: state.loggedRuns.map((r) => (r.id === action.run.id ? action.run : r)),
+        logForm: { ...emptyLogForm },
+      };
+
+    case 'LOG_RUN_DELETED':
+      return { ...state, loggedRuns: state.loggedRuns.filter((r) => r.id !== action.id) };
+
     case 'LOG_RUN_SET_TEMP':
       return { ...state, loggedRuns: state.loggedRuns.map((r) => (r.id === action.id ? { ...r, temperature: action.label } : r)) };
 

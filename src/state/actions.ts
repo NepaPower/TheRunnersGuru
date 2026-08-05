@@ -68,6 +68,8 @@ export type Action =
   | { type: 'LOG_FORM_SET_MANY'; fields: Partial<LogRunFormState> }
   // Dispatched by the Log a Run screen after a successful insert into Supabase.
   | { type: 'LOG_RUN_ADDED'; run: LoggedRun }
+  | { type: 'LOG_RUN_UPDATED'; run: LoggedRun }
+  | { type: 'LOG_RUN_DELETED'; id: string }
   | { type: 'LOG_RUN_SET_TEMP'; id: string; label: string }
   | { type: 'ADDRESS_FIELD_CHANGE'; field: keyof Address; value: string }
   | { type: 'AUTH_NAME_CHANGE'; value: string }

@@ -347,6 +347,55 @@ export async function fetchSharedPlans(userId: string): Promise<{ accessId: stri
 
 // ─── Logged runs ─────────────────────────────────────────────────────────
 
+function mapRunRow(r: any): LoggedRun {
+  const totalSeconds = r.duration_seconds;
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const tempDigits = typeof r.temperature_label === 'string' ? r.temperature_label.match(/-?\d+/)?.[0] : undefined;
+  return {
+    id: r.id,
+    date: r.run_date,
+    distance: String(r.distance_miles),
+    duration: formatDurationParts(days, hours, minutes, seconds),
+    timeOfDay: r.time_of_day ?? '',
+    paceLabel: r.pace_label ?? '—',
+    temperature: r.temperature_label ?? '—',
+    electrolytes: r.electrolytes_count > 0 && r.electrolytes_brand ? `${r.electrolytes_count}x ${r.electrolytes_brand}` : '—',
+    nutrition: r.nutrition_count > 0 && r.nutrition_brand ? `${r.nutrition_count}x ${r.nutrition_brand}` : '—',
+    comment: r.comment ?? '',
+    routePoints: r.route_points ?? undefined,
+    activityName: r.activity_name ?? undefined,
+    activityType: r.activity_type ?? undefined,
+    avgHeartRate: r.avg_heart_rate ?? undefined,
+    maxHeartRate: r.max_heart_rate ?? undefined,
+    minHeartRate: r.min_heart_rate ?? undefined,
+    avgCadence: r.avg_cadence ?? undefined,
+    maxCadence: r.max_cadence ?? undefined,
+    elevationGainFt: r.elevation_gain_ft ?? undefined,
+    elevationLossFt: r.elevation_loss_ft ?? undefined,
+    // Raw, editable-form-shaped values — the fields above are all
+    // display-formatted (e.g. duration as "1h 16m 25s"), which isn't safe
+    // to parse back apart for repopulating the Log a Run form when
+    // editing. These are the same values before formatting.
+    raw: {
+      distanceMiles: Number(r.distance_miles),
+      days,
+      hours,
+      minutes,
+      seconds,
+      timeOfDay: r.time_of_day ?? '',
+      temperature: tempDigits ?? '',
+      electrolytesCount: r.electrolytes_count ?? 0,
+      electrolytesBrand: r.electrolytes_brand ?? '',
+      nutritionCount: r.nutrition_count ?? 0,
+      nutritionBrand: r.nutrition_brand ?? '',
+      comment: r.comment ?? '',
+    },
+  };
+}
+
 export async function fetchLoggedRuns(userId: string): Promise<LoggedRun[]> {
   const { data, error } = await supabase
     .from('logged_runs')
@@ -354,27 +403,7 @@ export async function fetchLoggedRuns(userId: string): Promise<LoggedRun[]> {
     .eq('user_id', userId)
     .order('run_date', { ascending: false });
   if (error) throw error;
-
-  return (data ?? []).map((r) => {
-    const totalSeconds = r.duration_seconds;
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return {
-      id: r.id,
-      date: r.run_date,
-      distance: String(r.distance_miles),
-      duration: formatDurationParts(days, hours, minutes, seconds),
-      timeOfDay: r.time_of_day ?? '',
-      paceLabel: r.pace_label ?? '—',
-      temperature: r.temperature_label ?? '—',
-      electrolytes: r.electrolytes_count > 0 && r.electrolytes_brand ? `${r.electrolytes_count}x ${r.electrolytes_brand}` : '—',
-      nutrition: r.nutrition_count > 0 && r.nutrition_brand ? `${r.nutrition_count}x ${r.nutrition_brand}` : '—',
-      comment: r.comment ?? '',
-      routePoints: r.route_points ?? undefined,
-    };
-  });
+  return (data ?? []).map(mapRunRow);
 }
 
 export interface NewRunInput {
@@ -393,44 +422,84 @@ export interface NewRunInput {
   nutritionBrand: string;
   comment: string;
   routePoints?: { lat: number; lon: number }[]; // only set for GPX-imported runs
+  activityName?: string;
+  activityType?: string;
+  avgHeartRate?: number;
+  maxHeartRate?: number;
+  minHeartRate?: number;
+  avgCadence?: number;
+  maxCadence?: number;
+  elevationGainFt?: number;
+  elevationLossFt?: number;
+}
+
+function runInputToRow(run: NewRunInput) {
+  const totalSeconds = run.days * 86400 + run.hours * 3600 + run.minutes * 60 + run.seconds;
+  return {
+    run_date: run.date,
+    distance_miles: run.distanceMiles,
+    duration_seconds: totalSeconds,
+    time_of_day: run.timeOfDay,
+    pace_label: run.paceLabel,
+    temperature_label: run.temperatureLabel,
+    electrolytes_count: run.electrolytesCount,
+    electrolytes_brand: run.electrolytesBrand,
+    nutrition_count: run.nutritionCount,
+    nutrition_brand: run.nutritionBrand,
+    comment: run.comment,
+  };
 }
 
 export async function insertLoggedRun(userId: string, run: NewRunInput): Promise<LoggedRun> {
-  const totalSeconds = run.days * 86400 + run.hours * 3600 + run.minutes * 60 + run.seconds;
   const { data, error } = await supabase
     .from('logged_runs')
     .insert({
       user_id: userId,
-      run_date: run.date,
-      distance_miles: run.distanceMiles,
-      duration_seconds: totalSeconds,
-      time_of_day: run.timeOfDay,
-      pace_label: run.paceLabel,
-      temperature_label: run.temperatureLabel,
-      electrolytes_count: run.electrolytesCount,
-      electrolytes_brand: run.electrolytesBrand,
-      nutrition_count: run.nutritionCount,
-      nutrition_brand: run.nutritionBrand,
-      comment: run.comment,
+      ...runInputToRow(run),
       route_points: run.routePoints ?? null,
+      activity_name: run.activityName ?? null,
+      activity_type: run.activityType ?? null,
+      avg_heart_rate: run.avgHeartRate ?? null,
+      max_heart_rate: run.maxHeartRate ?? null,
+      min_heart_rate: run.minHeartRate ?? null,
+      avg_cadence: run.avgCadence ?? null,
+      max_cadence: run.maxCadence ?? null,
+      elevation_gain_ft: run.elevationGainFt ?? null,
+      elevation_loss_ft: run.elevationLossFt ?? null,
     })
     .select()
     .single();
   if (error) throw error;
+  return mapRunRow(data);
+}
 
-  return {
-    id: data.id,
-    date: data.run_date,
-    distance: String(data.distance_miles),
-    duration: formatDurationParts(run.days, run.hours, run.minutes, run.seconds),
-    timeOfDay: data.time_of_day ?? '',
-    paceLabel: data.pace_label ?? '—',
-    temperature: data.temperature_label ?? '—',
-    electrolytes: run.electrolytesCount > 0 && run.electrolytesBrand ? `${run.electrolytesCount}x ${run.electrolytesBrand}` : '—',
-    nutrition: run.nutritionCount > 0 && run.nutritionBrand ? `${run.nutritionCount}x ${run.nutritionBrand}` : '—',
-    comment: data.comment ?? '',
-    routePoints: data.route_points ?? undefined,
-  };
+/** Updates an existing logged run. `preserveGpxMetadata` should be true
+ * unless the person re-uploaded a fresh GPX during this edit — otherwise
+ * an edit of a GPX-imported run's manual fields (say, fixing a typo in
+ * comments) would silently wipe out its heart rate/cadence/route data by
+ * writing nulls over it. */
+export async function updateLoggedRun(runId: string, run: NewRunInput, preserveGpxMetadata: boolean): Promise<LoggedRun> {
+  const patch: Record<string, unknown> = runInputToRow(run);
+  if (!preserveGpxMetadata) {
+    patch.route_points = run.routePoints ?? null;
+    patch.activity_name = run.activityName ?? null;
+    patch.activity_type = run.activityType ?? null;
+    patch.avg_heart_rate = run.avgHeartRate ?? null;
+    patch.max_heart_rate = run.maxHeartRate ?? null;
+    patch.min_heart_rate = run.minHeartRate ?? null;
+    patch.avg_cadence = run.avgCadence ?? null;
+    patch.max_cadence = run.maxCadence ?? null;
+    patch.elevation_gain_ft = run.elevationGainFt ?? null;
+    patch.elevation_loss_ft = run.elevationLossFt ?? null;
+  }
+  const { data, error } = await supabase.from('logged_runs').update(patch).eq('id', runId).select().single();
+  if (error) throw error;
+  return mapRunRow(data);
+}
+
+export async function deleteLoggedRun(runId: string): Promise<void> {
+  const { error } = await supabase.from('logged_runs').delete().eq('id', runId);
+  if (error) throw error;
 }
 
 export async function updateLoggedRunTemperature(runId: string, label: string) {

@@ -1,14 +1,17 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { Dialog } from '../components/ui/Dialog';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { ELECTROLYTE_BRANDS, NUTRITION_BRANDS } from '../data/constants';
-import { insertLoggedRun } from '../lib/api';
+import { insertLoggedRun, updateLoggedRun, deleteLoggedRun } from '../lib/api';
+import { emptyLogForm } from '../state/reducer';
 import { paceLabelFromMinutes } from '../lib/format';
 import { mockTemperature, fetchTemperatureForCoordsAndDate } from '../lib/weather';
-import { parseRunGpxFile } from '../lib/runGpx';
+import { parseRunGpxFile, type ParsedRun } from '../lib/runGpx';
 import { buildRoutePath, type LatLon } from '../lib/routeMap';
+import type { LoggedRun } from '../types';
 import './logrun.css';
 
 const DAY_OPTIONS = Array.from({ length: 8 }, (_, i) => i);
@@ -40,6 +43,27 @@ function RoutePreview({ points, width, height }: { points: LatLon[]; width: numb
   );
 }
 
+interface RunMetaFields {
+  avgHeartRate?: number | null;
+  maxHeartRate?: number | null;
+  avgCadence?: number | null;
+  elevationGainFt?: number | null;
+  elevationLossFt?: number | null;
+}
+
+/** Compact read-only summary of a run's device-recorded metadata — never
+ * editable, since none of this is something a person would type in
+ * themselves (nobody knows their own heart rate down to the bpm). Used
+ * both in the import preview and the logged-runs table's Details column. */
+function MetaSummary({ run }: { run: RunMetaFields }) {
+  const parts: string[] = [];
+  if (run.avgHeartRate != null) parts.push(`HR ${run.avgHeartRate} avg${run.maxHeartRate != null ? ` (max ${run.maxHeartRate})` : ''}`);
+  if (run.avgCadence != null) parts.push(`Cadence ${run.avgCadence} spm`);
+  if (run.elevationGainFt != null) parts.push(`+${run.elevationGainFt}/-${run.elevationLossFt ?? 0} ft`);
+  if (parts.length === 0) return <span className="text-muted">—</span>;
+  return <>{parts.join(' · ')}</>;
+}
+
 export function LogRun() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -49,10 +73,13 @@ export function LogRun() {
   const [error, setError] = useState<string | null>(null);
   const [gpxLoading, setGpxLoading] = useState(false);
   const [gpxError, setGpxError] = useState<string | null>(null);
-  const [gpxFileName, setGpxFileName] = useState<string | null>(null);
-  const [gpxRoutePoints, setGpxRoutePoints] = useState<LatLon[] | null>(null);
+  const [gpxMeta, setGpxMeta] = useState<ParsedRun | null>(null);
   const [gpxTempLoading, setGpxTempLoading] = useState(false);
+  const [editingRunId, setEditingRunId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LoggedRun | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formCardRef = useRef<HTMLDivElement>(null);
 
   const setField = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     dispatch({ type: 'LOG_FORM_SET_FIELD', field, value: e.target.value });
@@ -63,7 +90,7 @@ export function LogRun() {
     if (!file) return;
     setGpxError(null);
     setGpxLoading(true);
-    setGpxRoutePoints(null);
+    setGpxMeta(null);
     try {
       const run = await parseRunGpxFile(file);
       dispatch({
@@ -78,8 +105,7 @@ export function LogRun() {
           seconds: String(run.seconds),
         },
       });
-      setGpxFileName(run.fileName);
-      setGpxRoutePoints(run.routePoints);
+      setGpxMeta(run);
       setGpxLoading(false);
 
       // Temperature at the run's actual coordinates — more accurate than
@@ -120,7 +146,7 @@ export function LogRun() {
       const temperatureLabel =
         manualTemp != null ? `${manualTemp}°F` : zip ? 'Looking up…' : `${mockTemperature(f.date, f.timeOfDay)}°F`;
 
-      const run = await insertLoggedRun(state.userId, {
+      const input = {
         date: f.date,
         distanceMiles,
         days,
@@ -135,15 +161,82 @@ export function LogRun() {
         nutritionCount: Number(f.nutritionCount),
         nutritionBrand: f.nutritionBrand,
         comment: f.comment,
-        routePoints: gpxRoutePoints ?? undefined,
-      });
-      dispatch({ type: 'LOG_RUN_ADDED', run });
-      setGpxFileName(null);
-      setGpxRoutePoints(null);
+        routePoints: gpxMeta?.routePoints,
+        activityName: gpxMeta?.activityName ?? undefined,
+        activityType: gpxMeta?.activityType ?? undefined,
+        avgHeartRate: gpxMeta?.avgHeartRate ?? undefined,
+        maxHeartRate: gpxMeta?.maxHeartRate ?? undefined,
+        minHeartRate: gpxMeta?.minHeartRate ?? undefined,
+        avgCadence: gpxMeta?.avgCadence ?? undefined,
+        maxCadence: gpxMeta?.maxCadence ?? undefined,
+        elevationGainFt: gpxMeta?.elevationGainFt ?? undefined,
+        elevationLossFt: gpxMeta?.elevationLossFt ?? undefined,
+      };
+
+      if (editingRunId) {
+        // preserveGpxMetadata=true unless a fresh GPX was uploaded during
+        // this edit session — otherwise editing, say, just the comment on
+        // a GPX-imported run would silently wipe its heart rate/cadence/
+        // route data by writing nulls over it.
+        const run = await updateLoggedRun(editingRunId, input, gpxMeta === null);
+        dispatch({ type: 'LOG_RUN_UPDATED', run });
+      } else {
+        const run = await insertLoggedRun(state.userId, input);
+        dispatch({ type: 'LOG_RUN_ADDED', run });
+      }
+      setGpxMeta(null);
+      setEditingRunId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save this run.');
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function handleEditRun(run: LoggedRun) {
+    dispatch({
+      type: 'LOG_FORM_SET_MANY',
+      fields: {
+        date: run.date,
+        distance: String(run.raw.distanceMiles),
+        days: String(run.raw.days),
+        hours: String(run.raw.hours),
+        minutes: String(run.raw.minutes),
+        seconds: String(run.raw.seconds),
+        timeOfDay: run.raw.timeOfDay,
+        temperature: run.raw.temperature,
+        electrolytesCount: String(run.raw.electrolytesCount),
+        electrolytesBrand: run.raw.electrolytesBrand,
+        nutritionCount: String(run.raw.nutritionCount),
+        nutritionBrand: run.raw.nutritionBrand,
+        comment: run.raw.comment,
+      },
+    });
+    setEditingRunId(run.id);
+    setGpxMeta(null);
+    setGpxError(null);
+    setError(null);
+    formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function handleCancelEdit() {
+    setEditingRunId(null);
+    setGpxMeta(null);
+    dispatch({ type: 'LOG_FORM_SET_MANY', fields: emptyLogForm });
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteLoggedRun(deleteTarget.id);
+      dispatch({ type: 'LOG_RUN_DELETED', id: deleteTarget.id });
+      if (editingRunId === deleteTarget.id) handleCancelEdit();
+      setDeleteTarget(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete this run.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -153,7 +246,7 @@ export function LogRun() {
         ← Back to summary
       </Button>
 
-      <div className="rg-logrun-card">
+      <div className="rg-logrun-card" ref={formCardRef}>
         <div className="rg-logrun-title-row">
           <div className="rg-logrun-title-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
@@ -162,9 +255,9 @@ export function LogRun() {
             </svg>
           </div>
           <div>
-            <h3 style={{ margin: 0 }}>Log a run</h3>
+            <h3 style={{ margin: 0 }}>{editingRunId ? 'Edit run' : 'Log a run'}</h3>
             <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-              Add a run you tracked elsewhere.
+              {editingRunId ? 'Update the details below, then save.' : 'Add a run you tracked elsewhere.'}
             </p>
           </div>
         </div>
@@ -187,11 +280,11 @@ export function LogRun() {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: 14 }}>Import from GPX</div>
             <div className="text-muted" style={{ fontSize: 13, wordBreak: 'break-word' }}>
-              {gpxFileName
-                ? `Filled in from ${gpxFileName} — check the fields below, then adjust anything that's off.${gpxTempLoading ? ' Looking up temperature…' : ''}`
-                : 'From Garmin Connect, Strava, or any watch export — fills in date, time, distance, duration, and temperature.'}
+              {gpxMeta
+                ? `Filled in from ${gpxMeta.fileName} — check the fields below, then adjust anything that's off.${gpxTempLoading ? ' Looking up temperature…' : ''}`
+                : 'From Garmin Connect, Strava, or any watch export — fills in date, time, distance, duration, temperature, and (when the device recorded it) heart rate, cadence, and elevation.'}
             </div>
-            {gpxFileName && f.distance && (Number(f.days) || Number(f.hours) || Number(f.minutes) || Number(f.seconds)) ? (
+            {gpxMeta && f.distance && (Number(f.days) || Number(f.hours) || Number(f.minutes) || Number(f.seconds)) ? (
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-accent-700)', marginTop: 4 }}>
                 {paceLabelFromMinutes(
                   Number(f.days) * 24 * 60 + Number(f.hours) * 60 + Number(f.minutes) + Number(f.seconds) / 60,
@@ -200,10 +293,15 @@ export function LogRun() {
                 avg pace
               </div>
             ) : null}
+            {gpxMeta && (gpxMeta.avgHeartRate != null || gpxMeta.avgCadence != null || gpxMeta.elevationGainFt != null) && (
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                <MetaSummary run={gpxMeta} />
+              </div>
+            )}
           </div>
-          {gpxRoutePoints && gpxRoutePoints.length > 1 && (
+          {gpxMeta && gpxMeta.routePoints.length > 1 && (
             <div style={{ flex: 'none', border: '1px solid var(--color-divider)', borderRadius: 8, background: 'var(--color-bg)', padding: 4 }}>
-              <RoutePreview points={gpxRoutePoints} width={100} height={70} />
+              <RoutePreview points={gpxMeta.routePoints} width={100} height={70} />
             </div>
           )}
           <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
@@ -321,9 +419,16 @@ export function LogRun() {
           </div>
         )}
 
-        <Button variant="primary" disabled={submitDisabled || submitting} onClick={handleAddRun}>
-          {submitting ? 'Saving…' : 'Add run'}
-        </Button>
+        <div className="row-2">
+          <Button variant="primary" disabled={submitDisabled || submitting} onClick={handleAddRun}>
+            {submitting ? 'Saving…' : editingRunId ? 'Save changes' : 'Add run'}
+          </Button>
+          {editingRunId && (
+            <Button variant="ghost" disabled={submitting} onClick={handleCancelEdit}>
+              Cancel
+            </Button>
+          )}
+        </div>
       </div>
 
       {state.loggedRuns.length > 0 ? (
@@ -338,9 +443,11 @@ export function LogRun() {
                 <th>Mins/mile</th>
                 <th>Temp</th>
                 <th>Route</th>
+                <th>Details</th>
                 <th>Gels/Electrolytes</th>
                 <th>Nutrition</th>
                 <th>Comments</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -359,9 +466,22 @@ export function LogRun() {
                       '—'
                     )}
                   </td>
+                  <td style={{ fontSize: 12.5 }}>
+                    <MetaSummary run={r} />
+                  </td>
                   <td>{r.electrolytes}</td>
                   <td>{r.nutrition}</td>
                   <td>{r.comment || '—'}</td>
+                  <td>
+                    <div className="row-2" style={{ gap: 4, flexWrap: 'nowrap' }}>
+                      <Button variant="ghost" onClick={() => handleEditRun(r)}>
+                        Edit
+                      </Button>
+                      <Button variant="ghost" onClick={() => setDeleteTarget(r)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -373,6 +493,27 @@ export function LogRun() {
             Runs you log will show up here.
           </p>
         </div>
+      )}
+
+      {deleteTarget && (
+        <Dialog
+          title="Delete this run?"
+          onDismiss={() => !deleting && setDeleteTarget(null)}
+          actions={
+            <>
+              <Button variant="secondary" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" disabled={deleting} onClick={handleConfirmDelete}>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            </>
+          }
+        >
+          <p style={{ margin: 0 }}>
+            {deleteTarget.date} — {deleteTarget.distance} mi will be permanently removed. This can't be undone.
+          </p>
+        </Dialog>
       )}
     </>
   );
