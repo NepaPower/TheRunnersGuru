@@ -93,3 +93,102 @@
 .rg-logrun-table-card .table tbody tr:hover {
   background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
+.rg-logrun-row {
+  cursor: pointer;
+}
+
+/* — Run detail modal — */
+.rg-run-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #16241f 55%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 100;
+}
+.rg-run-detail-card {
+  background: var(--color-bg);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.rg-run-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.rg-run-detail-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--color-divider);
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rg-run-detail-close:hover {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.rg-run-detail-map {
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  min-height: 120px;
+}
+
+.rg-run-detail-section-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  margin: var(--space-5) 0 var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-divider);
+}
+.rg-run-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+.rg-run-detail-stat-label {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+  margin-bottom: 2px;
+}
+.rg-run-detail-stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-run-detail-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-divider);
+}
+
+@media (max-width: 640px) {
+  .rg-run-detail-stats { grid-template-columns: repeat(2, 1fr); }
+  .rg-run-detail-card { padding: var(--space-4); }
+}

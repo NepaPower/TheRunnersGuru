@@ -54,7 +54,7 @@ interface RunMetaFields {
 /** Compact read-only summary of a run's device-recorded metadata — never
  * editable, since none of this is something a person would type in
  * themselves (nobody knows their own heart rate down to the bpm). Used
- * both in the import preview and the logged-runs table's Details column. */
+ * in the import preview. */
 function MetaSummary({ run }: { run: RunMetaFields }) {
   const parts: string[] = [];
   if (run.avgHeartRate != null) parts.push(`HR ${run.avgHeartRate} avg${run.maxHeartRate != null ? ` (max ${run.maxHeartRate})` : ''}`);
@@ -62,6 +62,98 @@ function MetaSummary({ run }: { run: RunMetaFields }) {
   if (run.elevationGainFt != null) parts.push(`+${run.elevationGainFt}/-${run.elevationLossFt ?? 0} ft`);
   if (parts.length === 0) return <span className="text-muted">—</span>;
   return <>{parts.join(' · ')}</>;
+}
+
+function StatBlock({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rg-run-detail-stat">
+      <div className="rg-run-detail-stat-label">{label}</div>
+      <div className="rg-run-detail-stat-value">{value}</div>
+    </div>
+  );
+}
+
+/** Full detail view for one logged run — every available field, and a
+ * bigger version of the route map than the table's small thumbnail.
+ * Opened by clicking a row in the runs table. */
+function RunDetailModal({ run, onClose, onEdit, onDelete }: { run: LoggedRun; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
+  const hasDeviceMetrics = run.avgHeartRate != null || run.avgCadence != null || run.elevationGainFt != null;
+  return (
+    <div className="rg-run-detail-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="rg-run-detail-card" role="dialog" aria-modal="true" aria-label="Run details">
+        <div className="rg-run-detail-header">
+          <div>
+            <h2 style={{ margin: 0 }}>{run.activityName || 'Run'}</h2>
+            <p className="text-muted" style={{ margin: '2px 0 0' }}>
+              {run.date}
+              {run.timeOfDay ? ` · ${run.timeOfDay}` : ''}
+              {run.activityType ? ` · ${run.activityType}` : ''}
+            </p>
+          </div>
+          <button type="button" className="rg-run-detail-close" aria-label="Close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="rg-run-detail-map">
+          {run.routePoints && run.routePoints.length > 1 ? (
+            <RoutePreview points={run.routePoints} width={600} height={280} />
+          ) : (
+            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+              No route on file for this run — only available for GPX imports.
+            </p>
+          )}
+        </div>
+
+        <div className="rg-run-detail-stats">
+          <StatBlock label="Distance" value={`${run.distance} mi`} />
+          <StatBlock label="Time" value={run.duration} />
+          <StatBlock label="Pace" value={`${run.paceLabel}/mi`} />
+          <StatBlock label="Temperature" value={run.temperature} />
+        </div>
+
+        {hasDeviceMetrics && (
+          <>
+            <div className="rg-run-detail-section-title">Device metrics</div>
+            <div className="rg-run-detail-stats">
+              {run.avgHeartRate != null && <StatBlock label="Avg heart rate" value={`${run.avgHeartRate} bpm`} />}
+              {run.maxHeartRate != null && <StatBlock label="Max heart rate" value={`${run.maxHeartRate} bpm`} />}
+              {run.minHeartRate != null && <StatBlock label="Min heart rate" value={`${run.minHeartRate} bpm`} />}
+              {run.avgCadence != null && <StatBlock label="Avg cadence" value={`${run.avgCadence} spm`} />}
+              {run.maxCadence != null && <StatBlock label="Max cadence" value={`${run.maxCadence} spm`} />}
+              {run.elevationGainFt != null && <StatBlock label="Elevation gain" value={`${run.elevationGainFt} ft`} />}
+              {run.elevationLossFt != null && <StatBlock label="Elevation loss" value={`${run.elevationLossFt} ft`} />}
+            </div>
+          </>
+        )}
+
+        <div className="rg-run-detail-section-title">Fueling & notes</div>
+        <div className="rg-run-detail-stats">
+          <StatBlock label="Gels/Electrolytes" value={run.electrolytes} />
+          <StatBlock label="Nutrition" value={run.nutrition} />
+        </div>
+        {run.comment && (
+          <div style={{ marginTop: 'var(--space-3)' }}>
+            <div className="rg-run-detail-stat-label" style={{ marginBottom: 4 }}>
+              Comments
+            </div>
+            <p style={{ margin: 0 }}>{run.comment}</p>
+          </div>
+        )}
+
+        <div className="rg-run-detail-actions">
+          <Button variant="secondary" onClick={onEdit}>
+            Edit
+          </Button>
+          <Button variant="ghost" onClick={onDelete}>
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function LogRun() {
@@ -78,6 +170,7 @@ export function LogRun() {
   const [editingRunId, setEditingRunId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LoggedRun | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<LoggedRun | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formCardRef = useRef<HTMLDivElement>(null);
 
@@ -449,8 +542,6 @@ export function LogRun() {
                 <th>Distance</th>
                 <th>Mins/mile</th>
                 <th>Temp</th>
-                <th>Route</th>
-                <th>Details</th>
                 <th>Gels/Electrolytes</th>
                 <th>Nutrition</th>
                 <th>Comments</th>
@@ -459,7 +550,7 @@ export function LogRun() {
             </thead>
             <tbody>
               {state.loggedRuns.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className="rg-logrun-row" onClick={() => setSelectedRun(r)}>
                   <td>{r.date}</td>
                   <td>{r.timeOfDay || '—'}</td>
                   <td>{r.activityName || '—'}</td>
@@ -467,25 +558,27 @@ export function LogRun() {
                   <td>{r.distance} mi</td>
                   <td>{r.paceLabel}</td>
                   <td>{r.temperature}</td>
-                  <td>
-                    {r.routePoints && r.routePoints.length > 1 ? (
-                      <RoutePreview points={r.routePoints} width={60} height={40} />
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td style={{ fontSize: 12.5 }}>
-                    <MetaSummary run={r} />
-                  </td>
                   <td>{r.electrolytes}</td>
                   <td>{r.nutrition}</td>
                   <td>{r.comment || '—'}</td>
                   <td>
                     <div className="row-2" style={{ gap: 4, flexWrap: 'nowrap' }}>
-                      <Button variant="ghost" onClick={() => handleEditRun(r)}>
+                      <Button
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditRun(r);
+                        }}
+                      >
                         Edit
                       </Button>
-                      <Button variant="ghost" onClick={() => setDeleteTarget(r)}>
+                      <Button
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(r);
+                        }}
+                      >
                         Delete
                       </Button>
                     </div>
@@ -501,6 +594,22 @@ export function LogRun() {
             Runs you log will show up here.
           </p>
         </div>
+      )}
+
+      {selectedRun && (
+        <RunDetailModal
+          run={selectedRun}
+          onClose={() => setSelectedRun(null)}
+          onEdit={() => {
+            const run = selectedRun;
+            setSelectedRun(null);
+            handleEditRun(run);
+          }}
+          onDelete={() => {
+            setDeleteTarget(selectedRun);
+            setSelectedRun(null);
+          }}
+        />
       )}
 
       {deleteTarget && (
