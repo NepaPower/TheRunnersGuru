@@ -211,6 +211,10 @@ export function CrewPlan() {
   })();
   const projectedFinishEta =
     projectedFinishMinutes != null && raceDate && raceStartTime ? formatEtaClock(raceDate, raceStartTime, projectedFinishMinutes) : null;
+  const totalRestMinutes = waypoints.reduce(
+    (sum, _, i) => sum + (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0),
+    0,
+  );
   // Cutoff times only ever move forward through a race — if a station's
   // cutoff (as typed/detected, in geographic mile order) is earlier than
   // an earlier station's, that's independent evidence something's out of
@@ -464,20 +468,6 @@ export function CrewPlan() {
           </div>
         )}
 
-        {goalFinishMinutes != null && initialPaceMinPerMile != null && (
-          <div className="rg-cp-pace-callout">
-            <div className="rg-cp-pace-callout-primary">
-              Target pace: <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
-              <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
-            </div>
-            {projectedFinishEta && (
-              <div className="rg-cp-pace-callout-secondary">
-                At your current pace and rest plan, you're projected to finish on <strong>{projectedFinishEta}</strong>
-              </div>
-            )}
-          </div>
-        )}
-
         <div className="rg-cp-setup-grid">
           <Field label="Race start date">
             <Input
@@ -579,6 +569,25 @@ export function CrewPlan() {
                   </Button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {goalFinishMinutes != null && initialPaceMinPerMile != null && (
+        <div className="rg-cp-pace-callout">
+          <div className="rg-cp-pace-callout-primary">
+            Target pace: <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
+            <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
+          </div>
+          {projectedFinishEta && (
+            <div className="rg-cp-pace-callout-secondary">
+              At your current pace and rest plan, you're projected to finish on <strong>{projectedFinishEta}</strong>
+            </div>
+          )}
+          {totalRestMinutes > 0 && (
+            <div className="rg-cp-pace-callout-secondary">
+              Total planned rest/sleep: <strong>{formatElapsedLabel(totalRestMinutes)}</strong>
             </div>
           )}
         </div>

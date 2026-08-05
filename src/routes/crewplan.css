@@ -33,7 +33,15 @@
 }
 
 .rg-cp-pace-callout {
-  padding: var(--space-4) var(--space-6) 0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-4);
 }
 .rg-cp-pace-callout-primary {
   font-size: 18px;
