@@ -217,6 +217,18 @@ export function CrewPlan() {
   }, [isShared, sharedPlan]);
 
   const waypoints = plan?.gpxRoute?.waypoints ?? [];
+  // Some course files include an "ALTERNATE" waypoint at essentially the
+  // same location as a real station (BigFoot 200's "Spencer Butte
+  // ALTERNATE" is exactly this) — it's not a distinct stop in the race's
+  // narrative sequence, so both "miles to next stop" and the Segment Info
+  // link need to look past it to the next REAL station, not just the
+  // literal next waypoint in the array. Without this, everything after
+  // the alternate point would be off by one.
+  const isAlternateWaypointName = (name: string) => /\balternate\b/i.test(name);
+  const realWaypointIndices = waypoints.reduce<number[]>((acc, wp, idx) => {
+    if (!isAlternateWaypointName(wp.name)) acc.push(idx);
+    return acc;
+  }, []);
   const totalMiles = plan?.gpxRoute?.distanceMiles ?? 0;
   const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
   // The pace implied by the goal finish time, before any per-station
@@ -760,8 +772,11 @@ export function CrewPlan() {
               const elapsed = elapsedByIndex[i];
               const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed) : null;
               const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed) : null;
-              const nextSegmentMiles =
-                i < waypoints.length - 1 ? Math.max(0, Math.round((waypoints[i + 1].mile - wp.mile) * 10) / 10) : null;
+              const isAlternate = isAlternateWaypointName(wp.name);
+              const realPos = realWaypointIndices.indexOf(i);
+              const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
+              const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((waypoints[nextRealIdx].mile - wp.mile) * 10) / 10) : null;
+              const segmentInfoIndex = !isAlternate && realPos !== -1 && realPos < BIGFOOT_200_SEGMENTS.length ? realPos : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
@@ -774,13 +789,13 @@ export function CrewPlan() {
                       {nextSegmentMiles != null && (
                         <div className="rg-cp-station-next-leg">
                           {nextSegmentMiles} mi to next stop
-                          {i < BIGFOOT_200_SEGMENTS.length && (
+                          {segmentInfoIndex != null && (
                             <>
                               {' · '}
                               <button
                                 type="button"
                                 className="rg-cp-segment-link"
-                                onClick={() => setSelectedSegment(BIGFOOT_200_SEGMENTS[i])}
+                                onClick={() => setSelectedSegment(BIGFOOT_200_SEGMENTS[segmentInfoIndex])}
                               >
                                 Segment info
                               </button>
@@ -1006,7 +1021,7 @@ export function CrewPlan() {
 
       {selectedSegment && (
         <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setSelectedSegment(null)}>
-          <div className="rg-cp-crew-modal-card" role="dialog" aria-modal="true" aria-label="Segment info">
+          <div className="rg-cp-crew-modal-card rg-cp-segment-modal-card" role="dialog" aria-modal="true" aria-label="Segment info">
             <div className="rg-cp-crew-modal-header">
               <div>
                 <h3 style={{ margin: 0 }}>{selectedSegment.title}</h3>
