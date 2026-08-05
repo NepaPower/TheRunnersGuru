@@ -31,6 +31,7 @@ import {
   type ShortRangeForecast,
 } from '../lib/weather';
 import type { CrewAccessEntry, CrewNoteEntry, GpxWaypoint, TrainingPlan } from '../types';
+import { BIGFOOT_200_SEGMENTS, type CourseSegment } from '../data/bigfoot200Segments';
 import './crewplan.css';
 
 const emptyNote: CrewNoteEntry = {
@@ -148,6 +149,7 @@ export function CrewPlan() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [crewModalOpen, setCrewModalOpen] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState<CourseSegment | null>(null);
 
   // Shared mode only — this crew member's own role, used to decide
   // whether to show the Upload/Replace GPX control at all. The real
@@ -770,7 +772,21 @@ export function CrewPlan() {
                         {wp.elevationFt != null ? ` | ${wp.elevationFt.toLocaleString()} ft` : ''}
                       </div>
                       {nextSegmentMiles != null && (
-                        <div className="rg-cp-station-next-leg">{nextSegmentMiles} mi to next stop</div>
+                        <div className="rg-cp-station-next-leg">
+                          {nextSegmentMiles} mi to next stop
+                          {i < BIGFOOT_200_SEGMENTS.length && (
+                            <>
+                              {' · '}
+                              <button
+                                type="button"
+                                className="rg-cp-segment-link"
+                                onClick={() => setSelectedSegment(BIGFOOT_200_SEGMENTS[i])}
+                              >
+                                Segment info
+                              </button>
+                            </>
+                          )}
+                        </div>
                       )}
                       {(() => {
                         const cleanDescription = stripCutoffMention(wp.description);
@@ -986,6 +1002,33 @@ export function CrewPlan() {
             </Button>
           </div>
         </>
+      )}
+
+      {selectedSegment && (
+        <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setSelectedSegment(null)}>
+          <div className="rg-cp-crew-modal-card" role="dialog" aria-modal="true" aria-label="Segment info">
+            <div className="rg-cp-crew-modal-header">
+              <div>
+                <h3 style={{ margin: 0 }}>{selectedSegment.title}</h3>
+                <p className="rg-cp-muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
+                  {selectedSegment.distanceMiles} mi · +{selectedSegment.ascentFt.toLocaleString()} ft / -
+                  {selectedSegment.descentFt.toLocaleString()} ft
+                </p>
+              </div>
+              <button type="button" className="rg-cp-crew-modal-close" aria-label="Close" onClick={() => setSelectedSegment(null)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                  <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <p style={{ margin: '0 0 var(--space-4)' }}>{selectedSegment.description}</p>
+            <img
+              src={selectedSegment.profileImage}
+              alt={`${selectedSegment.title} elevation profile`}
+              style={{ width: '100%', borderRadius: 10, border: '1px solid var(--color-divider)', display: 'block' }}
+            />
+          </div>
+        </div>
       )}
     </>
   );

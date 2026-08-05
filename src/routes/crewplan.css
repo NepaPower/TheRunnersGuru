@@ -137,6 +137,19 @@
   color: var(--color-text);
   margin-top: 2px;
 }
+.rg-cp-segment-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent-700);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.rg-cp-segment-link:hover {
+  color: var(--color-accent-800);
+}
 
 /* Cutoff times get their own color language — a firm red, distinct from
    the gold used for general emphasis elsewhere — because missing one
