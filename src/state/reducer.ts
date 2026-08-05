@@ -13,6 +13,7 @@ export const emptyLogForm = {
   minutes: '0',
   seconds: '0',
   timeOfDay: '',
+  runLocation: '',
   comment: '',
   nutritionCount: '0',
   nutritionBrand: '',

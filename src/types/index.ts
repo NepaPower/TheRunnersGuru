@@ -299,6 +299,11 @@ export interface LogRunFormState {
   minutes: string;
   seconds: string;
   timeOfDay: string;
+  // Pre-filled from a GPX's activity name when one's uploaded (Garmin's
+  // auto-generated names are usually location-based, e.g. "Rockville
+  // Running") but freely editable — it's just a label, not device-recorded
+  // biometric data.
+  runLocation: string;
   comment: string;
   nutritionCount: string;
   nutritionBrand: string;

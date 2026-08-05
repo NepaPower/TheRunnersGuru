@@ -103,6 +103,7 @@ export function LogRun() {
           hours: String(run.hours),
           minutes: String(run.minutes),
           seconds: String(run.seconds),
+          runLocation: run.activityName || '',
         },
       });
       setGpxMeta(run);
@@ -162,7 +163,7 @@ export function LogRun() {
         nutritionBrand: f.nutritionBrand,
         comment: f.comment,
         routePoints: gpxMeta?.routePoints,
-        activityName: gpxMeta?.activityName ?? undefined,
+        activityName: f.runLocation.trim() || undefined,
         activityType: gpxMeta?.activityType ?? undefined,
         avgHeartRate: gpxMeta?.avgHeartRate ?? undefined,
         maxHeartRate: gpxMeta?.maxHeartRate ?? undefined,
@@ -204,6 +205,7 @@ export function LogRun() {
         minutes: String(run.raw.minutes),
         seconds: String(run.raw.seconds),
         timeOfDay: run.raw.timeOfDay,
+        runLocation: run.activityName ?? '',
         temperature: run.raw.temperature,
         electrolytesCount: String(run.raw.electrolytesCount),
         electrolytesBrand: run.raw.electrolytesBrand,
@@ -346,6 +348,10 @@ export function LogRun() {
           </Field>
         </div>
 
+        <Field label="Run Location" optional style={{ marginBottom: 'var(--space-4)' }}>
+          <Input type="text" placeholder="e.g. Rockville, MD" value={f.runLocation} onChange={setField('runLocation')} />
+        </Field>
+
         <SectionLabel icon={<><circle cx="12" cy="13" r="8" strokeWidth="2" /><path d="M12 9v4l3 2M9 2h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>}>
           Time taken
         </SectionLabel>
@@ -438,6 +444,7 @@ export function LogRun() {
               <tr>
                 <th>Date</th>
                 <th>Time of Day</th>
+                <th>Run Location</th>
                 <th>Time</th>
                 <th>Distance</th>
                 <th>Mins/mile</th>
@@ -455,6 +462,7 @@ export function LogRun() {
                 <tr key={r.id}>
                   <td>{r.date}</td>
                   <td>{r.timeOfDay || '—'}</td>
+                  <td>{r.activityName || '—'}</td>
                   <td>{r.duration}</td>
                   <td>{r.distance} mi</td>
                   <td>{r.paceLabel}</td>
