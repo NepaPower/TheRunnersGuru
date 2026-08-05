@@ -58,6 +58,30 @@ export function SharedPlans() {
           </div>
         )}
 
+        <div
+          style={{
+            border: '1px solid var(--color-divider)',
+            background: 'var(--color-accent-100)',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-6)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-3)',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Training for a race yourself?</div>
+            <div className="text-muted" style={{ fontSize: 13 }}>
+              You can crew for others and have your own training plan at the same time.
+            </div>
+          </div>
+          <Button variant="secondary" onClick={() => navigate('/onboarding')}>
+            Start my training plan
+          </Button>
+        </div>
+
         <Button variant="ghost" onClick={handleLogout}>
           Log out
         </Button>

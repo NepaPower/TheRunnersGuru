@@ -157,6 +157,24 @@ export function CrewPlan() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [weather, setWeather] = useState<Record<string, StationWeather>>({});
 
+  // The useState calls above only use their initial value on this
+  // component's very first render — in shared mode that's BEFORE the
+  // async fetch above resolves, when `plan` is still null. React never
+  // re-applies a useState initializer later, so without this effect,
+  // every field (race date/time, goal time, all station notes) would
+  // silently stay stuck at empty defaults forever once the real plan
+  // loads, even though `plan` itself updates correctly. Owner mode never
+  // hits this, since `plan` (= state.trainingPlan) is already populated
+  // before this component even mounts.
+  useEffect(() => {
+    if (!isShared || !sharedPlan) return;
+    setRaceDate(sharedPlan.raceDate ?? '');
+    setRaceStartTime(sharedPlan.raceStartTime ?? '');
+    setGoalHours(sharedPlan.goalFinishMinutes != null ? String(Math.floor(sharedPlan.goalFinishMinutes / 60)) : '');
+    setGoalMinutes(sharedPlan.goalFinishMinutes != null ? String(sharedPlan.goalFinishMinutes % 60) : '');
+    setNotes(buildNotesWithDetectedCutoffs(sharedPlan.gpxRoute?.waypoints ?? [], sharedPlan.crewNotes ?? {}));
+  }, [isShared, sharedPlan]);
+
   const waypoints = plan?.gpxRoute?.waypoints ?? [];
   const totalMiles = plan?.gpxRoute?.distanceMiles ?? 0;
   const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
