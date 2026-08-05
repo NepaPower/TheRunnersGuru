@@ -155,9 +155,13 @@ export function CrewPlan() {
   useEffect(() => {
     if (isShared || !plan?.id) return;
     let cancelled = false;
-    fetchCrewAccessList(plan.id).then((list) => {
-      if (!cancelled) setCrewAccessList(list);
-    });
+    fetchCrewAccessList(plan.id)
+      .then((list) => {
+        if (!cancelled) setCrewAccessList(list);
+      })
+      .catch((err) => {
+        if (!cancelled) setInviteError(err instanceof Error ? err.message : 'Could not load the crew list.');
+      });
     return () => {
       cancelled = true;
     };
@@ -454,11 +458,22 @@ export function CrewPlan() {
     setInviteError(null);
     try {
       await inviteCrewMember(state.userId, plan.id, inviteEmail.trim(), inviteAsChief);
-      setInviteEmail('');
-      setInviteAsChief(false);
-      setCrewAccessList(await fetchCrewAccessList(plan.id));
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Could not send that invite.');
+      setInviteSaving(false);
+      return;
+    }
+    // The invite itself succeeded at this point — a failure refreshing
+    // the list afterward is a separate, less serious problem and
+    // shouldn't be reported as "the invite failed" when it didn't.
+    setInviteEmail('');
+    setInviteAsChief(false);
+    try {
+      setCrewAccessList(await fetchCrewAccessList(plan.id));
+    } catch (err) {
+      setInviteError(
+        `Invite sent, but couldn't refresh the list to show it: ${err instanceof Error ? err.message : 'unknown error'}. Reloading the page should show it.`,
+      );
     } finally {
       setInviteSaving(false);
     }
@@ -714,8 +729,8 @@ export function CrewPlan() {
               const elapsed = elapsedByIndex[i];
               const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed) : null;
               const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed) : null;
-              const prevMile = i === 0 ? 0 : waypoints[i - 1].mile;
-              const segmentMiles = Math.max(0, Math.round((wp.mile - prevMile) * 10) / 10);
+              const nextSegmentMiles =
+                i < waypoints.length - 1 ? Math.max(0, Math.round((waypoints[i + 1].mile - wp.mile) * 10) / 10) : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
@@ -724,8 +739,10 @@ export function CrewPlan() {
                       <div className="rg-cp-station-meta">
                         Mile {wp.mile}
                         {wp.elevationFt != null ? ` | ${wp.elevationFt.toLocaleString()} ft` : ''}
-                        {` | ${segmentMiles} mi from ${i === 0 ? 'start' : 'previous stop'}`}
                       </div>
+                      {nextSegmentMiles != null && (
+                        <div className="rg-cp-station-next-leg">{nextSegmentMiles} mi to next stop</div>
+                      )}
                       {(wp.description || wp.comment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
                         <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
                           {wp.description && <div>{wp.description}</div>}
