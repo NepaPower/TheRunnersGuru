@@ -251,6 +251,72 @@
   max-height: 94vh;
 }
 
+/* — Print — a physical backup matters here: cell service can't be
+   trusted for 30+ hours on trail, so this needs to work as a standalone
+   paper reference, not just "whatever's on screen." Hides every control
+   that only makes sense on a screen, and resets the sticky pace bar and
+   form fields to print cleanly rather than as interactive-looking boxes. */
+@media print {
+  .nav,
+  .bottom-tab-bar,
+  .rg-print-hide,
+  .rg-cp-gpx-row button,
+  .rg-cp-gpx-row input[type='file'],
+  .rg-cp-segment-link,
+  .rg-cp-save-footer,
+  .rg-cp-crew-modal-backdrop {
+    display: none !important;
+  }
+  .rg-cp-pace-callout {
+    position: static;
+    box-shadow: none;
+    border: 1px solid #999;
+  }
+  .rg-cp-header-card,
+  .rg-cp-station-card {
+    box-shadow: none;
+    border: 1px solid #999;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .input,
+  textarea.input {
+    background: none;
+    border: 1px solid #ccc;
+    color: #000;
+  }
+  .rg-cp-station-card a {
+    color: #000;
+    text-decoration: none;
+  }
+  body {
+    background: #fff;
+  }
+}
+
+.rg-cp-lock-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: color-mix(in srgb, #d9a441 16%, transparent);
+  border: 1px solid color-mix(in srgb, #d9a441 45%, transparent);
+  border-radius: 10px;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  font-size: 14px;
+  color: #7a5417;
+}
+.rg-cp-lock-banner svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.rg-cp-readonly {
+  pointer-events: none;
+  opacity: 0.55;
+  position: relative;
+}
+
 .rg-cp-flags-row {
   display: flex;
   flex-wrap: wrap;

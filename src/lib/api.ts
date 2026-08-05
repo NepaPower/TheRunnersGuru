@@ -333,6 +333,84 @@ export async function fetchCrewAccessList(planId: string): Promise<CrewAccessEnt
   return (data ?? []).map((r) => ({ id: r.id, invitedEmail: r.invited_email, status: r.status, role: r.role ?? 'crew' }));
 }
 
+// ─── Crew Plan check-in/check-out ────────────────────────────────────────
+// A lightweight soft-lock so two people (owner + crew, or two crew
+// members) don't silently overwrite each other while both have the Crew
+// Plan screen open. Polling-based rather than a real-time websocket
+// connection — deliberately simpler and more robust for this scale (a
+// handful of crew, not hundreds of concurrent editors): no channel
+// lifecycle to manage, and a dropped connection or backgrounded phone
+// can't leave anyone in an inconsistent state, it just misses a poll.
+
+export const CREW_PLAN_LOCK_TIMEOUT_MS = 3 * 60 * 1000; // no heartbeat for 3 minutes = treat as abandoned
+
+export interface CrewPlanLockState {
+  userId: string | null;
+  name: string | null;
+  startedAt: string | null;
+}
+
+export function isCrewPlanLockActive(lock: CrewPlanLockState): boolean {
+  if (!lock.userId || !lock.startedAt) return false;
+  return Date.now() - new Date(lock.startedAt).getTime() < CREW_PLAN_LOCK_TIMEOUT_MS;
+}
+
+export async function fetchCrewPlanLock(planId: string): Promise<CrewPlanLockState> {
+  const { data, error } = await supabase
+    .from('training_plans')
+    .select('active_editor_user_id, active_editor_name, active_editor_started_at')
+    .eq('id', planId)
+    .single();
+  if (error) throw error;
+  return { userId: data.active_editor_user_id, name: data.active_editor_name, startedAt: data.active_editor_started_at };
+}
+
+/** Attempts to claim the editing lock. Succeeds if nobody else holds an
+ * active one, or if this same user already does (re-entering the page).
+ * Otherwise returns claimed: false with who currently has it, so the
+ * caller can show a read-only view instead. Fetch-then-update rather than
+ * a single atomic operation — a genuine simultaneous double-claim is
+ * possible in principle, but vanishingly unlikely at this scale (a
+ * handful of people, not a high-concurrency system) and not worth the
+ * complexity of a database function for this. */
+export async function claimCrewPlanLock(planId: string, userId: string, name: string): Promise<{ claimed: boolean; heldBy: CrewPlanLockState }> {
+  const current = await fetchCrewPlanLock(planId);
+  if (isCrewPlanLockActive(current) && current.userId !== userId) {
+    return { claimed: false, heldBy: current };
+  }
+  const startedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from('training_plans')
+    .update({ active_editor_user_id: userId, active_editor_name: name, active_editor_started_at: startedAt })
+    .eq('id', planId);
+  if (error) throw error;
+  return { claimed: true, heldBy: { userId, name, startedAt } };
+}
+
+/** Keeps an already-claimed lock fresh — call periodically while the
+ * holder still has the page open, or it'll expire and let someone else
+ * claim it out from under them. */
+export async function heartbeatCrewPlanLock(planId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('training_plans')
+    .update({ active_editor_started_at: new Date().toISOString() })
+    .eq('id', planId)
+    .eq('active_editor_user_id', userId);
+  if (error) throw error;
+}
+
+/** Releases the lock — only succeeds if this user is the one currently
+ * holding it, so a stale/delayed release call can't clear someone else's
+ * active session. */
+export async function releaseCrewPlanLock(planId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('training_plans')
+    .update({ active_editor_user_id: null, active_editor_name: null, active_editor_started_at: null })
+    .eq('id', planId)
+    .eq('active_editor_user_id', userId);
+  if (error) throw error;
+}
+
 /** A crew member's own role for a shared plan — used to decide whether
  * to show the Upload/Replace GPX control at all in shared mode. This is
  * a UI convenience only; the actual restriction is enforced server-side

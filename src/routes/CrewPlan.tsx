@@ -12,6 +12,12 @@ import {
   removeCrewAccess,
   promoteToChief,
   fetchMyCrewRole,
+  claimCrewPlanLock,
+  releaseCrewPlanLock,
+  heartbeatCrewPlanLock,
+  fetchCrewPlanLock,
+  isCrewPlanLockActive,
+  type CrewPlanLockState,
 } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
 import {
@@ -140,6 +146,79 @@ export function CrewPlan() {
 
   const plan = isShared ? sharedPlan : state.trainingPlan;
 
+  // Check-in/check-out — a soft lock so two people editing this plan at
+  // once (owner + crew, or two crew members) don't silently overwrite
+  // each other. See the crew-plan-lock functions in lib/api.ts for the
+  // actual claim/heartbeat/release/timeout logic; this just drives it
+  // from the component's lifecycle.
+  const [lockState, setLockState] = useState<CrewPlanLockState | null>(null);
+  const [lockChecked, setLockChecked] = useState(false);
+  const myDisplayName = state.auth.name || state.auth.email || 'Someone';
+  const iHoldLock = lockChecked && lockState?.userId === state.userId;
+  const readOnlyMode = lockChecked && !iHoldLock && lockState != null && isCrewPlanLockActive(lockState);
+
+  useEffect(() => {
+    if (!plan?.id || !state.userId) return;
+    let cancelled = false;
+    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+    let pollTimer: ReturnType<typeof setInterval> | undefined;
+
+    async function tryClaim() {
+      if (!plan?.id || !state.userId) return;
+      try {
+        const result = await claimCrewPlanLock(plan.id, state.userId, myDisplayName);
+        if (cancelled) return;
+        setLockState(result.heldBy);
+        setLockChecked(true);
+        if (result.claimed) {
+          // Held — keep it fresh so it doesn't expire out from under an
+          // actively-open tab.
+          heartbeatTimer = setInterval(() => {
+            if (plan?.id && state.userId) heartbeatCrewPlanLock(plan.id, state.userId).catch(() => {});
+          }, 60_000);
+        } else {
+          // Someone else has it — poll for it to free up so this tab can
+          // pick it up automatically rather than needing a manual retry.
+          pollTimer = setInterval(async () => {
+            if (!plan?.id) return;
+            const current = await fetchCrewPlanLock(plan.id).catch(() => null);
+            if (!current || cancelled) return;
+            if (!isCrewPlanLockActive(current)) {
+              // Looks free now — try to actually claim it (still not
+              // atomic, see claimCrewPlanLock's own note, but fine at
+              // this scale).
+              clearInterval(pollTimer);
+              tryClaim();
+            } else {
+              setLockState(current);
+            }
+          }, 15_000);
+        }
+      } catch {
+        // Non-fatal — worst case, editing just isn't lock-protected this
+        // session rather than blocking the page entirely.
+        if (!cancelled) setLockChecked(true);
+      }
+    }
+    tryClaim();
+
+    return () => {
+      cancelled = true;
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (pollTimer) clearInterval(pollTimer);
+      if (plan?.id && state.userId) releaseCrewPlanLock(plan.id, state.userId).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.id, state.userId]);
+
+  // No beforeunload release handler here on purpose — a real browser tab
+  // close can't reliably complete an authenticated API call in that
+  // event (sendBeacon can't carry the auth header Supabase's REST API
+  // needs), so anything attempted here would silently fail more often
+  // than it'd help. The useEffect cleanup above already covers real SPA
+  // navigation (clicking Back, etc.), and the lock's own timeout is the
+  // actual safety net for a genuinely closed tab or dead phone.
+
   // Invite management — owner mode only. Fetched once the owner's plan id
   // is known.
   const [crewAccessList, setCrewAccessList] = useState<CrewAccessEntry[]>([]);
@@ -193,6 +272,7 @@ export function CrewPlan() {
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
   const [gpxLoading, setGpxLoading] = useState(false);
   const [gpxError, setGpxError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -207,6 +287,12 @@ export function CrewPlan() {
   // loads, even though `plan` itself updates correctly. Owner mode never
   // hits this, since `plan` (= state.trainingPlan) is already populated
   // before this component even mounts.
+  // Starts true so the very first render (owner: already-loaded plan;
+  // shared: the resync effect above) doesn't immediately "autosave"
+  // unchanged data the instant the page opens — only genuine edits after
+  // that should trigger it.
+  const skipNextAutosaveRef = useRef(true);
+
   useEffect(() => {
     if (!isShared || !sharedPlan) return;
     setRaceDate(sharedPlan.raceDate ?? '');
@@ -214,6 +300,9 @@ export function CrewPlan() {
     setGoalHours(sharedPlan.goalFinishMinutes != null ? String(Math.floor(sharedPlan.goalFinishMinutes / 60)) : '');
     setGoalMinutes(sharedPlan.goalFinishMinutes != null ? String(sharedPlan.goalFinishMinutes % 60) : '');
     setNotes(buildNotesWithDetectedCutoffs(sharedPlan.gpxRoute?.waypoints ?? [], sharedPlan.crewNotes ?? {}));
+    // This is the plan loading in, not a person editing anything — the
+    // autosave effect below shouldn't treat it as a change to save.
+    skipNextAutosaveRef.current = true;
   }, [isShared, sharedPlan]);
 
   const waypoints = plan?.gpxRoute?.waypoints ?? [];
@@ -447,6 +536,33 @@ export function CrewPlan() {
     }
   }
 
+  // Autosave — a crew member editing notes mid-race on spotty signal
+  // shouldn't be able to lose that work just because they forgot to tap
+  // "Save crew plan" before their connection dropped or they navigated
+  // away. Debounced 1.5s after the last change so it doesn't hammer the
+  // database on every keystroke; skips the very first change-detection
+  // pass after mount or after a shared plan's data first loads in, since
+  // that's the plan arriving, not someone editing it.
+  useEffect(() => {
+    if (!plan || readOnlyMode) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+    setAutosaveStatus('pending');
+    const timer = setTimeout(() => {
+      setAutosaveStatus('saving');
+      handleSave()
+        .then(() => setAutosaveStatus('saved'))
+        .catch(() => setAutosaveStatus('error'));
+    }, 1500);
+    return () => clearTimeout(timer);
+    // Deliberately narrow — only the actual editable fields should
+    // trigger a save; re-running this because e.g. weather data loaded
+    // in would autosave nothing new.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, raceDate, raceStartTime, goalHours, goalMinutes]);
+
   async function handleGpxReplace(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -472,6 +588,7 @@ export function CrewPlan() {
         dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes } });
       }
       setNotes(freshNotes);
+      skipNextAutosaveRef.current = true;
       setSaved(false);
     } catch (err) {
       setGpxError(err instanceof Error ? err.message : "Couldn't read that file.");
@@ -528,9 +645,28 @@ export function CrewPlan() {
 
   return (
     <>
-      <Button variant="ghost" onClick={() => navigate(isShared ? '/shared-plans' : '/home')} style={{ marginBottom: 'var(--space-4)' }}>
+      <Button
+        variant="ghost"
+        className="rg-print-hide"
+        onClick={() => navigate(isShared ? '/shared-plans' : '/home')}
+        style={{ marginBottom: 'var(--space-4)' }}
+      >
         ← Back to {isShared ? 'shared plans' : 'summary'}
       </Button>
+
+      {readOnlyMode && lockState && (
+        <div className="rg-cp-lock-banner rg-print-hide">
+          <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <rect x="5" y="11" width="14" height="9" rx="1.5" strokeWidth="2" />
+            <path d="M8 11V8a4 4 0 0 1 8 0v3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span>
+            <strong>{lockState.name || 'Someone'}</strong> is currently editing this plan — you can view everything
+            below, but editing is locked until they finish or their session times out. This page checks
+            automatically and will unlock as soon as it's free.
+          </span>
+        </div>
+      )}
 
       <div className="rg-cp-header-card">
         <div className="rg-cp-header-top" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -543,14 +679,19 @@ export function CrewPlan() {
               </div>
             )}
           </div>
-          {!isShared && (
-            <Button variant="secondary" onClick={() => setCrewModalOpen(true)}>
-              Manage Crew
+          <div className="rg-print-hide" style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <Button variant="secondary" onClick={() => window.print()}>
+              Print
             </Button>
-          )}
+            {!isShared && (
+              <Button variant="secondary" disabled={readOnlyMode} onClick={() => setCrewModalOpen(true)}>
+                Manage Crew
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="rg-cp-gpx-row">
+        <div className={`rg-cp-gpx-row${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Course file</div>
             <div className="rg-cp-muted" style={{ fontSize: 13 }}>
@@ -585,7 +726,7 @@ export function CrewPlan() {
           </div>
         )}
 
-        <div className="rg-cp-setup-grid">
+        <div className={`rg-cp-setup-grid${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
           <Field label="Race start date">
             <Input
               type="date"
@@ -765,7 +906,7 @@ export function CrewPlan() {
               : 'Enter a goal finish time above to see predicted arrival times at each aid station.'}
           </p>
 
-          <div className="rg-cp-stations">
+          <div className={`rg-cp-stations${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
             {waypoints.map((wp, i) => {
               const key = String(i);
               const note = notes[key] ?? emptyNote;
@@ -1011,10 +1152,31 @@ export function CrewPlan() {
             })}
           </div>
 
-          <div className="rg-cp-save-footer">
-            <Button variant="primary" disabled={saving} onClick={handleSave}>
-              {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save crew plan'}
-            </Button>
+          <div className="rg-cp-save-footer rg-print-hide" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {readOnlyMode ? (
+              <span className="rg-cp-muted" style={{ fontSize: 13 }}>
+                Viewing in read-only mode while {lockState?.name || 'someone else'} is editing.
+              </span>
+            ) : (
+              <>
+                <Button
+                  variant="primary"
+                  disabled={saving}
+                  onClick={() => {
+                    skipNextAutosaveRef.current = true; // this manual save covers it, no need for autosave to also fire
+                    handleSave();
+                  }}
+                >
+                  {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save crew plan'}
+                </Button>
+                <span className="rg-cp-muted" style={{ fontSize: 13 }}>
+                  {autosaveStatus === 'pending' && 'Unsaved changes…'}
+                  {autosaveStatus === 'saving' && 'Autosaving…'}
+                  {autosaveStatus === 'saved' && 'All changes saved automatically'}
+                  {autosaveStatus === 'error' && "Couldn't autosave — check your connection, or tap Save crew plan"}
+                </span>
+              </>
+            )}
           </div>
         </>
       )}

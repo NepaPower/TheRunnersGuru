@@ -83,6 +83,17 @@ create table public.training_plans (
   -- Free-text nutrition/hydration/gear notes per aid station, keyed by
   -- waypoint index (as a string) into gpx_route's waypoints array.
   crew_notes jsonb not null default '{}'::jsonb,
+  -- Soft-lock for Crew Plan editing — set when someone (owner or crew)
+  -- has the Crew Plan screen open, so a second person opening it sees a
+  -- "someone's editing this" notice and gets a read-only view instead of
+  -- silently overwriting whoever's there. Cleared on that person leaving
+  -- the page, and treated as expired (ignorable) after
+  -- CREW_PLAN_LOCK_TIMEOUT_MS of no heartbeat regardless — see the
+  -- crew-plan-lock functions in lib/api.ts — so a crashed tab or dead
+  -- phone can never lock everyone else out indefinitely.
+  active_editor_user_id uuid references auth.users(id) on delete set null,
+  active_editor_name text,
+  active_editor_started_at timestamptz,
   total_weeks int not null,
   pace text,
   pace_unit text,
@@ -260,6 +271,11 @@ create trigger trg_enforce_gpx_route_chief_only
 --   alter table public.logged_runs add column max_cadence int;
 --   alter table public.logged_runs add column elevation_gain_ft int;
 --   alter table public.logged_runs add column elevation_loss_ft int;
+--
+--   alter table public.training_plans add column active_editor_user_id uuid
+--     references auth.users(id) on delete set null;
+--   alter table public.training_plans add column active_editor_name text;
+--   alter table public.training_plans add column active_editor_started_at timestamptz;
 --
 --   alter table public.crew_plan_access add column role text not null default 'crew'
 --     check (role in ('crew', 'chief'));

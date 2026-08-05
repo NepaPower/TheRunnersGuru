@@ -8,7 +8,7 @@ import { ELECTROLYTE_BRANDS, NUTRITION_BRANDS } from '../data/constants';
 import { insertLoggedRun, updateLoggedRun, deleteLoggedRun } from '../lib/api';
 import { emptyLogForm } from '../state/reducer';
 import { paceLabelFromMinutes } from '../lib/format';
-import { mockTemperature, fetchTemperatureForCoordsAndDate } from '../lib/weather';
+import { mockTemperature, fetchTemperatureForCoordsAndDate, fetchTemperatureForZipAndDate } from '../lib/weather';
 import { parseRunGpxFile, type ParsedRun } from '../lib/runGpx';
 import { buildRoutePath, type LatLon } from '../lib/routeMap';
 import type { LoggedRun } from '../types';
@@ -238,7 +238,11 @@ export function LogRun() {
       const zip = state.auth.address.zip.trim();
       const manualTemp = f.temperature !== '' ? Math.abs(Math.round(Number(f.temperature))) : null;
       const temperatureLabel =
-        manualTemp != null ? `${manualTemp}°F` : zip ? 'Looking up…' : `${mockTemperature(f.date, f.timeOfDay)}°F`;
+        manualTemp != null
+          ? `${manualTemp}°F`
+          : zip
+            ? await fetchTemperatureForZipAndDate(zip, f.date)
+            : `${mockTemperature(f.date, f.timeOfDay)}°F`;
 
       const input = {
         date: f.date,
