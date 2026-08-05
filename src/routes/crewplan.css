@@ -48,8 +48,8 @@
   border-left: 4px solid #d9a441;
   border-radius: 12px;
   box-shadow: var(--shadow-md);
-  padding: var(--space-4) var(--space-5);
-  margin-bottom: var(--space-5);
+  padding: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 .rg-cp-pace-callout-icon {
   flex: none;
