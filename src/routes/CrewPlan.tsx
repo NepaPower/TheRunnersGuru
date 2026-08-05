@@ -576,20 +576,32 @@ export function CrewPlan() {
 
       {goalFinishMinutes != null && initialPaceMinPerMile != null && (
         <div className="rg-cp-pace-callout">
-          <div className="rg-cp-pace-callout-primary">
-            Target pace: <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
-            <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
+          <div className="rg-cp-pace-callout-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <circle cx="12" cy="12" r="9" strokeWidth="2" />
+              <path d="M12 7v5l3.5 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          {projectedFinishEta && (
-            <div className="rg-cp-pace-callout-secondary">
-              At your current pace and rest plan, you're projected to finish on <strong>{projectedFinishEta}</strong>
+          <div className="rg-cp-pace-callout-body">
+            <div className="rg-cp-pace-callout-primary">
+              Target pace <strong>{formatPaceMinPerMile(initialPaceMinPerMile)}</strong> to finish in{' '}
+              <strong>{formatElapsedLabel(goalFinishMinutes)}</strong>
             </div>
-          )}
-          {totalRestMinutes > 0 && (
-            <div className="rg-cp-pace-callout-secondary">
-              Total planned rest/sleep: <strong>{formatElapsedLabel(totalRestMinutes)}</strong>
-            </div>
-          )}
+            {(projectedFinishEta || totalRestMinutes > 0) && (
+              <div className="rg-cp-pace-callout-secondary-row">
+                {projectedFinishEta && (
+                  <span>
+                    Projected finish: <strong>{projectedFinishEta}</strong>
+                  </span>
+                )}
+                {totalRestMinutes > 0 && (
+                  <span>
+                    Total planned rest/sleep: <strong>{formatElapsedLabel(totalRestMinutes)}</strong>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -705,7 +717,14 @@ export function CrewPlan() {
                       </div>
                       {(Number(note.restHours) > 0 || Number(note.restMinutes) > 0) && (
                         <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                          Adds {formatElapsedLabel((Number(note.restHours) || 0) * 60 + (Number(note.restMinutes) || 0))} to every station after this one
+                          One-time stop here — delays every station after this one by{' '}
+                          {formatElapsedLabel((Number(note.restHours) || 0) * 60 + (Number(note.restMinutes) || 0))} (not repeated at those stations).
+                          {projectedFinishEta && (
+                            <>
+                              {' '}
+                              Overall, you're now projected to finish <strong>{projectedFinishEta}</strong>.
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -731,7 +750,13 @@ export function CrewPlan() {
                       </div>
                       {(note.avgPaceMin || note.avgPaceSec) && (
                         <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                          Applies to every station after this one, until updated again
+                          Applies from here onward, until a later station sets a different pace.
+                          {projectedFinishEta && (
+                            <>
+                              {' '}
+                              Overall, you're now projected to finish <strong>{projectedFinishEta}</strong>.
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
