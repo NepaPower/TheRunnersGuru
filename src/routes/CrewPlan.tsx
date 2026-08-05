@@ -41,6 +41,8 @@ const emptyNote: CrewNoteEntry = {
   restMinutes: '',
   avgPaceMin: '',
   avgPaceSec: '',
+  dropBag: false,
+  pacerPickup: false,
 };
 
 interface StationWeather {
@@ -346,6 +348,11 @@ export function CrewPlan() {
 
   function setCrewAccess(key: string, value: 'yes' | 'no' | 'sleep') {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), crewAccess: value } }));
+    setSaved(false);
+  }
+
+  function toggleNoteFlag(key: string, field: 'dropBag' | 'pacerPickup') {
+    setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: !(prev[key]?.[field] ?? false) } }));
     setSaved(false);
   }
 
@@ -796,6 +803,17 @@ export function CrewPlan() {
                     </div>
                   )}
 
+                  <div className="rg-cp-flags-row">
+                    <label className="rg-cp-flag">
+                      <input type="checkbox" checked={note.dropBag ?? false} onChange={() => toggleNoteFlag(key, 'dropBag')} />
+                      Drop bag here
+                    </label>
+                    <label className="rg-cp-flag">
+                      <input type="checkbox" checked={note.pacerPickup ?? false} onChange={() => toggleNoteFlag(key, 'pacerPickup')} />
+                      Pacer pickup here
+                    </label>
+                  </div>
+
                   <div className="rg-cp-station-notes">
                     <Field label="Nutrition">
                       <TextArea rows={2} value={note.nutrition} onChange={(e) => updateNoteField(key, 'nutrition', e.target.value)} />
@@ -803,7 +821,7 @@ export function CrewPlan() {
                     <Field label="Hydration">
                       <TextArea rows={2} value={note.hydration} onChange={(e) => updateNoteField(key, 'hydration', e.target.value)} />
                     </Field>
-                    <Field label="Gear change">
+                    <Field label="Gear">
                       <TextArea rows={2} value={note.gear} onChange={(e) => updateNoteField(key, 'gear', e.target.value)} />
                     </Field>
                   </div>

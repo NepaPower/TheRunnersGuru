@@ -165,6 +165,11 @@ export interface CrewNoteEntry {
   // station overrides it again. See lib/crewPlan.ts computeStationTimings.
   avgPaceMin: string;
   avgPaceSec: string;
+  // Whether crew has (or should have) a drop bag and/or a pacer waiting
+  // at this station — both runner and crew need this visible up front,
+  // not buried in a notes field.
+  dropBag: boolean;
+  pacerPickup: boolean;
 }
 
 export interface TrainingPlan {
