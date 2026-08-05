@@ -78,6 +78,7 @@ export async function hydrateUserData(userId: string) {
     trainingPlan,
     loggedRuns,
     sharedPlans,
+    email,
   };
 }
 

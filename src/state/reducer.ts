@@ -88,7 +88,7 @@ export function reducer(state: AppState, action: Action): AppState {
         isAuthenticated: true,
         userId: action.userId,
         screen,
-        auth: { ...state.auth, name: action.name, firstName, address: action.address },
+        auth: { ...state.auth, name: action.name, firstName, address: action.address, email: action.email },
         trainingPlan: action.trainingPlan,
         sharedPlans: action.sharedPlans,
         loggedRuns: action.loggedRuns,

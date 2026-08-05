@@ -24,6 +24,7 @@ export type Action =
       type: 'AUTH_HYDRATE';
       userId: string;
       name: string;
+      email: string;
       address: Address;
       garminConnected: boolean;
       trainingPlan: TrainingPlan | null;

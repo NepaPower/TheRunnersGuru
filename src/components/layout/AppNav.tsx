@@ -3,6 +3,9 @@ import { Wordmark } from '../Logo';
 import { Button } from '../ui/Button';
 import { signOut } from '../../lib/api';
 
+// `hidden: true` items stay fully defined (routes, icons, everything) —
+// just not linked from the nav. Flip the flag to bring one back; nothing
+// else needs to change.
 const NAV_ITEMS = [
   {
     to: '/home',
@@ -12,6 +15,7 @@ const NAV_ITEMS = [
   {
     to: '/partners',
     label: 'Partners',
+    hidden: true,
     icon: (
       <>
         <circle cx="9" cy="8" r="3" strokeWidth="2" fill="none" />
@@ -24,6 +28,7 @@ const NAV_ITEMS = [
   {
     to: '/run',
     label: 'Run',
+    hidden: true,
     icon: (
       <>
         <circle cx="12" cy="12" r="9" strokeWidth="2" fill="none" />
@@ -34,6 +39,7 @@ const NAV_ITEMS = [
   {
     to: '/chat',
     label: 'Chat',
+    hidden: true,
     icon: <path d="M4 5h16v11H8l-4 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
   },
   {
@@ -47,6 +53,8 @@ const NAV_ITEMS = [
     ),
   },
 ];
+
+const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) => !item.hidden);
 
 export function AppNav() {
   const navigate = useNavigate();
@@ -66,9 +74,12 @@ export function AppNav() {
         </div>
 
         <div className="nav-links">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'active' : undefined)}>
-              {({ isActive }) => <span style={{ color: isActive ? 'var(--color-accent)' : undefined }}>{item.label}</span>}
+          {VISIBLE_NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                {item.icon}
+              </svg>
+              {item.label}
             </NavLink>
           ))}
           <Button variant="ghost" className="nav-cta" onClick={handleLogout}>
@@ -81,9 +92,12 @@ export function AppNav() {
           app (persistent, always-visible destinations) rather than a
           hamburger menu, which suits content/marketing sites better than
           something people open every day. Hidden above the phone
-          breakpoint via CSS; .nav-links above is hidden below it. */}
+          breakpoint via CSS; .nav-links above is hidden below it. Log out
+          gets its own tab here (not just buried in Profile) since with
+          Partners/Run/Chat hidden there's clear room for it, and it's
+          otherwise genuinely hard to find on mobile. */}
       <nav className="bottom-tab-bar" aria-label="Primary">
-        {NAV_ITEMS.map((item) => (
+        {VISIBLE_NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} className={({ isActive }) => `bottom-tab${isActive ? ' active' : ''}`}>
             <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
               {item.icon}
@@ -91,6 +105,14 @@ export function AppNav() {
             <span>{item.label}</span>
           </NavLink>
         ))}
+        <button type="button" className="bottom-tab" onClick={handleLogout}>
+          <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M16 17l5-5-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M21 12H9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span>Log out</span>
+        </button>
       </nav>
     </>
   );

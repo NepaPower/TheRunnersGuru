@@ -56,6 +56,29 @@ export function SettingsTab() {
         <div className="row-3">
           <div className="rg-card-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <rect x="3" y="5" width="18" height="14" rx="2" strokeWidth="2" />
+              <path d="M3 7l9 6 9-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--color-accent-700)' }}>
+              Account
+            </div>
+            <h3 style={{ margin: 0 }}>Sign-in details</h3>
+          </div>
+        </div>
+        <Field label="Email">
+          <Input type="email" value={state.auth.email} disabled />
+        </Field>
+        <p className="text-muted" style={{ margin: 0, fontSize: 12.5 }}>
+          Password changes aren't available yet — coming in a future update.
+        </p>
+      </div>
+
+      <div className="rg-card stack-3" style={{ maxWidth: 520, marginBottom: 'var(--space-6)' }}>
+        <div className="row-3">
+          <div className="rg-card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
               <circle cx="12" cy="12" r="9" strokeWidth="2" />
               <path d="M12 6v6l4 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
