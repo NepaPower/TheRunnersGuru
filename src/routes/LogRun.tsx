@@ -542,9 +542,6 @@ export function LogRun() {
                 <th>Distance</th>
                 <th>Mins/mile</th>
                 <th>Temp</th>
-                <th>Gels/Electrolytes</th>
-                <th>Nutrition</th>
-                <th>Comments</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -558,9 +555,6 @@ export function LogRun() {
                   <td>{r.distance} mi</td>
                   <td>{r.paceLabel}</td>
                   <td>{r.temperature}</td>
-                  <td>{r.electrolytes}</td>
-                  <td>{r.nutrition}</td>
-                  <td>{r.comment || '—'}</td>
                   <td>
                     <div className="row-2" style={{ gap: 4, flexWrap: 'nowrap' }}>
                       <Button
