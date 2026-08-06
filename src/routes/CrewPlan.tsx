@@ -464,6 +464,39 @@ export function CrewPlan() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature]);
 
+  // Autosave — a crew member editing notes mid-race on spotty signal
+  // shouldn't be able to lose that work just because they forgot to tap
+  // "Save crew plan" before their connection dropped or they navigated
+  // away. Debounced 1.5s after the last change so it doesn't hammer the
+  // database on every keystroke; skips the very first change-detection
+  // pass after mount or after a shared plan's data first loads in, since
+  // that's the plan arriving, not someone editing it. handleSave is a
+  // hoisted function declaration (defined further down in this
+  // component), so referencing it here is safe despite the textual
+  // order — this MUST stay above any early return below, or React throws
+  // "rendered fewer/more hooks than expected" the moment a render takes
+  // a different early-return path than the previous one did (exactly
+  // what happened when this was accidentally placed after one).
+  useEffect(() => {
+    if (!plan || readOnlyMode) return;
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+    setAutosaveStatus('pending');
+    const timer = setTimeout(() => {
+      setAutosaveStatus('saving');
+      handleSave()
+        .then(() => setAutosaveStatus('saved'))
+        .catch(() => setAutosaveStatus('error'));
+    }, 1500);
+    return () => clearTimeout(timer);
+    // Deliberately narrow — only the actual editable fields should
+    // trigger a save; re-running this because e.g. weather data loaded
+    // in would autosave nothing new.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, raceDate, raceStartTime, goalHours, goalMinutes]);
+
   if (isShared && sharedPlanLoading) {
     return (
       <>
@@ -535,33 +568,6 @@ export function CrewPlan() {
       setSaving(false);
     }
   }
-
-  // Autosave — a crew member editing notes mid-race on spotty signal
-  // shouldn't be able to lose that work just because they forgot to tap
-  // "Save crew plan" before their connection dropped or they navigated
-  // away. Debounced 1.5s after the last change so it doesn't hammer the
-  // database on every keystroke; skips the very first change-detection
-  // pass after mount or after a shared plan's data first loads in, since
-  // that's the plan arriving, not someone editing it.
-  useEffect(() => {
-    if (!plan || readOnlyMode) return;
-    if (skipNextAutosaveRef.current) {
-      skipNextAutosaveRef.current = false;
-      return;
-    }
-    setAutosaveStatus('pending');
-    const timer = setTimeout(() => {
-      setAutosaveStatus('saving');
-      handleSave()
-        .then(() => setAutosaveStatus('saved'))
-        .catch(() => setAutosaveStatus('error'));
-    }, 1500);
-    return () => clearTimeout(timer);
-    // Deliberately narrow — only the actual editable fields should
-    // trigger a save; re-running this because e.g. weather data loaded
-    // in would autosave nothing new.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, raceDate, raceStartTime, goalHours, goalMinutes]);
 
   async function handleGpxReplace(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
