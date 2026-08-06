@@ -169,6 +169,62 @@ export async function fetchShortRangeForecast(
   }
 }
 
+export interface DaySlotForecast {
+  label: string;
+  minF: number;
+  maxF: number;
+}
+
+/** Day broken into the 5 windows a runner actually plans gear around,
+ * rather than one temperature at their exact predicted-arrival hour —
+ * knowing it swings from the 40s overnight to the 70s in the afternoon
+ * matters more for packing a drop bag than a single point estimate does.
+ * The overnight window spans past midnight into the next calendar date,
+ * so its hours are looked up against `day + 1` for the wrapped portion. */
+const DAY_TIME_SLOTS: { label: string; startHour: number; endHour: number }[] = [
+  { label: '6 AM – 11 AM', startHour: 6, endHour: 11 },
+  { label: '11 AM – 1 PM', startHour: 11, endHour: 13 },
+  { label: '1 PM – 5 PM', startHour: 13, endHour: 17 },
+  { label: '5 PM – 9 PM', startHour: 17, endHour: 21 },
+  { label: '9 PM – 6 AM', startHour: 21, endHour: 30 }, // 24-29 = 12am-5am the next calendar day
+];
+
+/** Only call this after confirming isWithinForecastHorizon, same as
+ * fetchShortRangeForecast — there's no real forecast further out than
+ * the model's horizon. */
+export async function fetchDayTemperatureSlots(lat: number, lon: number, year: number, month: number, day: number): Promise<DaySlotForecast[] | null> {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&forecast_days=${FORECAST_HORIZON_DAYS}&temperature_unit=fahrenheit&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const times: string[] = data?.hourly?.time ?? [];
+    const temps: number[] = data?.hourly?.temperature_2m ?? [];
+    if (times.length === 0) return null;
+
+    const dateStr = `${year}-${pad2(month)}-${pad2(day)}`;
+    const nextD = new Date(Date.UTC(year, month - 1, day + 1));
+    const nextDateStr = `${nextD.getUTCFullYear()}-${pad2(nextD.getUTCMonth() + 1)}-${pad2(nextD.getUTCDate())}`;
+
+    const results: DaySlotForecast[] = [];
+    for (const slot of DAY_TIME_SLOTS) {
+      const slotTemps: number[] = [];
+      for (let h = slot.startHour; h < slot.endHour; h++) {
+        const actualHour = h % 24;
+        const actualDateStr = h >= 24 ? nextDateStr : dateStr;
+        const idx = times.indexOf(`${actualDateStr}T${pad2(actualHour)}:00`);
+        if (idx !== -1 && typeof temps[idx] === 'number') slotTemps.push(temps[idx]);
+      }
+      if (slotTemps.length > 0) {
+        results.push({ label: slot.label, minF: Math.round(Math.min(...slotTemps)), maxF: Math.round(Math.max(...slotTemps)) });
+      }
+    }
+    return results.length > 0 ? results : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Whether a wall-clock calendar date falls within the forecast model's
  * horizon of "today" (the browser's local calendar date, as a reasonable
  * stand-in — this is a coarse day-level check, not something that needs

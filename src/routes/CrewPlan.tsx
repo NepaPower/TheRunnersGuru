@@ -31,12 +31,12 @@ import {
 } from '../lib/crewPlan';
 import {
   fetchClimateAverage,
-  fetchShortRangeForecast,
+  fetchDayTemperatureSlots,
   forecastAvailableFromLabel,
   isWithinForecastHorizon,
   resolveCourseTimeZone,
   type ClimateAverage,
-  type ShortRangeForecast,
+  type DaySlotForecast,
 } from '../lib/weather';
 import type { CrewAccessEntry, CrewNoteEntry, GpxWaypoint, TrainingPlan } from '../types';
 import { BIGFOOT_200_SEGMENTS, type CourseSegment } from '../data/bigfoot200Segments';
@@ -59,7 +59,7 @@ const emptyNote: CrewNoteEntry = {
 interface StationWeather {
   climate: ClimateAverage | null;
   climateLoading: boolean;
-  forecast: ShortRangeForecast | null;
+  daySlots: DaySlotForecast[] | null;
   forecastLoading: boolean;
   forecastEligible: boolean;
   monthDayLabel: string;
@@ -454,7 +454,7 @@ export function CrewPlan() {
         ...prev,
         [key]: {
           climate: prev[key]?.climate ?? null,
-          forecast: prev[key]?.forecast ?? null,
+          daySlots: prev[key]?.daySlots ?? null,
           climateLoading: true,
           forecastLoading: forecastEligible,
           forecastEligible,
@@ -468,9 +468,9 @@ export function CrewPlan() {
       });
 
       if (forecastEligible) {
-        fetchShortRangeForecast(wp.lat, wp.lon, y, mo, d, h).then((forecast) => {
+        fetchDayTemperatureSlots(wp.lat, wp.lon, y, mo, d).then((daySlots) => {
           if (cancelled) return;
-          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], forecast, forecastLoading: false } }));
+          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], daySlots, forecastLoading: false } }));
         });
       }
     });
@@ -1137,8 +1137,17 @@ export function CrewPlan() {
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Short-range forecast</div>
                         {weather[key]?.forecastEligible ? (
-                          weather[key]?.forecast ? (
-                            <div className="rg-cp-station-meta">{weather[key]!.forecast!.tempF}°F</div>
+                          weather[key]?.daySlots ? (
+                            <div className="rg-cp-day-slots">
+                              {weather[key]!.daySlots!.map((slot) => (
+                                <div key={slot.label} className="rg-cp-day-slot">
+                                  <div className="rg-cp-day-slot-label">{slot.label}</div>
+                                  <div className="rg-cp-day-slot-temp">
+                                    {slot.minF === slot.maxF ? `${slot.minF}°` : `${slot.minF}–${slot.maxF}°`}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           ) : weather[key]?.forecastLoading ? (
                             <div className="rg-cp-station-meta">Loading…</div>
                           ) : (
