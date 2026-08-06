@@ -39,7 +39,22 @@ import {
   type DaySlotForecast,
 } from '../lib/weather';
 import type { CrewAccessEntry, CrewNoteEntry, GpxWaypoint, TrainingPlan } from '../types';
-import { BIGFOOT_200_SEGMENTS, type CourseSegment } from '../data/bigfoot200Segments';
+// TEMPORARILY DISABLED to test whether the ~4.7MB of segment elevation
+// images is a factor in recent stuck GitHub Pages deployments. This is a
+// full import removal (not just hiding the button) so the images
+// actually drop out of the build, not just out of the UI. To re-enable:
+// uncomment this import, remove the `= []` / `= null` overrides just
+// below, and restore the real segmentInfoIndex line.
+// import { BIGFOOT_200_SEGMENTS, type CourseSegment } from '../data/bigfoot200Segments';
+interface CourseSegment {
+  title: string;
+  distanceMiles: number;
+  ascentFt: number;
+  descentFt: number;
+  description: string;
+  profileImage: string;
+}
+const BIGFOOT_200_SEGMENTS: CourseSegment[] = [];
 import './crewplan.css';
 
 const emptyNote: CrewNoteEntry = {
