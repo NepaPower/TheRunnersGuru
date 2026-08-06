@@ -1150,7 +1150,14 @@ export function CrewPlan() {
                         </div>
                         {weather[key]?.climate ? (
                           <div className="rg-cp-station-meta">
-                            High {weather[key]!.climate!.avgHighF}°F / Low {weather[key]!.climate!.avgLowF}°F
+                            High{' '}
+                            <span style={{ color: tempSlotColors(weather[key]!.climate!.avgHighF).text, fontWeight: 700 }}>
+                              {weather[key]!.climate!.avgHighF}°F
+                            </span>{' '}
+                            / Low{' '}
+                            <span style={{ color: tempSlotColors(weather[key]!.climate!.avgLowF).text, fontWeight: 700 }}>
+                              {weather[key]!.climate!.avgLowF}°F
+                            </span>
                             <span style={{ fontSize: 12 }}> (avg of last {weather[key]!.climate!.yearsUsed} years)</span>
                           </div>
                         ) : (
