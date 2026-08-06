@@ -39,22 +39,7 @@ import {
   type DaySlotForecast,
 } from '../lib/weather';
 import type { CrewAccessEntry, CrewNoteEntry, GpxWaypoint, TrainingPlan } from '../types';
-// TEMPORARILY DISABLED to test whether the ~4.7MB of segment elevation
-// images is a factor in recent stuck GitHub Pages deployments. This is a
-// full import removal (not just hiding the button) so the images
-// actually drop out of the build, not just out of the UI. To re-enable:
-// uncomment this import, remove the `= []` / `= null` overrides just
-// below, and restore the real segmentInfoIndex line.
-// import { BIGFOOT_200_SEGMENTS, type CourseSegment } from '../data/bigfoot200Segments';
-interface CourseSegment {
-  title: string;
-  distanceMiles: number;
-  ascentFt: number;
-  descentFt: number;
-  description: string;
-  profileImage: string;
-}
-const BIGFOOT_200_SEGMENTS: CourseSegment[] = [];
+import { BIGFOOT_200_SEGMENTS, type CourseSegment } from '../data/bigfoot200Segments';
 import './crewplan.css';
 
 const emptyNote: CrewNoteEntry = {
@@ -86,6 +71,23 @@ interface StationWeather {
  * match, not real parsing — it's a starting point to prefill the editable
  * Cutoff field, not something to trust blindly. Only used when the person
  * hasn't already typed a cutoff in themselves. */
+/** Soft-pastel background + matching darker text per temperature band —
+ * lets the 5-slot forecast row read as a cold-to-warm gradient at a
+ * glance (useful for spotting "this station will be cold overnight")
+ * without needing to actually read every number. Colored by each slot's
+ * midpoint (avg of min/max), not by the more extreme end, since the
+ * midpoint is the more representative "what will it generally feel like"
+ * value for a whole multi-hour window. */
+function tempSlotColors(avgF: number): { bg: string; text: string } {
+  if (avgF < 32) return { bg: '#dbeafe', text: '#1e3a8a' }; // freezing
+  if (avgF < 45) return { bg: '#e0f2fe', text: '#075985' }; // cold
+  if (avgF < 55) return { bg: '#ecfeff', text: '#155e75' }; // cool
+  if (avgF < 65) return { bg: '#ecfdf5', text: '#065f46' }; // mild
+  if (avgF < 75) return { bg: '#fefce8', text: '#854d0e' }; // warm
+  if (avgF < 85) return { bg: '#fff7ed', text: '#9a3412' }; // hot
+  return { bg: '#fef2f2', text: '#991b1b' }; // very hot
+}
+
 function detectCutoffText(wp: GpxWaypoint): string {
   const source = [wp.description, wp.comment].filter(Boolean).join(' ');
   const match = source.match(/cut[\s-]?off[:\s]*([^.;]+)/i);
@@ -948,6 +950,12 @@ export function CrewPlan() {
               ? `Predicted arrival times start from an initial average pace of ${initialPaceMinPerMile != null ? formatPaceMinPerMile(initialPaceMinPerMile) : '—'} (your goal finish time ÷ course distance). Enter an updated avg pace at any station below to reflect how the race is actually going — it carries forward from there until you update it again.`
               : 'Enter a goal finish time above to see predicted arrival times at each aid station.'}
           </p>
+          <p className="rg-cp-muted" style={{ marginBottom: 'var(--space-4)', fontSize: 13 }}>
+            Historical average and short-range forecast are both pulled from each aid station's own GPS coordinates,
+            not one estimate for the whole race — expect it to run noticeably colder at higher-elevation stations
+            than at the trailhead, and plan gear (layers, gloves, etc.) station by station rather than for the race
+            as a whole.
+          </p>
 
           <div className="rg-cp-stations">
             {waypoints.map((wp, i) => {
@@ -1153,16 +1161,26 @@ export function CrewPlan() {
                         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Short-range forecast</div>
                         {weather[key]?.forecastEligible ? (
                           weather[key]?.daySlots ? (
-                            <div className="rg-cp-day-slots">
-                              {weather[key]!.daySlots!.map((slot) => (
-                                <div key={slot.label} className="rg-cp-day-slot">
-                                  <div className="rg-cp-day-slot-label">{slot.label}</div>
-                                  <div className="rg-cp-day-slot-temp">
-                                    {slot.minF === slot.maxF ? `${slot.minF}°` : `${slot.minF}–${slot.maxF}°`}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            <>
+                              <div className="rg-cp-day-slots">
+                                {weather[key]!.daySlots!.map((slot) => {
+                                  const colors = tempSlotColors((slot.minF + slot.maxF) / 2);
+                                  return (
+                                    <div key={slot.label} className="rg-cp-day-slot" style={{ background: colors.bg, color: colors.text }}>
+                                      <div className="rg-cp-day-slot-label" style={{ color: colors.text, opacity: 0.75 }}>
+                                        {slot.label}
+                                      </div>
+                                      <div className="rg-cp-day-slot-temp">
+                                        {slot.minF === slot.maxF ? `${slot.minF}°` : `${slot.minF}–${slot.maxF}°`}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="rg-cp-muted" style={{ fontSize: 11, marginTop: 4 }}>
+                                Blue = colder · green/yellow = mild · orange/red = hotter
+                              </div>
+                            </>
                           ) : weather[key]?.forecastLoading ? (
                             <div className="rg-cp-station-meta">Loading…</div>
                           ) : (
