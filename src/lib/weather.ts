@@ -84,6 +84,23 @@ export interface ShortRangeForecast {
  * One request per year, run in parallel. Returns null only if every
  * year's request failed; a handful of missing years still produces an
  * average from however many succeeded. */
+/** Resolves the IANA timezone (e.g. "America/Los_Angeles") for a course's
+ * starting coordinates — fetched once per plan and used to anchor every
+ * race-time calculation to where the race actually is, not wherever the
+ * person viewing the page happens to be. Reuses Open-Meteo's own
+ * timezone resolution (the same "timezone=auto" used elsewhere) rather
+ * than a separate geocoding lookup. */
+export async function resolveCourseTimeZone(lat: number, lon: number): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&forecast_days=1&hourly=temperature_2m&timezone=auto`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.timezone === 'string' ? data.timezone : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchClimateAverage(
   lat: number,
   lon: number,

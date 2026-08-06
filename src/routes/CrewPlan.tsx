@@ -27,12 +27,14 @@ import {
   predictedArrivalDate,
   computeStationTimings,
   parseCutoffOrderMinutes,
+  getDatePartsInZone,
 } from '../lib/crewPlan';
 import {
   fetchClimateAverage,
   fetchShortRangeForecast,
   forecastAvailableFromLabel,
   isWithinForecastHorizon,
+  resolveCourseTimeZone,
   type ClimateAverage,
   type ShortRangeForecast,
 } from '../lib/weather';
@@ -278,6 +280,25 @@ export function CrewPlan() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [weather, setWeather] = useState<Record<string, StationWeather>>({});
 
+  // Resolved once per course, from its own starting coordinates — every
+  // race-time calculation (ETAs, projected finish, and which hour of
+  // weather to fetch) anchors to this, not to whatever timezone the
+  // person viewing the page happens to be in. That distinction matters
+  // for exactly the audience this feature serves: crew checking the plan
+  // from home, often in a different timezone than the race itself.
+  const [courseTimeZone, setCourseTimeZone] = useState<string | null>(null);
+  useEffect(() => {
+    const startWp = plan?.gpxRoute?.waypoints?.find((wp) => wp.lat != null && wp.lon != null);
+    if (!startWp || startWp.lat == null || startWp.lon == null) return;
+    let cancelled = false;
+    resolveCourseTimeZone(startWp.lat, startWp.lon).then((tz) => {
+      if (!cancelled) setCourseTimeZone(tz);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan?.gpxRoute?.waypoints]);
+
   // The useState calls above only use their initial value on this
   // component's very first render — in shared mode that's BEFORE the
   // async fetch above resolves, when `plan` is still null. React never
@@ -372,7 +393,7 @@ export function CrewPlan() {
     return extended[extended.length - 1].elapsedMinutes;
   })();
   const projectedFinishEta =
-    projectedFinishMinutes != null && raceDate && raceStartTime ? formatEtaClock(raceDate, raceStartTime, projectedFinishMinutes) : null;
+    projectedFinishMinutes != null && raceDate && raceStartTime ? formatEtaClock(raceDate, raceStartTime, projectedFinishMinutes, courseTimeZone) : null;
   const totalRestMinutes = waypoints.reduce(
     (sum, _, i) => sum + (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0),
     0,
@@ -421,13 +442,12 @@ export function CrewPlan() {
       const key = String(i);
       const elapsed = elapsedByIndex[i];
       if (elapsed == null) return;
-      const arrival = predictedArrivalDate(raceDate, raceStartTime, elapsed);
+      const arrival = predictedArrivalDate(raceDate, raceStartTime, elapsed, courseTimeZone);
       if (!arrival) return;
-      const y = arrival.getFullYear();
-      const mo = arrival.getMonth() + 1;
-      const d = arrival.getDate();
-      const h = arrival.getHours();
-      const monthDayLabel = arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const { year: y, month: mo, day: d, hour: h } = courseTimeZone
+        ? getDatePartsInZone(arrival, courseTimeZone)
+        : { year: arrival.getFullYear(), month: arrival.getMonth() + 1, day: arrival.getDate(), hour: arrival.getHours() };
+      const monthDayLabel = arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: courseTimeZone ?? undefined });
       const forecastEligible = isWithinForecastHorizon(y, mo, d);
 
       setWeather((prev) => ({
@@ -460,9 +480,11 @@ export function CrewPlan() {
     };
     // Re-runs when the inputs that change the predicted arrival date/time
     // change — waypoints/totalMiles are derived from plan.gpxRoute, which
-    // is included via `plan` itself.
+    // is included via `plan` itself. Also re-runs once courseTimeZone
+    // resolves (starts null), so weather already fetched using the
+    // browser-timezone fallback gets corrected rather than left stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature]);
+  }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature, courseTimeZone]);
 
   // Autosave — a crew member editing notes mid-race on spotty signal
   // shouldn't be able to lose that work just because they forgot to tap
@@ -917,8 +939,8 @@ export function CrewPlan() {
               const key = String(i);
               const note = notes[key] ?? emptyNote;
               const elapsed = elapsedByIndex[i];
-              const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed) : null;
-              const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed) : null;
+              const arrival = elapsed != null ? predictedArrivalDate(raceDate, raceStartTime, elapsed, courseTimeZone) : null;
+              const eta = elapsed != null && raceStartTime ? formatEtaClock(raceDate, raceStartTime, elapsed, courseTimeZone) : null;
               const isAlternate = isAlternateWaypointName(wp.name);
               const realPos = realWaypointIndices.indexOf(i);
               const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
@@ -1124,7 +1146,14 @@ export function CrewPlan() {
                           )
                         ) : (
                           <div className="rg-cp-station-meta">
-                            {arrival ? `Available starting ${forecastAvailableFromLabel(arrival.getFullYear(), arrival.getMonth() + 1, arrival.getDate())}` : ''}
+                            {arrival
+                              ? `Available starting ${(() => {
+                                  const parts = courseTimeZone
+                                    ? getDatePartsInZone(arrival, courseTimeZone)
+                                    : { year: arrival.getFullYear(), month: arrival.getMonth() + 1, day: arrival.getDate() };
+                                  return forecastAvailableFromLabel(parts.year, parts.month, parts.day);
+                                })()}`
+                              : ''}
                           </div>
                         )}
                       </div>
