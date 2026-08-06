@@ -912,7 +912,7 @@ export function CrewPlan() {
               : 'Enter a goal finish time above to see predicted arrival times at each aid station.'}
           </p>
 
-          <div className={`rg-cp-stations${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
+          <div className="rg-cp-stations">
             {waypoints.map((wp, i) => {
               const key = String(i);
               const note = notes[key] ?? emptyNote;
@@ -1008,7 +1008,7 @@ export function CrewPlan() {
                     )}
                   </div>
 
-                  <div className="rg-cp-station-fields">
+                  <div className={`rg-cp-station-fields${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Crew access</div>
                       <div className="seg" style={{ maxWidth: 220 }}>
@@ -1131,7 +1131,7 @@ export function CrewPlan() {
                     </div>
                   )}
 
-                  <div className="rg-cp-flags-row">
+                  <div className={`rg-cp-flags-row${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
                     <label className="rg-cp-flag">
                       <input type="checkbox" checked={note.dropBag ?? false} onChange={() => toggleNoteFlag(key, 'dropBag')} />
                       Drop bag here
@@ -1142,7 +1142,7 @@ export function CrewPlan() {
                     </label>
                   </div>
 
-                  <div className="rg-cp-station-notes">
+                  <div className={`rg-cp-station-notes${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
                     <Field label="Nutrition">
                       <TextArea rows={2} value={note.nutrition} onChange={(e) => updateNoteField(key, 'nutrition', e.target.value)} />
                     </Field>
