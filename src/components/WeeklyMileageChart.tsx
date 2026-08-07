@@ -24,7 +24,7 @@ export function WeeklyMileageChart({ data }: { data: DayPoint[] }) {
   const todayISO = new Date().toISOString().slice(0, 10);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height + 28}`} width="100%" height={height + 28} role="img" aria-label="Miles run each day for the last 7 days">
+    <svg viewBox={`0 -16 ${width} ${height + 44}`} width="100%" height={height + 44} role="img" aria-label="Miles run each day for the last 7 days">
       {[0.25, 0.5, 0.75, 1].map((f) => (
         <line
           key={f}
@@ -58,9 +58,9 @@ export function WeeklyMileageChart({ data }: { data: DayPoint[] }) {
                 x={x + barWidth / 2}
                 y={height - h - 8}
                 textAnchor="middle"
-                fontSize="11"
+                fontSize="15"
                 fontFamily="var(--font-heading)"
-                fontWeight={600}
+                fontWeight={700}
                 fill="var(--color-text)"
                 opacity={animated ? 1 : 0}
                 style={{ transition: 'opacity 0.4s ease 0.5s' }}
@@ -72,7 +72,7 @@ export function WeeklyMileageChart({ data }: { data: DayPoint[] }) {
               x={x + barWidth / 2}
               y={height + 20}
               textAnchor="middle"
-              fontSize="12"
+              fontSize="13"
               fontFamily="var(--font-body)"
               fill={isToday ? 'var(--color-text)' : 'var(--color-neutral-600)'}
               fontWeight={isToday ? 700 : 400}
