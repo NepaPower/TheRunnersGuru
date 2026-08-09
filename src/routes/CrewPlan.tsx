@@ -1038,11 +1038,11 @@ export function CrewPlan() {
                           type="text"
                           inputMode="decimal"
                           className="rg-cp-mile-inline-input"
-                          value={note.mileOverride !== '' ? note.mileOverride : String(wp.mile)}
+                          value={note.mileOverride ? note.mileOverride : String(wp.mile)}
                           onChange={(e) => updateNoteField(key, 'mileOverride', e.target.value.replace(/[^\d.]/g, ''))}
                           aria-label={`Mile marker for ${wp.name}`}
                         />
-                        {note.mileOverride !== '' ? ' (edited)' : ' (from GPX)'}
+                        {note.mileOverride ? ' (edited)' : ' (from GPX)'}
                         {wp.elevationFt != null ? ` | ${wp.elevationFt.toLocaleString()} ft` : ''}
                       </div>
                       {nextSegmentMiles != null && (
