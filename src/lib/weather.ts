@@ -173,6 +173,16 @@ export interface DaySlotForecast {
   label: string;
   minF: number;
   maxF: number;
+  // Max precipitation probability (%) and max sustained wind / gust speed
+  // (mph) across the slot's hours — max rather than average, since a
+  // runner/crew planning gear cares about the worst moment in the window,
+  // not a smoothed-out figure that could hide a squall or a gusty ridge
+  // crossing. null when Open-Meteo didn't return that field for any hour
+  // in the slot (rare, but the temp-only fallback already handles partial
+  // data the same way).
+  maxPrecipProbability: number | null;
+  maxWindMph: number | null;
+  maxGustMph: number | null;
 }
 
 /** Day broken into the 5 windows a runner actually plans gear around,
@@ -194,12 +204,15 @@ const DAY_TIME_SLOTS: { label: string; startHour: number; endHour: number }[] = 
  * the model's horizon. */
 export async function fetchDayTemperatureSlots(lat: number, lon: number, year: number, month: number, day: number): Promise<DaySlotForecast[] | null> {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&forecast_days=${FORECAST_HORIZON_DAYS}&temperature_unit=fahrenheit&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m&forecast_days=${FORECAST_HORIZON_DAYS}&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     const times: string[] = data?.hourly?.time ?? [];
     const temps: number[] = data?.hourly?.temperature_2m ?? [];
+    const precipProbs: number[] = data?.hourly?.precipitation_probability ?? [];
+    const windSpeeds: number[] = data?.hourly?.wind_speed_10m ?? [];
+    const windGusts: number[] = data?.hourly?.wind_gusts_10m ?? [];
     if (times.length === 0) return null;
 
     const dateStr = `${year}-${pad2(month)}-${pad2(day)}`;
@@ -209,14 +222,28 @@ export async function fetchDayTemperatureSlots(lat: number, lon: number, year: n
     const results: DaySlotForecast[] = [];
     for (const slot of DAY_TIME_SLOTS) {
       const slotTemps: number[] = [];
+      const slotPrecipProbs: number[] = [];
+      const slotWindSpeeds: number[] = [];
+      const slotWindGusts: number[] = [];
       for (let h = slot.startHour; h < slot.endHour; h++) {
         const actualHour = h % 24;
         const actualDateStr = h >= 24 ? nextDateStr : dateStr;
         const idx = times.indexOf(`${actualDateStr}T${pad2(actualHour)}:00`);
-        if (idx !== -1 && typeof temps[idx] === 'number') slotTemps.push(temps[idx]);
+        if (idx === -1) continue;
+        if (typeof temps[idx] === 'number') slotTemps.push(temps[idx]);
+        if (typeof precipProbs[idx] === 'number') slotPrecipProbs.push(precipProbs[idx]);
+        if (typeof windSpeeds[idx] === 'number') slotWindSpeeds.push(windSpeeds[idx]);
+        if (typeof windGusts[idx] === 'number') slotWindGusts.push(windGusts[idx]);
       }
       if (slotTemps.length > 0) {
-        results.push({ label: slot.label, minF: Math.round(Math.min(...slotTemps)), maxF: Math.round(Math.max(...slotTemps)) });
+        results.push({
+          label: slot.label,
+          minF: Math.round(Math.min(...slotTemps)),
+          maxF: Math.round(Math.max(...slotTemps)),
+          maxPrecipProbability: slotPrecipProbs.length > 0 ? Math.round(Math.max(...slotPrecipProbs)) : null,
+          maxWindMph: slotWindSpeeds.length > 0 ? Math.round(Math.max(...slotWindSpeeds)) : null,
+          maxGustMph: slotWindGusts.length > 0 ? Math.round(Math.max(...slotWindGusts)) : null,
+        });
       }
     }
     return results.length > 0 ? results : null;

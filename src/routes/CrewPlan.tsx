@@ -1062,6 +1062,11 @@ export function CrewPlan() {
                           )}
                         </div>
                       )}
+                      {elapsed != null && eta && (
+                        <div className="rg-cp-elapsed-pace-line">
+                          +{formatElapsedLabel(elapsed)} from start · {formatPaceMinPerMile(timings![i].paceUsedMinPerMile)} pace
+                        </div>
+                      )}
                       {(() => {
                         const cleanDescription = stripCutoffMention(wp.description);
                         const cleanComment = stripCutoffMention(wp.comment);
@@ -1096,12 +1101,7 @@ export function CrewPlan() {
                         )}
                         {elapsed != null &&
                           (eta ? (
-                            <>
-                              <div className="rg-cp-eta-value">You'll reach here on {eta}</div>
-                              <div className="rg-cp-station-meta" style={{ fontSize: 12 }}>
-                                +{formatElapsedLabel(elapsed)} from start · {formatPaceMinPerMile(timings![i].paceUsedMinPerMile)} pace
-                              </div>
-                            </>
+                            <div className="rg-cp-eta-value">You'll reach here on {eta}</div>
                           ) : (
                             <div className="rg-cp-station-meta" style={{ fontSize: 13 }}>
                               Set a race start time above to see your predicted arrival time
@@ -1259,6 +1259,12 @@ export function CrewPlan() {
                               <div className="rg-cp-day-slots">
                                 {weather[key]!.daySlots!.map((slot) => {
                                   const colors = tempSlotColors((slot.minF + slot.maxF) / 2);
+                                  const showRain = slot.maxPrecipProbability != null && slot.maxPrecipProbability >= 30;
+                                  const heavyRain = slot.maxPrecipProbability != null && slot.maxPrecipProbability >= 60;
+                                  const windMph = slot.maxGustMph ?? slot.maxWindMph;
+                                  const isGust = slot.maxGustMph != null && (slot.maxWindMph == null || slot.maxGustMph > slot.maxWindMph + 5);
+                                  const showWind = windMph != null && windMph >= 20;
+                                  const heavyWind = windMph != null && windMph >= 35;
                                   return (
                                     <div key={slot.label} className="rg-cp-day-slot" style={{ background: colors.bg, color: colors.text }}>
                                       <div className="rg-cp-day-slot-label" style={{ color: colors.text, opacity: 0.75 }}>
@@ -1267,6 +1273,20 @@ export function CrewPlan() {
                                       <div className="rg-cp-day-slot-temp">
                                         {slot.minF === slot.maxF ? `${slot.minF}°` : `${slot.minF}–${slot.maxF}°`}
                                       </div>
+                                      {(showRain || showWind) && (
+                                        <div className="rg-cp-day-slot-alerts">
+                                          {showRain && (
+                                            <div className={`rg-cp-day-slot-alert${heavyRain ? ' rg-cp-day-slot-alert-strong' : ''}`}>
+                                              ☔ {slot.maxPrecipProbability}%
+                                            </div>
+                                          )}
+                                          {showWind && (
+                                            <div className={`rg-cp-day-slot-alert${heavyWind ? ' rg-cp-day-slot-alert-strong' : ''}`}>
+                                              💨 {windMph}mph{isGust ? ' gusts' : ''}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
@@ -1277,6 +1297,9 @@ export function CrewPlan() {
                                 <span style={{ color: '#854d0e', fontWeight: 600 }}>yellow</span> = mild ·{' '}
                                 <span style={{ color: '#9a3412', fontWeight: 600 }}>orange</span>/
                                 <span style={{ color: '#991b1b', fontWeight: 600 }}>red</span> = hotter
+                              </div>
+                              <div className="rg-cp-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                                ☔ shown at 30%+ chance of rain · 💨 shown at 20+ mph sustained/gust — bold means 60%+ rain or 35+ mph
                               </div>
                             </>
                           ) : weather[key]?.forecastLoading ? (
