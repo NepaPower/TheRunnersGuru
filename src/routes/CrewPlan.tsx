@@ -435,31 +435,48 @@ export function CrewPlan() {
       return outOfOrder;
     });
   })();
-  // For every station with a cutoff, the average pace that must be held
-  // across just that one segment (from the previous station's actual
-  // departure — arrival plus any logged rest — to this station) to reach
-  // it in time. Uses the same raw waypoint-to-waypoint sequence as
-  // elapsedByIndex/computeStationTimings (not the "real stations only"
-  // filtering used for segment-info links), so distances and departure
-  // times line up with the numbers already shown on each card. Distinct
-  // from `timings[i].paceUsedMinPerMile`, which is the pace the CURRENT
-  // plan assumes — this is the pace the CUTOFF actually demands,
-  // regardless of plan.
-  const requiredCutoffPaceByIndex: (number | null)[] = waypoints.map((wp, i) => {
+  // Each station's own cutoff, expressed as elapsed-minutes-from-race-
+  // start (same basis as elapsedByIndex) — computed once so the
+  // required-pace calc below can look either station's cutoff up
+  // directly instead of re-parsing text twice per pair.
+  const cutoffElapsedByIndex: (number | null)[] = waypoints.map((_, i) => {
     if (raceStartWeekdayIndex == null || !raceStartTime) return null;
     const text = notes[String(i)]?.cutoff || '';
     if (!text) return null;
     const orderMinutes = parseCutoffOrderMinutes(text, raceStartWeekdayIndex);
     if (orderMinutes == null) return null;
-    const cutoffElapsed = cutoffToElapsedMinutes(orderMinutes, raceStartTime);
+    return cutoffToElapsedMinutes(orderMinutes, raceStartTime);
+  });
+  // For every station with a cutoff, the average pace that leg DEMANDS —
+  // computed cutoff-to-cutoff: the distance from the previous station to
+  // this one, divided by the time between the previous station's own
+  // cutoff and this station's cutoff. This is a property of the race's
+  // official cutoff schedule itself, independent of how the runner is
+  // actually pacing — e.g. Spencer Butte cutoff Sun 4:00 PM to Lewis
+  // River cutoff Sun 8:00 PM over 7.9mi is a fixed 30:22/mi regardless of
+  // anyone's current pace. Falls back to the runner's actual predicted
+  // departure (arrival + rest) from the previous station only when that
+  // station has no cutoff of its own to anchor to; falls back to the
+  // race start (elapsed 0) for the very first station. Distinct from
+  // `timings[i].paceUsedMinPerMile`, which is the pace the CURRENT plan
+  // assumes for this segment.
+  const requiredCutoffPaceByIndex: (number | null)[] = waypoints.map((wp, i) => {
+    const cutoffElapsed = cutoffElapsedByIndex[i];
     if (cutoffElapsed == null) return null;
     const prevMile = i > 0 ? waypoints[i - 1].mile : 0;
     const segmentMiles = wp.mile - prevMile;
-    const departureElapsed =
-      i > 0 ? (elapsedByIndex[i - 1] ?? null) : 0;
-    const prevRest = i > 0 ? (Number(notes[String(i - 1)]?.restHours) || 0) * 60 + (Number(notes[String(i - 1)]?.restMinutes) || 0) : 0;
-    if (departureElapsed == null) return null;
-    return requiredPaceMinPerMile(departureElapsed + prevRest, cutoffElapsed, segmentMiles);
+    let startElapsed: number | null;
+    if (i === 0) {
+      startElapsed = 0;
+    } else if (cutoffElapsedByIndex[i - 1] != null) {
+      startElapsed = cutoffElapsedByIndex[i - 1];
+    } else {
+      const prevArrival = elapsedByIndex[i - 1] ?? null;
+      const prevRest = (Number(notes[String(i - 1)]?.restHours) || 0) * 60 + (Number(notes[String(i - 1)]?.restMinutes) || 0);
+      startElapsed = prevArrival != null ? prevArrival + prevRest : null;
+    }
+    if (startElapsed == null) return null;
+    return requiredPaceMinPerMile(startElapsed, cutoffElapsed, segmentMiles);
   });
 
   // Weather should re-fetch when rest times or pace overrides shift
