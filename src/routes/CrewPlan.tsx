@@ -27,6 +27,8 @@ import {
   predictedArrivalDate,
   computeStationTimings,
   parseCutoffOrderMinutes,
+  cutoffToElapsedMinutes,
+  requiredPaceMinPerMile,
   getDatePartsInZone,
 } from '../lib/crewPlan';
 import {
@@ -433,6 +435,33 @@ export function CrewPlan() {
       return outOfOrder;
     });
   })();
+  // For every station with a cutoff, the average pace that must be held
+  // across just that one segment (from the previous station's actual
+  // departure — arrival plus any logged rest — to this station) to reach
+  // it in time. Uses the same raw waypoint-to-waypoint sequence as
+  // elapsedByIndex/computeStationTimings (not the "real stations only"
+  // filtering used for segment-info links), so distances and departure
+  // times line up with the numbers already shown on each card. Distinct
+  // from `timings[i].paceUsedMinPerMile`, which is the pace the CURRENT
+  // plan assumes — this is the pace the CUTOFF actually demands,
+  // regardless of plan.
+  const requiredCutoffPaceByIndex: (number | null)[] = waypoints.map((wp, i) => {
+    if (raceStartWeekdayIndex == null || !raceStartTime) return null;
+    const text = notes[String(i)]?.cutoff || '';
+    if (!text) return null;
+    const orderMinutes = parseCutoffOrderMinutes(text, raceStartWeekdayIndex);
+    if (orderMinutes == null) return null;
+    const cutoffElapsed = cutoffToElapsedMinutes(orderMinutes, raceStartTime);
+    if (cutoffElapsed == null) return null;
+    const prevMile = i > 0 ? waypoints[i - 1].mile : 0;
+    const segmentMiles = wp.mile - prevMile;
+    const departureElapsed =
+      i > 0 ? (elapsedByIndex[i - 1] ?? null) : 0;
+    const prevRest = i > 0 ? (Number(notes[String(i - 1)]?.restHours) || 0) * 60 + (Number(notes[String(i - 1)]?.restMinutes) || 0) : 0;
+    if (departureElapsed == null) return null;
+    return requiredPaceMinPerMile(departureElapsed + prevRest, cutoffElapsed, segmentMiles);
+  });
+
   // Weather should re-fetch when rest times or pace overrides shift
   // arrival times, but NOT on every keystroke in the Nutrition/Hydration/
   // Gear textareas — this isolates just the fields that actually affect
@@ -1049,6 +1078,26 @@ export function CrewPlan() {
                             Cutoff: {note.cutoff}
                           </div>
                         )}
+                        {note.cutoff &&
+                          (() => {
+                            const required = requiredCutoffPaceByIndex[i];
+                            if (required == null) return null;
+                            if (required <= 0) {
+                              return (
+                                <div className="rg-cp-required-pace rg-cp-required-pace-blown">
+                                  ⚠ Already behind — this cutoff isn't reachable from the planned departure time
+                                </div>
+                              );
+                            }
+                            const planned = timings?.[i]?.paceUsedMinPerMile;
+                            const tight = planned != null && required < planned;
+                            return (
+                              <div className={`rg-cp-required-pace ${tight ? 'rg-cp-required-pace-tight' : 'rg-cp-required-pace-ok'}`}>
+                                Need {formatPaceMinPerMile(required)} to make this cutoff
+                                {tight ? ' — faster than currently planned' : ''}
+                              </div>
+                            );
+                          })()}
                       </div>
                     )}
                   </div>

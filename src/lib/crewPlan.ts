@@ -181,6 +181,32 @@ export function formatEtaClock(raceDateStr: string, raceStartTime: string, elaps
   return `${weekday} ${timeLabel}`;
 }
 
+/** Converts a parsed cutoff (from parseCutoffOrderMinutes, which is
+ * "minutes since midnight of the race's start day") into the same basis
+ * as everything else in this file — "minutes since the race's actual
+ * start instant" — by subtracting the start time-of-day. Needed before a
+ * cutoff can be compared against elapsedByIndex/computeStationTimings
+ * output at all; without this shift a 6am race start would make every
+ * cutoff look 6 hours later than it really is relative to elapsed time. */
+export function cutoffToElapsedMinutes(cutoffOrderMinutes: number, raceStartTime: string): number | null {
+  const [h, m] = raceStartTime.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return cutoffOrderMinutes - (h * 60 + m);
+}
+
+/** The average pace (min/mile) a runner must hold across a single segment
+ * to reach its end by a given cutoff, given when they left the previous
+ * station (in elapsed-minutes-from-race-start) and the segment's
+ * distance. Returns null when the segment has no distance (can't compute
+ * a pace over zero miles). A result <= 0 means the cutoff is already
+ * unreachable from that departure time — any pace, however fast, arrives
+ * too late — which callers should treat as a distinct "already blown"
+ * case rather than just a very small number. */
+export function requiredPaceMinPerMile(departureElapsedMinutes: number, cutoffElapsedMinutes: number, segmentMiles: number): number | null {
+  if (segmentMiles <= 0) return null;
+  return (cutoffElapsedMinutes - departureElapsedMinutes) / segmentMiles;
+}
+
 /** "14:32/mi" style label for a decimal minutes-per-mile pace value. */
 export function formatPaceMinPerMile(minPerMile: number): string {
   const m = Math.floor(minPerMile);

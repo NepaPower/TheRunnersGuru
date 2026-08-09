@@ -165,6 +165,21 @@
   font-weight: 700;
   color: #c0392b;
 }
+.rg-cp-required-pace {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.rg-cp-required-pace-ok {
+  color: #065f46;
+}
+.rg-cp-required-pace-tight {
+  color: #c0392b;
+}
+.rg-cp-required-pace-blown {
+  color: #c0392b;
+  font-weight: 700;
+}
 .rg-cp-cutoff-field label {
   color: #c0392b;
   font-weight: 700;
