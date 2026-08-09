@@ -1296,9 +1296,7 @@ export function CrewPlan() {
                                 <span style={{ color: '#065f46', fontWeight: 600 }}>green</span>/
                                 <span style={{ color: '#854d0e', fontWeight: 600 }}>yellow</span> = mild ·{' '}
                                 <span style={{ color: '#9a3412', fontWeight: 600 }}>orange</span>/
-                                <span style={{ color: '#991b1b', fontWeight: 600 }}>red</span> = hotter
-                              </div>
-                              <div className="rg-cp-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                                <span style={{ color: '#991b1b', fontWeight: 600 }}>red</span> = hotter ·{' '}
                                 ☔ shown at 30%+ chance of rain · 💨 shown at 20+ mph sustained/gust — bold means 60%+ rain or 35+ mph
                               </div>
                             </>
