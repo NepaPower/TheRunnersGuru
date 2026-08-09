@@ -776,10 +776,32 @@ export function CrewPlan() {
           <div>
             <div className="rg-cp-race-name">Crew Plan for {plan.raceName}</div>
             {plan.gpxRoute && (
-              <div className="rg-cp-muted">
-                {plan.gpxRoute.distanceMiles} mi course · {plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
-                {plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss
-              </div>
+              <>
+                <div className="rg-cp-muted">
+                  {plan.gpxRoute.distanceMiles} mi course (from GPX) · {plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
+                  {plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss
+                </div>
+                {(() => {
+                  // Only the LAST waypoint's own correction shifts the
+                  // total — a correction to an earlier station just
+                  // reshapes the segments on either side of it (their
+                  // neighbors' absolute positions haven't moved), so it
+                  // doesn't change how far the course runs overall. The
+                  // last waypoint is the one closest to the actual
+                  // finish line, so its correction is what the total
+                  // should track.
+                  if (waypoints.length === 0) return null;
+                  const lastIdx = waypoints.length - 1;
+                  const shift = effectiveMile(lastIdx) - waypoints[lastIdx].mile;
+                  if (Math.abs(shift) <= 0.05) return null;
+                  const correctedTotal = Math.round((totalMiles + shift) * 10) / 10;
+                  return (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 2 }}>
+                      Updated total: {correctedTotal} mi (based on your mile corrections)
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>
           <div className="rg-print-hide" style={{ display: 'flex', gap: 'var(--space-2)' }}>
