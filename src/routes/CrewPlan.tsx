@@ -50,6 +50,7 @@ const emptyNote: CrewNoteEntry = {
   gear: '',
   crewAccess: '',
   cutoff: '',
+  mileOverride: '',
   restHours: '',
   restMinutes: '',
   avgPaceMin: '',
@@ -358,6 +359,17 @@ export function CrewPlan() {
     if (!isAlternateWaypointName(wp.name)) acc.push(idx);
     return acc;
   }, []);
+  // A station's mile marker, preferring the user's manual correction
+  // (entered when the GPX file's nearest-track-point estimate is known to
+  // be off) over the GPX-derived value. EVERY calculation that needs a
+  // station's position on the course — segment distance, elapsed/pace
+  // timing, cutoff-pace math — should call this instead of reading
+  // waypoints[i].mile directly, so one correction cascades everywhere.
+  const effectiveMile = (i: number): number => {
+    const raw = notes[String(i)]?.mileOverride;
+    const parsed = raw ? parseFloat(raw) : NaN;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : waypoints[i].mile;
+  };
   const totalMiles = plan?.gpxRoute?.distanceMiles ?? 0;
   const goalFinishMinutes = goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
   // The pace implied by the goal finish time, before any per-station
@@ -373,7 +385,7 @@ export function CrewPlan() {
   const timings =
     goalFinishMinutes != null
       ? computeStationTimings(
-          waypoints.map((wp) => wp.mile),
+          waypoints.map((_, i) => effectiveMile(i)),
           totalMiles,
           goalFinishMinutes,
           waypoints.map((_, i) => (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0)),
@@ -396,7 +408,7 @@ export function CrewPlan() {
   const projectedFinishMinutes = (() => {
     if (goalFinishMinutes == null) return null;
     if (waypoints.length === 0 || totalMiles <= 0) return goalFinishMinutes;
-    const miles = waypoints.map((wp) => wp.mile);
+    const miles = waypoints.map((_, i) => effectiveMile(i));
     const rests = waypoints.map((_, i) => (Number(notes[String(i)]?.restHours) || 0) * 60 + (Number(notes[String(i)]?.restMinutes) || 0));
     const paceOverrides = waypoints.map((_, i) => {
       const note = notes[String(i)];
@@ -460,11 +472,11 @@ export function CrewPlan() {
   // race start (elapsed 0) for the very first station. Distinct from
   // `timings[i].paceUsedMinPerMile`, which is the pace the CURRENT plan
   // assumes for this segment.
-  const requiredCutoffPaceByIndex: (number | null)[] = waypoints.map((wp, i) => {
+  const requiredCutoffPaceByIndex: (number | null)[] = waypoints.map((_, i) => {
     const cutoffElapsed = cutoffElapsedByIndex[i];
     if (cutoffElapsed == null) return null;
-    const prevMile = i > 0 ? waypoints[i - 1].mile : 0;
-    const segmentMiles = wp.mile - prevMile;
+    const prevMile = i > 0 ? effectiveMile(i - 1) : 0;
+    const segmentMiles = effectiveMile(i) - prevMile;
     let startElapsed: number | null;
     if (i === 0) {
       startElapsed = 0;
@@ -617,7 +629,7 @@ export function CrewPlan() {
 
   function updateNoteField(
     key: string,
-    field: 'nutrition' | 'hydration' | 'gear' | 'cutoff' | 'restHours' | 'restMinutes' | 'avgPaceMin' | 'avgPaceSec',
+    field: 'nutrition' | 'hydration' | 'gear' | 'cutoff' | 'mileOverride' | 'restHours' | 'restMinutes' | 'avgPaceMin' | 'avgPaceSec',
     value: string,
   ) {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: value } }));
@@ -1013,7 +1025,12 @@ export function CrewPlan() {
               const isAlternate = isAlternateWaypointName(wp.name);
               const realPos = realWaypointIndices.indexOf(i);
               const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
-              const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((waypoints[nextRealIdx].mile - wp.mile) * 10) / 10) : null;
+              const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((effectiveMile(nextRealIdx) - effectiveMile(i)) * 10) / 10) : null;
+              const isMileOverridden = (() => {
+                const raw = note.mileOverride;
+                const parsed = raw ? parseFloat(raw) : NaN;
+                return Number.isFinite(parsed) && parsed >= 0;
+              })();
               const segmentInfoIndex = !isAlternate && realPos !== -1 && realPos < BIGFOOT_200_SEGMENTS.length ? realPos : null;
               return (
                 <div key={key} className="rg-cp-station-card">
@@ -1021,7 +1038,8 @@ export function CrewPlan() {
                     <div>
                       <div className="rg-cp-station-name">{wp.name}</div>
                       <div className="rg-cp-station-meta">
-                        Mile {wp.mile}
+                        Mile {Math.round(effectiveMile(i) * 10) / 10}
+                        {isMileOverridden ? ' (corrected)' : ''}
                         {wp.elevationFt != null ? ` | ${wp.elevationFt.toLocaleString()} ft` : ''}
                       </div>
                       {nextSegmentMiles != null && (
@@ -1045,7 +1063,7 @@ export function CrewPlan() {
                         const cleanDescription = stripCutoffMention(wp.description);
                         const cleanComment = stripCutoffMention(wp.comment);
                         return (
-                          (cleanDescription || cleanComment || wp.symbol || wp.waypointType || (wp.lat != null && wp.lon != null)) && (
+                          (cleanDescription || cleanComment || wp.symbol || wp.waypointType) && (
                             <div className="rg-cp-station-meta" style={{ marginTop: 4 }}>
                               {cleanDescription && <div>{cleanDescription}</div>}
                               {cleanComment && <div>Note: {cleanComment}</div>}
@@ -1054,25 +1072,25 @@ export function CrewPlan() {
                                   {[wp.symbol, wp.waypointType].filter(Boolean).join(' · ')}
                                 </div>
                               )}
-                              {wp.lat != null && wp.lon != null && (
-                                <div>
-                                  <a
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${wp.lat},${wp.lon}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: 'inherit', textDecoration: 'underline' }}
-                                  >
-                                    {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} — directions
-                                  </a>
-                                </div>
-                              )}
                             </div>
                           )
                         );
                       })()}
                     </div>
-                    {(elapsed != null || note.cutoff) && (
+                    {(elapsed != null || note.cutoff || (wp.lat != null && wp.lon != null)) && (
                       <div className="rg-cp-station-eta">
+                        {wp.lat != null && wp.lon != null && (
+                          <div className="rg-cp-station-meta" style={{ fontSize: 12, marginBottom: 4 }}>
+                            <a
+                              href={`https://www.google.com/maps/dir/?api=1&destination=${wp.lat},${wp.lon}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: 'inherit', textDecoration: 'underline' }}
+                            >
+                              {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} — directions
+                            </a>
+                          </div>
+                        )}
                         {elapsed != null &&
                           (eta ? (
                             <>
@@ -1127,6 +1145,20 @@ export function CrewPlan() {
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'no'} onChange={() => setCrewAccess(key, 'no')} label="No" />
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'sleep'} onChange={() => setCrewAccess(key, 'sleep')} label="Sleep" />
                       </div>
+                    </div>
+                    <div className="rg-cp-cutoff-field">
+                      <Field label="Mile">
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder={String(wp.mile)}
+                          value={note.mileOverride}
+                          onChange={(e) => updateNoteField(key, 'mileOverride', e.target.value.replace(/[^\d.]/g, ''))}
+                        />
+                        <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                          GPX estimate: {wp.mile} mi. Correct it here if you know the real distance.
+                        </div>
+                      </Field>
                     </div>
                     <div className="rg-cp-cutoff-field">
                       <Field label="Cutoff (Day, Time)">

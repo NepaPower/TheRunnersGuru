@@ -157,6 +157,16 @@ export interface CrewNoteEntry {
   // across races, so a single editable field is more honest than forcing a
   // structured shape we can't reliably parse from every course file.
   cutoff: string;
+  // User-corrected mile marker for this station, overriding the GPX
+  // file's nearest-track-point estimate — official course GPX files are
+  // sometimes off on individual aid stations even when the overall route
+  // is accurate. Free-text (not parsed to a number until used) so the
+  // field can be blank/in-progress without forcing a value; every
+  // downstream calculation that needs this station's position (segment
+  // distance, elapsed/pace timing, cutoff-pace math) should go through
+  // effectiveMile() in CrewPlan.tsx rather than reading GpxWaypoint.mile
+  // directly, so a correction here cascades everywhere it needs to.
+  mileOverride: string;
   // Planned time spent AT this station (beyond just passing through) —
   // hours/minutes, numeric (unlike cutoff) since it feeds directly into
   // every downstream station's predicted arrival time. See
