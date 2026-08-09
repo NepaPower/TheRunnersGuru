@@ -1026,20 +1026,23 @@ export function CrewPlan() {
               const realPos = realWaypointIndices.indexOf(i);
               const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
               const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((effectiveMile(nextRealIdx) - effectiveMile(i)) * 10) / 10) : null;
-              const isMileOverridden = (() => {
-                const raw = note.mileOverride;
-                const parsed = raw ? parseFloat(raw) : NaN;
-                return Number.isFinite(parsed) && parsed >= 0;
-              })();
               const segmentInfoIndex = !isAlternate && realPos !== -1 && realPos < BIGFOOT_200_SEGMENTS.length ? realPos : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
                     <div>
                       <div className="rg-cp-station-name">{wp.name}</div>
-                      <div className="rg-cp-station-meta">
-                        Mile {Math.round(effectiveMile(i) * 10) / 10}
-                        {isMileOverridden ? ' (corrected)' : ''}
+                      <div className="rg-cp-station-meta rg-cp-mile-inline">
+                        Mile{' '}
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="rg-cp-mile-inline-input"
+                          value={note.mileOverride !== '' ? note.mileOverride : String(wp.mile)}
+                          onChange={(e) => updateNoteField(key, 'mileOverride', e.target.value.replace(/[^\d.]/g, ''))}
+                          aria-label={`Mile marker for ${wp.name}`}
+                        />
+                        {note.mileOverride !== '' ? ' (edited)' : ' (from GPX)'}
                         {wp.elevationFt != null ? ` | ${wp.elevationFt.toLocaleString()} ft` : ''}
                       </div>
                       {nextSegmentMiles != null && (
@@ -1080,14 +1083,14 @@ export function CrewPlan() {
                     {(elapsed != null || note.cutoff || (wp.lat != null && wp.lon != null)) && (
                       <div className="rg-cp-station-eta">
                         {wp.lat != null && wp.lon != null && (
-                          <div className="rg-cp-station-meta" style={{ fontSize: 12, marginBottom: 4 }}>
+                          <div style={{ fontSize: 13, marginBottom: 6 }}>
                             <a
                               href={`https://www.google.com/maps/dir/?api=1&destination=${wp.lat},${wp.lon}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{ color: 'inherit', textDecoration: 'underline' }}
+                              className="rg-cp-directions-link"
                             >
-                              {wp.lat.toFixed(5)}, {wp.lon.toFixed(5)} — directions
+                              Driving directions to Aid Station
                             </a>
                           </div>
                         )}
@@ -1145,20 +1148,6 @@ export function CrewPlan() {
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'no'} onChange={() => setCrewAccess(key, 'no')} label="No" />
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'sleep'} onChange={() => setCrewAccess(key, 'sleep')} label="Sleep" />
                       </div>
-                    </div>
-                    <div className="rg-cp-cutoff-field">
-                      <Field label="Mile">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder={String(wp.mile)}
-                          value={note.mileOverride}
-                          onChange={(e) => updateNoteField(key, 'mileOverride', e.target.value.replace(/[^\d.]/g, ''))}
-                        />
-                        <div className="rg-cp-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                          GPX estimate: {wp.mile} mi. Correct it here if you know the real distance.
-                        </div>
-                      </Field>
                     </div>
                     <div className="rg-cp-cutoff-field">
                       <Field label="Cutoff (Day, Time)">

@@ -137,6 +137,32 @@
   color: var(--color-text);
   margin-top: 2px;
 }
+.rg-cp-directions-link {
+  color: var(--color-accent-800);
+  font-weight: 700;
+  text-decoration: underline;
+}
+.rg-cp-directions-link:hover {
+  color: var(--color-accent-900, var(--color-accent-800));
+}
+.rg-cp-mile-inline-input {
+  width: 52px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  padding: 1px 4px;
+}
+.rg-cp-mile-inline-input:hover {
+  border-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+}
+.rg-cp-mile-inline-input:focus {
+  outline: none;
+  border-color: var(--color-accent-700);
+  background: var(--color-surface, #fff);
+}
 .rg-cp-segment-link {
   background: none;
   border: none;
