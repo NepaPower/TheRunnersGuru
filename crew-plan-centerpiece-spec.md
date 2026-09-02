@@ -136,23 +136,51 @@ that race's runner manual, instead of it being a BigFoot-only hardcode.
 - No PDF/DOCX parsing (see approach #4).
 - No new parsing / OCR / image libraries.
 - No change to how segments map to waypoints beyond the mismatch warning.
-- Not removing `BIGFOOT_200_SEGMENTS` — it stays as the default.
 - No "coming soon" placeholder in the UI — this ships whole or not at all; a
   dead button next to the already-working BigFoot segment-info modal would
   read as broken, not planned.
 
-## Open questions for Ramesh
+## Resolved design decisions
 
-1. **Who can edit segments** — plan owner + Chief Crew only (mirrors the GPX
-   replace gating and its DB trigger), or any accepted crew member (it's
-   reference info, not course-defining like the GPX)?
-2. **Supabase Storage** — OK to add a storage bucket + RLS for segment images,
-   or should v1 be text-only (description / ascent / descent, no image) with
-   images deferred?
-3. **Per-plan vs. shared race library** — is this always per-plan data each
-   crew re-enters, or is there a future where a race's segment set is uploaded
-   once and reused by everyone running that race? (Changes the data model — a
-   `races` table vs. a column on `training_plans`.)
-4. **BigFoot default** — once custom segments work, keep the hardcode
-   indefinitely as the built-in, or migrate it into the `courseSegments` shape
-   (seeded on BigFoot plans) and delete the static file?
+1. **Edit access — owner + Chief Crew only.** Segment info is authoritative
+   course setup, the same category as the GPX. Reuse the existing chief-crew
+   concept and its Postgres trigger rather than inventing a new policy; this
+   also keeps the image-bucket write policy to a single role. Crew who want to
+   contribute route info to the chief.
+2. **Images are in v1, via Supabase Storage.** The elevation profile is the
+   most useful part of a leg preview — text-only would ship the feature
+   missing its point and still need a Storage pass later. Free plan has room
+   (1 GB storage, 0 used, ~0.8 MB per race). Scope: one bucket, RLS (any
+   accepted crew reads; owner + chief writes), one migration, upload/delete
+   lifecycle.
+3. **Per-plan storage — a column on `training_plans`.** `courseSegments:
+   CourseSegment[] | null`, persisted exactly like `crewNotes` / `gpxRoute`.
+   A shared race library (`races` table, canonical race identity, per-year
+   course versions, curation) is a much bigger design and speculative at
+   current scale; per-plan now doesn't block it later — a library would just
+   seed this same field.
+4. **BigFoot hardcode is migrated in, not kept as a parallel path.** Fold
+   `BIGFOOT_200_SEGMENTS` into the `courseSegments` shape, seed it onto the
+   BigFoot plan(s), then delete `src/data/bigfoot200Segments.ts` and the
+   `bigfootSegmentsApply` name/count guard added in the stopgap commit. The 13
+   bundled PNGs move into the Storage bucket as part of that migration. One
+   rendering path, no special-casing; BigFoot crew still get segment info with
+   zero setup via the seed.
+
+## Implementation order (low-risk first)
+
+1. `CourseSegment` type stays as-is; add `courseSegments: CourseSegment[] |
+   null` to `TrainingPlan`; persist it through the existing `updateCrewPlan` /
+   `updateCrewPlanById` paths and the `TRAINING_PLAN_UPDATED` reducer. No UI
+   yet — just the field round-tripping. `npx tsc --noEmit` + build.
+2. Supabase Storage bucket + RLS migration in `supabase/`: read for any
+   accepted crew of the plan, write for owner + chief (mirror the GPX trigger's
+   role check).
+3. Chief/owner-gated entry UI on Crew Plan — editable segment list (add / edit
+   / remove rows: title, distance, ascent, descent, description, one image
+   upload each), plus the `courseSegments.length !== realWaypointIndices.length
+   - 1` mismatch warning. Rendering switches from `BIGFOOT_200_SEGMENTS` to
+   `plan.courseSegments`.
+4. BigFoot migration: upload the 13 PNGs to the bucket, seed the BigFoot
+   plan's `courseSegments`, delete `bigfoot200Segments.ts` and the
+   `bigfootSegmentsApply` guard.
