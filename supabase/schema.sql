@@ -185,38 +185,123 @@ create policy "crew members can edit shared plans"
 
 -- Column-level restriction RLS alone can't express (a USING/WITH CHECK
 -- clause applies to the whole row, not one column) — a crew member can
--- freely edit race timing and every station's notes via the policy
--- above, but changing gpx_route specifically requires being the owner or
--- the plan's one Chief Crew. security definer so the function can check
--- crew_plan_access regardless of that table's own RLS from inside the
--- trigger.
-create or replace function public.enforce_gpx_route_chief_only()
+-- freely edit race timing and every station's notes via "crew members
+-- can edit shared plans" above, but the course-defining columns
+-- (gpx_route and course_segments) may only be changed by the plan owner
+-- or the plan's one Chief Crew. Enforced by a before-update trigger.
+
+-- Owner or the plan's Chief Crew. security definer so it can read
+-- crew_plan_access from inside a trigger or a storage policy regardless
+-- of that table's own RLS. Also used by the course-segments bucket.
+create or replace function public.can_edit_plan_course_setup(p_plan_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.training_plans p
+    where p.id = p_plan_id
+      and (
+        p.user_id = auth.uid()
+        or exists (
+          select 1 from public.crew_plan_access ca
+          where ca.plan_id = p.id and ca.crew_user_id = auth.uid()
+            and ca.status = 'accepted' and ca.role = 'chief'
+        )
+      )
+  );
+$$;
+
+-- Owner or ANY accepted crew member — the read-side equivalent, used by
+-- the course-segments bucket's SELECT policy.
+create or replace function public.can_read_plan(p_plan_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.training_plans p
+    where p.id = p_plan_id
+      and (
+        p.user_id = auth.uid()
+        or exists (
+          select 1 from public.crew_plan_access ca
+          where ca.plan_id = p.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
+        )
+      )
+  );
+$$;
+
+create or replace function public.enforce_course_setup_chief_only()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
 begin
-  if new.gpx_route is distinct from old.gpx_route then
-    if auth.uid() = old.user_id then
-      return new;
-    end if;
-    if exists (
-      select 1 from public.crew_plan_access ca
-      where ca.plan_id = old.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted' and ca.role = 'chief'
-    ) then
-      return new;
-    end if;
-    raise exception 'Only the plan owner or Chief Crew can replace the course GPX file';
+  if (new.gpx_route is distinct from old.gpx_route
+      or new.course_segments is distinct from old.course_segments)
+     and not public.can_edit_plan_course_setup(old.id) then
+    raise exception 'Only the plan owner or Chief Crew can change the course file or segment info';
   end if;
   return new;
 end;
 $$;
 
-create trigger trg_enforce_gpx_route_chief_only
+-- Replaces the earlier gpx_route-only trigger/function.
+drop trigger if exists trg_enforce_gpx_route_chief_only on public.training_plans;
+drop function if exists public.enforce_gpx_route_chief_only();
+
+create trigger trg_enforce_course_setup_chief_only
   before update on public.training_plans
   for each row
-  execute function public.enforce_gpx_route_chief_only();
+  execute function public.enforce_course_setup_chief_only();
+
+-- ─── Storage: course-segments bucket ─────────────────────────────────────
+-- Elevation-profile images for training_plans.course_segments. Object
+-- keys are <plan_id>/<filename>, so a policy can resolve the owning plan
+-- from the first path segment. Private bucket — same access rules as the
+-- plan itself: any accepted crew can read, only the owner or Chief Crew
+-- can write. Served to the client via signed URLs.
+insert into storage.buckets (id, name, public)
+values ('course-segments', 'course-segments', false)
+on conflict (id) do nothing;
+
+create policy "course-segment images: read by plan crew"
+  on storage.objects for select
+  using (
+    bucket_id = 'course-segments'
+    and public.can_read_plan(((storage.foldername(name))[1])::uuid)
+  );
+
+create policy "course-segment images: insert by owner or chief"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'course-segments'
+    and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid)
+  );
+
+create policy "course-segment images: update by owner or chief"
+  on storage.objects for update
+  using (
+    bucket_id = 'course-segments'
+    and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid)
+  )
+  with check (
+    bucket_id = 'course-segments'
+    and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid)
+  );
+
+create policy "course-segment images: delete by owner or chief"
+  on storage.objects for delete
+  using (
+    bucket_id = 'course-segments'
+    and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid)
+  );
 
 -- Migration for an already-deployed database (this table already exists in
 -- Supabase): run this once in the SQL editor instead of the CREATE TABLE
@@ -314,6 +399,67 @@ create trigger trg_enforce_gpx_route_chief_only
 --     before update on public.training_plans
 --     for each row
 --     execute function public.enforce_gpx_route_chief_only();
+--
+--   -- Per-race course segments (slice b): chief-only gating for the new
+--   -- course_segments column + a private storage bucket for its images.
+--   -- The two helper functions and the trigger use create-or-replace /
+--   -- drop-if-exists, so this block is safe to re-run; the four
+--   -- create policy statements are not — drop them first if repeating.
+--   create or replace function public.can_edit_plan_course_setup(p_plan_id uuid)
+--   returns boolean language sql security definer set search_path = public stable as $$
+--     select exists (
+--       select 1 from public.training_plans p
+--       where p.id = p_plan_id and (
+--         p.user_id = auth.uid()
+--         or exists (select 1 from public.crew_plan_access ca
+--           where ca.plan_id = p.id and ca.crew_user_id = auth.uid()
+--             and ca.status = 'accepted' and ca.role = 'chief')
+--       )
+--     );
+--   $$;
+--   create or replace function public.can_read_plan(p_plan_id uuid)
+--   returns boolean language sql security definer set search_path = public stable as $$
+--     select exists (
+--       select 1 from public.training_plans p
+--       where p.id = p_plan_id and (
+--         p.user_id = auth.uid()
+--         or exists (select 1 from public.crew_plan_access ca
+--           where ca.plan_id = p.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted')
+--       )
+--     );
+--   $$;
+--   create or replace function public.enforce_course_setup_chief_only()
+--   returns trigger language plpgsql security definer set search_path = public as $$
+--   begin
+--     if (new.gpx_route is distinct from old.gpx_route
+--         or new.course_segments is distinct from old.course_segments)
+--        and not public.can_edit_plan_course_setup(old.id) then
+--       raise exception 'Only the plan owner or Chief Crew can change the course file or segment info';
+--     end if;
+--     return new;
+--   end;
+--   $$;
+--   drop trigger if exists trg_enforce_gpx_route_chief_only on public.training_plans;
+--   drop function if exists public.enforce_gpx_route_chief_only();
+--   create trigger trg_enforce_course_setup_chief_only
+--     before update on public.training_plans
+--     for each row execute function public.enforce_course_setup_chief_only();
+--   insert into storage.buckets (id, name, public)
+--     values ('course-segments', 'course-segments', false) on conflict (id) do nothing;
+--   create policy "course-segment images: read by plan crew" on storage.objects for select
+--     using (bucket_id = 'course-segments'
+--       and public.can_read_plan(((storage.foldername(name))[1])::uuid));
+--   create policy "course-segment images: insert by owner or chief" on storage.objects for insert
+--     with check (bucket_id = 'course-segments'
+--       and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid));
+--   create policy "course-segment images: update by owner or chief" on storage.objects for update
+--     using (bucket_id = 'course-segments'
+--       and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid))
+--     with check (bucket_id = 'course-segments'
+--       and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid));
+--   create policy "course-segment images: delete by owner or chief" on storage.objects for delete
+--     using (bucket_id = 'course-segments'
+--       and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid));
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the
