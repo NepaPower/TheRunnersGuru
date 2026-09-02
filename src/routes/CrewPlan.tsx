@@ -359,6 +359,15 @@ export function CrewPlan() {
     if (!isAlternateWaypointName(wp.name)) acc.push(idx);
     return acc;
   }, []);
+  // BIGFOOT_200_SEGMENTS is hardcoded data matched to waypoints purely by
+  // ORDER, so without a guard it would render BigFoot's leg descriptions
+  // and elevation charts on any other race's first ~13 stations. Until
+  // per-race segment data exists (see crew-plan-centerpiece-spec.md), only
+  // surface it when this really is the BigFoot 200 plan — require BOTH a
+  // name match AND an exact leg-count match, so a different race can't
+  // trip it on name alone or waypoint count alone.
+  const bigfootSegmentsApply =
+    /bigfoot/i.test(plan?.raceName ?? '') && realWaypointIndices.length - 1 === BIGFOOT_200_SEGMENTS.length;
   // A station's mile marker, preferring the user's manual correction
   // (entered when the GPX file's nearest-track-point estimate is known to
   // be off) over the GPX-derived value. EVERY calculation that needs a
@@ -1048,7 +1057,8 @@ export function CrewPlan() {
               const realPos = realWaypointIndices.indexOf(i);
               const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
               const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((effectiveMile(nextRealIdx) - effectiveMile(i)) * 10) / 10) : null;
-              const segmentInfoIndex = !isAlternate && realPos !== -1 && realPos < BIGFOOT_200_SEGMENTS.length ? realPos : null;
+              const segmentInfoIndex =
+                bigfootSegmentsApply && !isAlternate && realPos !== -1 && realPos < BIGFOOT_200_SEGMENTS.length ? realPos : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
