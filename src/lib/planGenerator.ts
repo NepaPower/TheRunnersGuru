@@ -410,6 +410,7 @@ export function buildTrainingPlan(
     raceStartTime: null,
     goalFinishMinutes,
     crewNotes: {},
+    courseSegments: null,
     totalWeeks,
     rows,
     phases: buildPhaseSummary(totalWeeks),

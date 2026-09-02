@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Address, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
+import type { Address, CourseSegment, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
 import { buildPhaseSummary } from './planGenerator';
 
@@ -129,6 +129,7 @@ export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
         race_start_time: plan.raceStartTime ?? null,
         goal_finish_minutes: plan.goalFinishMinutes ?? null,
         crew_notes: plan.crewNotes ?? {},
+        course_segments: plan.courseSegments ?? null,
         total_weeks: plan.totalWeeks,
         quote: plan.quote,
       },
@@ -182,6 +183,7 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     raceStartTime: planRow.race_start_time ?? null,
     goalFinishMinutes: planRow.goal_finish_minutes ?? null,
     crewNotes: planRow.crew_notes ?? {},
+    courseSegments: planRow.course_segments ?? null,
     totalWeeks: planRow.total_weeks,
     quote: planRow.quote ?? '',
     phases: buildPhaseSummary(planRow.total_weeks),
@@ -239,6 +241,7 @@ export async function updateCrewPlan(
     raceStartTime?: string | null;
     goalFinishMinutes?: number | null;
     crewNotes?: Record<string, CrewNoteEntry>;
+    courseSegments?: CourseSegment[] | null;
     gpxRoute?: GpxRoute | null;
   },
 ) {
@@ -247,6 +250,7 @@ export async function updateCrewPlan(
   if ('raceStartTime' in updates) patch.race_start_time = updates.raceStartTime ?? null;
   if ('goalFinishMinutes' in updates) patch.goal_finish_minutes = updates.goalFinishMinutes ?? null;
   if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
+  if ('courseSegments' in updates) patch.course_segments = updates.courseSegments ?? null;
   if ('gpxRoute' in updates) patch.gpx_route = updates.gpxRoute ?? null;
 
   const { error } = await supabase.from('training_plans').update(patch).eq('user_id', userId);
@@ -264,6 +268,7 @@ export async function updateCrewPlanById(
     raceStartTime?: string | null;
     goalFinishMinutes?: number | null;
     crewNotes?: Record<string, CrewNoteEntry>;
+    courseSegments?: CourseSegment[] | null;
     gpxRoute?: GpxRoute | null;
   },
 ) {
@@ -272,6 +277,7 @@ export async function updateCrewPlanById(
   if ('raceStartTime' in updates) patch.race_start_time = updates.raceStartTime ?? null;
   if ('goalFinishMinutes' in updates) patch.goal_finish_minutes = updates.goalFinishMinutes ?? null;
   if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
+  if ('courseSegments' in updates) patch.course_segments = updates.courseSegments ?? null;
   if ('gpxRoute' in updates) patch.gpx_route = updates.gpxRoute ?? null;
 
   const { error } = await supabase.from('training_plans').update(patch).eq('id', planId);

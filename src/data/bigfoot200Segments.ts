@@ -12,14 +12,8 @@ import segment11 from '../assets/segments/segment-11.png';
 import segment12 from '../assets/segments/segment-12.png';
 import segment13 from '../assets/segments/segment-13.png';
 
-export interface CourseSegment {
-  title: string;
-  distanceMiles: number;
-  ascentFt: number;
-  descentFt: number;
-  description: string;
-  profileImage: string;
-}
+import type { CourseSegment } from '../types';
+export type { CourseSegment };
 
 /** BigFoot 200 course segment descriptions and elevation profiles, from
  * the official 2026 Runner's Manual. This is specific, hardcoded data for

@@ -83,6 +83,12 @@ create table public.training_plans (
   -- Free-text nutrition/hydration/gear notes per aid station, keyed by
   -- waypoint index (as a string) into gpx_route's waypoints array.
   crew_notes jsonb not null default '{}'::jsonb,
+  -- Per-leg course detail (description, ascent/descent, elevation-profile
+  -- image URL) as a JSON array, one entry per real aid-station segment,
+  -- matched by order. Null when the plan carries no segment data of its
+  -- own. Editing will be gated to owner + Chief Crew (an extension of
+  -- enforce_gpx_route_chief_only) once the entry UI lands.
+  course_segments jsonb,
   -- Soft-lock for Crew Plan editing — set when someone (owner or crew)
   -- has the Crew Plan screen open, so a second person opening it sees a
   -- "someone's editing this" notice and gets a read-only view instead of
@@ -222,6 +228,7 @@ create trigger trg_enforce_gpx_route_chief_only
 --   alter table public.training_plans add column race_start_time text;
 --   alter table public.training_plans add column goal_finish_minutes int;
 --   alter table public.training_plans add column crew_notes jsonb not null default '{}'::jsonb;
+--   alter table public.training_plans add column course_segments jsonb;
 --
 --   create table public.crew_plan_access (
 --     id uuid primary key default gen_random_uuid(),

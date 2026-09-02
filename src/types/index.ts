@@ -186,6 +186,22 @@ export interface CrewNoteEntry {
   pacerPickup: boolean;
 }
 
+/** One leg of the course — the stretch between two consecutive real aid
+ * stations — with the narrative description, climb/descent totals, and
+ * elevation-profile image a race's runner manual publishes per leg.
+ * Rendered in the "Segment info" modal on the Crew Plan screen. Matched
+ * to waypoints by ORDER: segment i is the leg after real-waypoint i.
+ * `profileImage` is a URL (a Supabase Storage object, or a bundled asset
+ * for the built-in BigFoot data). */
+export interface CourseSegment {
+  title: string;
+  distanceMiles: number;
+  ascentFt: number;
+  descentFt: number;
+  description: string;
+  profileImage: string;
+}
+
 export interface TrainingPlan {
   // The DB row's own id — undefined only in the brief window between
   // building a fresh plan (buildTrainingPlan) and it actually being saved.
@@ -204,6 +220,12 @@ export interface TrainingPlan {
   // Used by the Crew Plan screen to predict aid-station arrival times.
   goalFinishMinutes: number | null;
   crewNotes: Record<string, CrewNoteEntry>;
+  // Per-leg course detail (description, ascent/descent, elevation image),
+  // one entry per real aid-station segment, matched by order. `null` when
+  // the plan has no segment data of its own — the Crew Plan screen then
+  // falls back to the built-in BigFoot set for the BigFoot plan only.
+  // Persisted as a jsonb column, same as crewNotes / gpxRoute.
+  courseSegments: CourseSegment[] | null;
   totalWeeks: number;
   rows: TrainingPlanRow[];
   phases: PhaseSummaryItem[];
