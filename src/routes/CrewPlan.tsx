@@ -1176,7 +1176,7 @@ export function CrewPlan() {
                         <Input
                           type="text"
                           placeholder="e.g. Day 1, 10:00 PM"
-                          value={note.cutoff}
+                          value={note.cutoff ?? ''}
                           onChange={(e) => updateNoteField(key, 'cutoff', e.target.value)}
                         />
                         {cutoffOutOfOrder[i] && (
@@ -1193,14 +1193,14 @@ export function CrewPlan() {
                           type="text"
                           inputMode="numeric"
                           placeholder="hrs"
-                          value={note.restHours}
+                          value={note.restHours ?? ''}
                           onChange={(e) => updateNoteField(key, 'restHours', e.target.value.replace(/[^\d]/g, ''))}
                         />
                         <Input
                           type="text"
                           inputMode="numeric"
                           placeholder="min"
-                          value={note.restMinutes}
+                          value={note.restMinutes ?? ''}
                           onChange={(e) => updateNoteField(key, 'restMinutes', e.target.value.replace(/[^\d]/g, ''))}
                         />
                       </div>
@@ -1224,7 +1224,7 @@ export function CrewPlan() {
                           type="text"
                           inputMode="numeric"
                           placeholder={initialPaceMinPerMile != null ? String(Math.floor(initialPaceMinPerMile)) : 'min'}
-                          value={note.avgPaceMin}
+                          value={note.avgPaceMin ?? ''}
                           onChange={(e) => updateNoteField(key, 'avgPaceMin', e.target.value.replace(/[^\d]/g, ''))}
                         />
                         <span className="rg-cp-muted" style={{ fontSize: 13 }}>:</span>
@@ -1232,7 +1232,7 @@ export function CrewPlan() {
                           type="text"
                           inputMode="numeric"
                           placeholder="sec"
-                          value={note.avgPaceSec}
+                          value={note.avgPaceSec ?? ''}
                           onChange={(e) => updateNoteField(key, 'avgPaceSec', e.target.value.replace(/[^\d]/g, '').slice(0, 2))}
                         />
                         <span className="rg-cp-muted" style={{ fontSize: 13 }}>/mi</span>
@@ -1356,13 +1356,13 @@ export function CrewPlan() {
 
                   <div className={`rg-cp-station-notes${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
                     <Field label="Nutrition">
-                      <TextArea rows={2} value={note.nutrition} onChange={(e) => updateNoteField(key, 'nutrition', e.target.value)} />
+                      <TextArea rows={2} value={note.nutrition ?? ''} onChange={(e) => updateNoteField(key, 'nutrition', e.target.value)} />
                     </Field>
                     <Field label="Hydration">
-                      <TextArea rows={2} value={note.hydration} onChange={(e) => updateNoteField(key, 'hydration', e.target.value)} />
+                      <TextArea rows={2} value={note.hydration ?? ''} onChange={(e) => updateNoteField(key, 'hydration', e.target.value)} />
                     </Field>
                     <Field label="Gear">
-                      <TextArea rows={2} value={note.gear} onChange={(e) => updateNoteField(key, 'gear', e.target.value)} />
+                      <TextArea rows={2} value={note.gear ?? ''} onChange={(e) => updateNoteField(key, 'gear', e.target.value)} />
                     </Field>
                   </div>
                 </div>
