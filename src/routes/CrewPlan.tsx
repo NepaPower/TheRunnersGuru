@@ -18,6 +18,8 @@ import {
   fetchCrewPlanLock,
   isCrewPlanLockActive,
   resolveCourseSegmentImage,
+  uploadCourseSegmentImage,
+  deleteCourseSegmentImage,
   type CrewPlanLockState,
 } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
@@ -58,6 +60,42 @@ const emptyNote: CrewNoteEntry = {
   avgPaceSec: '',
   dropBag: false,
   pacerPickup: false,
+};
+
+// Editor-side shape for a course segment — numeric fields held as strings
+// so a half-typed "12." doesn't get coerced mid-edit. Converted to/from
+// the persisted CourseSegment (real numbers) at the state boundary.
+type SegmentDraft = {
+  title: string;
+  distanceMiles: string;
+  ascentFt: string;
+  descentFt: string;
+  description: string;
+  profileImage: string;
+};
+const toSegmentDraft = (s: CourseSegment): SegmentDraft => ({
+  title: s.title,
+  distanceMiles: s.distanceMiles ? String(s.distanceMiles) : '',
+  ascentFt: s.ascentFt ? String(s.ascentFt) : '',
+  descentFt: s.descentFt ? String(s.descentFt) : '',
+  description: s.description,
+  profileImage: s.profileImage,
+});
+const fromSegmentDraft = (d: SegmentDraft): CourseSegment => ({
+  title: d.title.trim(),
+  distanceMiles: Number(d.distanceMiles) || 0,
+  ascentFt: Number(d.ascentFt) || 0,
+  descentFt: Number(d.descentFt) || 0,
+  description: d.description.trim(),
+  profileImage: d.profileImage,
+});
+const emptySegmentDraft: SegmentDraft = {
+  title: '',
+  distanceMiles: '',
+  ascentFt: '',
+  descentFt: '',
+  description: '',
+  profileImage: '',
 };
 
 interface StationWeather {
@@ -257,6 +295,19 @@ export function CrewPlan() {
   // bundled asset. Null while resolving or if there's no image.
   const [selectedSegmentImageUrl, setSelectedSegmentImageUrl] = useState<string | null>(null);
 
+  // Chief/owner-only editor for this plan's own course segments (the
+  // per-leg description + ascent/descent + elevation image shown in the
+  // "Segment info" modal). Drafts hold numbers as strings; see
+  // SegmentDraft. Resolved thumbnail srcs are cached by profileImage ref
+  // (value null = resolve was attempted and failed, so it isn't retried).
+  const [segments, setSegments] = useState<SegmentDraft[]>(() => (plan?.courseSegments ?? []).map(toSegmentDraft));
+  const [segmentsEditorOpen, setSegmentsEditorOpen] = useState(false);
+  const [segImageUrls, setSegImageUrls] = useState<Record<string, string | null>>({});
+  const [segImageUploadingIdx, setSegImageUploadingIdx] = useState<number | null>(null);
+  const [segEditError, setSegEditError] = useState<string | null>(null);
+  const segFileInputRef = useRef<HTMLInputElement>(null);
+  const segUploadTargetIdx = useRef<number | null>(null);
+
   // Shared mode only — this crew member's own role, used to decide
   // whether to show the Upload/Replace GPX control at all. The real
   // restriction is enforced server-side regardless (see schema.sql's
@@ -339,6 +390,26 @@ export function CrewPlan() {
     };
   }, [selectedSegment]);
 
+  // Resolve thumbnail srcs for any segment images in the editor not yet
+  // in the cache. Storing the result (even null, for a failed resolve)
+  // keeps this from re-attempting the same ref every render.
+  useEffect(() => {
+    const missing = segments.map((s) => s.profileImage).filter((r) => r && !(r in segImageUrls));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    Promise.all(missing.map(async (r) => [r, await resolveCourseSegmentImage(r)] as const)).then((pairs) => {
+      if (cancelled) return;
+      setSegImageUrls((prev) => {
+        const next = { ...prev };
+        for (const [r, url] of pairs) next[r] = url;
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [segments, segImageUrls]);
+
   // The useState calls above only use their initial value on this
   // component's very first render — in shared mode that's BEFORE the
   // async fetch above resolves, when `plan` is still null. React never
@@ -361,6 +432,7 @@ export function CrewPlan() {
     setGoalHours(sharedPlan.goalFinishMinutes != null ? String(Math.floor(sharedPlan.goalFinishMinutes / 60)) : '');
     setGoalMinutes(sharedPlan.goalFinishMinutes != null ? String(sharedPlan.goalFinishMinutes % 60) : '');
     setNotes(buildNotesWithDetectedCutoffs(sharedPlan.gpxRoute?.waypoints ?? [], sharedPlan.crewNotes ?? {}));
+    setSegments((sharedPlan.courseSegments ?? []).map(toSegmentDraft));
     // This is the plan loading in, not a person editing anything — the
     // autosave effect below shouldn't treat it as a change to save.
     skipNextAutosaveRef.current = true;
@@ -397,6 +469,10 @@ export function CrewPlan() {
   // data — the built-in BigFoot set is known to match.
   const segmentCountMismatch =
     plan?.courseSegments != null && plan.courseSegments.length !== Math.max(0, realWaypointIndices.length - 1);
+  // Owner (own plan) or the plan's Chief Crew. The bucket RLS + the
+  // enforce_course_setup_chief_only trigger are the real enforcement —
+  // this just hides an editor a regular crew member couldn't save anyway.
+  const canEditSegments = !isShared || myCrewRole === 'chief';
   // A station's mile marker, preferring the user's manual correction
   // (entered when the GPX file's nearest-track-point estimate is known to
   // be off) over the GPX-derived value. EVERY calculation that needs a
@@ -630,7 +706,7 @@ export function CrewPlan() {
     // trigger a save; re-running this because e.g. weather data loaded
     // in would autosave nothing new.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, raceDate, raceStartTime, goalHours, goalMinutes]);
+  }, [notes, segments, raceDate, raceStartTime, goalHours, goalMinutes]);
 
   if (isShared && sharedPlanLoading) {
     return (
@@ -684,12 +760,84 @@ export function CrewPlan() {
     setSaved(false);
   }
 
+  // ─── Course segment editor (owner / chief only) ───────────────────────
+  function updateSegment(idx: number, patch: Partial<SegmentDraft>) {
+    setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+    setSaved(false);
+  }
+  function addSegment() {
+    setSegments((prev) => [...prev, { ...emptySegmentDraft }]);
+    setSaved(false);
+  }
+  function removeSegment(idx: number) {
+    setSegments((prev) => {
+      const ref = prev[idx]?.profileImage;
+      if (ref) deleteCourseSegmentImage(ref);
+      return prev.filter((_, i) => i !== idx);
+    });
+    setSaved(false);
+  }
+  // One blank row per leg, pre-titled with the leg's two aid stations and
+  // its GPX distance — a starting skeleton so the person only fills in
+  // prose and images.
+  function seedSegmentsFromLegs() {
+    const legCount = Math.max(0, realWaypointIndices.length - 1);
+    setSegments(
+      Array.from({ length: legCount }, (_, i) => {
+        const a = waypoints[realWaypointIndices[i]];
+        const b = waypoints[realWaypointIndices[i + 1]];
+        const miles = Math.max(0, Math.round((effectiveMile(realWaypointIndices[i + 1]) - effectiveMile(realWaypointIndices[i])) * 10) / 10);
+        return { ...emptySegmentDraft, title: `${a.name} → ${b.name}`, distanceMiles: miles ? String(miles) : '' };
+      }),
+    );
+    setSaved(false);
+  }
+  function pickSegmentImage(idx: number) {
+    segUploadTargetIdx.current = idx;
+    segFileInputRef.current?.click();
+  }
+  function removeSegmentImage(idx: number) {
+    const ref = segments[idx]?.profileImage;
+    if (ref) deleteCourseSegmentImage(ref);
+    updateSegment(idx, { profileImage: '' });
+  }
+  async function handleSegmentImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const idx = segUploadTargetIdx.current;
+    segUploadTargetIdx.current = null;
+    if (!file || idx == null || !plan?.id) return;
+    setSegEditError(null);
+    setSegImageUploadingIdx(idx);
+    try {
+      const prevRef = segments[idx]?.profileImage;
+      const ref = await uploadCourseSegmentImage(plan.id, file);
+      if (prevRef) deleteCourseSegmentImage(prevRef);
+      updateSegment(idx, { profileImage: ref });
+    } catch (err) {
+      setSegEditError(err instanceof Error ? err.message : "Couldn't upload that image.");
+    } finally {
+      setSegImageUploadingIdx(null);
+    }
+  }
+
   async function handleSave() {
     if (!state.userId || !plan) return;
     setSaving(true);
     try {
       const raceDateToSave = raceDate || plan.raceDate;
-      const updates = { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes };
+      const updates: {
+        raceDate: string;
+        raceStartTime: string | null;
+        goalFinishMinutes: number | null;
+        crewNotes: Record<string, CrewNoteEntry>;
+        courseSegments?: CourseSegment[] | null;
+      } = { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes };
+      // Only send course segments if this person can actually change them
+      // — otherwise the chief-only trigger would reject the whole save
+      // (a regular crew member editing notes would send an unchanged, but
+      // "distinct from null", empty array and get blocked).
+      if (canEditSegments) updates.courseSegments = segments.length ? segments.map(fromSegmentDraft) : null;
       if (isShared) {
         if (!plan.id) return;
         await updateCrewPlanById(plan.id, updates);
@@ -720,15 +868,23 @@ export function CrewPlan() {
       // as the initial page load does — a replaced file's cutoffs
       // shouldn't have to be retyped by hand.
       const freshNotes = buildNotesWithDetectedCutoffs(route.waypoints, {});
+      // Course segments are matched to legs by order too, so the same
+      // reasoning applies — drop them (and their uploaded images) on a
+      // GPX swap. Only reachable for owner / chief, so the trigger allows
+      // writing course_segments here.
+      const staleSegmentImages = (plan.courseSegments ?? []).map((s) => s.profileImage).filter(Boolean);
       if (isShared) {
         if (!plan.id) return;
-        await updateCrewPlanById(plan.id, { gpxRoute: route, crewNotes: freshNotes });
-        setSharedPlan((prev) => (prev ? { ...prev, gpxRoute: route, crewNotes: freshNotes } : prev));
+        await updateCrewPlanById(plan.id, { gpxRoute: route, crewNotes: freshNotes, courseSegments: null });
+        setSharedPlan((prev) => (prev ? { ...prev, gpxRoute: route, crewNotes: freshNotes, courseSegments: null } : prev));
       } else {
-        await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: freshNotes });
-        dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes } });
+        await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: freshNotes, courseSegments: null });
+        dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes, courseSegments: null } });
       }
       setNotes(freshNotes);
+      setSegments([]);
+      setSegImageUrls({});
+      staleSegmentImages.forEach((ref) => deleteCourseSegmentImage(ref));
       skipNextAutosaveRef.current = true;
       setSaved(false);
     } catch (err) {
@@ -936,6 +1092,160 @@ export function CrewPlan() {
           </Field>
         </div>
       </div>
+
+      {canEditSegments && waypoints.length > 0 && (
+        <div className={`rg-cp-seg-editor${readOnlyMode ? ' rg-cp-readonly' : ''} rg-print-hide`}>
+          <button
+            type="button"
+            className="rg-cp-seg-editor-toggle"
+            aria-expanded={segmentsEditorOpen}
+            onClick={() => setSegmentsEditorOpen((o) => !o)}
+          >
+            <span>
+              Course segments{' '}
+              <span className="rg-cp-muted" style={{ fontWeight: 400 }}>
+                —{' '}
+                {segments.length > 0
+                  ? `${segments.length} of ${Math.max(0, realWaypointIndices.length - 1)} legs described`
+                  : `add per-leg detail for the ${Math.max(0, realWaypointIndices.length - 1)} legs of this course`}
+              </span>
+            </span>
+            <span aria-hidden>{segmentsEditorOpen ? '▾' : '▸'}</span>
+          </button>
+
+          {segmentsEditorOpen && (
+            <div className="rg-cp-seg-editor-body">
+              <p className="rg-cp-muted" style={{ fontSize: 12, marginTop: 0 }}>
+                Shows in the "Segment info" popup on each aid station below. Only the plan owner and Chief Crew can
+                edit this. Segments map to legs in order — segment 1 is the first aid station to the second.
+              </p>
+
+              {segments.length === 0 ? (
+                <Button variant="secondary" disabled={readOnlyMode} onClick={seedSegmentsFromLegs}>
+                  Start with one row per leg
+                </Button>
+              ) : (
+                <>
+                  {segments.map((seg, si) => {
+                    const legCount = Math.max(0, realWaypointIndices.length - 1);
+                    const legLabel =
+                      si < legCount
+                        ? `${waypoints[realWaypointIndices[si]].name} → ${waypoints[realWaypointIndices[si + 1]].name}`
+                        : 'no matching leg — remove this row';
+                    const thumb = seg.profileImage ? segImageUrls[seg.profileImage] : undefined;
+                    return (
+                      <div key={si} className="rg-cp-seg-row">
+                        <div className="rg-cp-seg-row-head">
+                          <span>
+                            Segment {si + 1} <span className="rg-cp-muted">· {legLabel}</span>
+                          </span>
+                          <Button variant="ghost" disabled={readOnlyMode} onClick={() => removeSegment(si)}>
+                            Remove
+                          </Button>
+                        </div>
+                        <Field label="Title">
+                          <Input
+                            type="text"
+                            value={seg.title}
+                            placeholder="e.g. Start to Blue Lake"
+                            onChange={(e) => updateSegment(si, { title: e.target.value })}
+                          />
+                        </Field>
+                        <div className="rg-cp-seg-row-nums">
+                          <Field label="Distance (mi)">
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={seg.distanceMiles}
+                              onChange={(e) => updateSegment(si, { distanceMiles: e.target.value.replace(/[^\d.]/g, '') })}
+                            />
+                          </Field>
+                          <Field label="Ascent (ft)">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={seg.ascentFt}
+                              onChange={(e) => updateSegment(si, { ascentFt: e.target.value.replace(/[^\d]/g, '') })}
+                            />
+                          </Field>
+                          <Field label="Descent (ft)">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              value={seg.descentFt}
+                              onChange={(e) => updateSegment(si, { descentFt: e.target.value.replace(/[^\d]/g, '') })}
+                            />
+                          </Field>
+                        </div>
+                        <Field label="Description">
+                          <TextArea
+                            rows={3}
+                            value={seg.description}
+                            placeholder="Terrain, water sources, exposure, what to expect…"
+                            onChange={(e) => updateSegment(si, { description: e.target.value })}
+                          />
+                        </Field>
+                        <div className="rg-cp-seg-row-image">
+                          {seg.profileImage ? (
+                            <>
+                              {thumb ? (
+                                <img src={thumb} alt="" className="rg-cp-seg-thumb" />
+                              ) : thumb === null ? (
+                                <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                                  Image unavailable
+                                </span>
+                              ) : (
+                                <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                                  Loading…
+                                </span>
+                              )}
+                              <Button
+                                variant="ghost"
+                                disabled={readOnlyMode || segImageUploadingIdx === si}
+                                onClick={() => pickSegmentImage(si)}
+                              >
+                                {segImageUploadingIdx === si ? 'Uploading…' : 'Replace image'}
+                              </Button>
+                              <Button variant="ghost" disabled={readOnlyMode} onClick={() => removeSegmentImage(si)}>
+                                Remove image
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              disabled={readOnlyMode || segImageUploadingIdx === si}
+                              onClick={() => pickSegmentImage(si)}
+                            >
+                              {segImageUploadingIdx === si ? 'Uploading…' : 'Upload elevation image'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Button variant="secondary" disabled={readOnlyMode} onClick={addSegment}>
+                    + Add segment
+                  </Button>
+                </>
+              )}
+
+              {segEditError && (
+                <div className="rg-auth-error" style={{ marginTop: 'var(--space-3)' }}>
+                  {segEditError}
+                </div>
+              )}
+
+              <input
+                ref={segFileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleSegmentImagePick}
+                style={{ display: 'none' }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {!isShared && crewModalOpen && (
         <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setCrewModalOpen(false)}>

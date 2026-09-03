@@ -307,6 +307,33 @@ export async function resolveCourseSegmentImage(profileImage: string): Promise<s
   return data.signedUrl;
 }
 
+/** Uploads one elevation-profile image for a plan's course segment and
+ * returns the value to store in `CourseSegment.profileImage` (a
+ * `storage:`-prefixed object path). Throws if the bucket RLS rejects the
+ * write (caller isn't the plan owner or Chief Crew) or the upload fails. */
+export async function uploadCourseSegmentImage(planId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `${planId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from(COURSE_SEGMENTS_BUCKET).upload(path, file, {
+    contentType: file.type || undefined,
+    upsert: false,
+  });
+  if (error) throw error;
+  return `${COURSE_SEGMENT_STORAGE_PREFIX}${path}`;
+}
+
+/** Best-effort delete of a previously uploaded segment image. No-op for a
+ * non-storage value (bundled asset). Never throws — a leftover object is
+ * harmless and cleanup shouldn't fail the edit that triggered it. */
+export async function deleteCourseSegmentImage(profileImage: string): Promise<void> {
+  if (!profileImage.startsWith(COURSE_SEGMENT_STORAGE_PREFIX)) return;
+  const path = profileImage.slice(COURSE_SEGMENT_STORAGE_PREFIX.length);
+  await supabase.storage.from(COURSE_SEGMENTS_BUCKET).remove([path]).then(
+    () => {},
+    () => {},
+  );
+}
+
 // ─── Crew Plan collaboration ─────────────────────────────────────────────
 
 /** Invites someone (by email) to collaborate on a plan's Crew Plan screen.
