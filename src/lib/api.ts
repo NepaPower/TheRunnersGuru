@@ -126,7 +126,7 @@ function planColumns(userId: string, plan: TrainingPlan) {
     user_id: userId,
     race_name: plan.raceName,
     distance_goal: plan.distanceGoal,
-    ultra_miles: plan.ultraMiles ?? null,
+    ultra_miles: plan.ultraMiles != null ? Math.round(plan.ultraMiles) : null,
     first_time: plan.firstTime,
     hill_access: plan.hillAccess || null,
     gpx_route: plan.gpxRoute ?? null,
@@ -211,7 +211,7 @@ export async function updateRaceDetails(planId: string, plan: TrainingPlan, opts
     .update({
       race_name: plan.raceName,
       distance_goal: plan.distanceGoal,
-      ultra_miles: plan.ultraMiles ?? null,
+      ultra_miles: plan.ultraMiles != null ? Math.round(plan.ultraMiles) : null,
       first_time: plan.firstTime,
       hill_access: plan.hillAccess || null,
       gpx_route: plan.gpxRoute ?? null,

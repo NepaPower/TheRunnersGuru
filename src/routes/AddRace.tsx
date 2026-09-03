@@ -5,7 +5,8 @@ import { Field, Input, Select } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { createTrainingPlan, getCurrentUserId } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
-import type { DistanceGoal, GpxRoute, TrainingPlan } from '../types';
+import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
+import type { DistanceGoal, GpxRoute, TrainingPlan, UltraDistanceId } from '../types';
 import './races.css';
 
 /** The short "Add a race" flow — race name, date, distance, and (for an
@@ -20,6 +21,8 @@ export function AddRace() {
   const [date, setDate] = useState('');
   const [category, setCategory] = useState<'standard' | 'ultra'>('ultra');
   const [standardDistance, setStandardDistance] = useState<Exclude<DistanceGoal, 'ultra'>>('full');
+  const [ultraId, setUltraId] = useState<UltraDistanceId>('');
+  const [ultraCustom, setUltraCustom] = useState('');
   const [gpxRoute, setGpxRoute] = useState<GpxRoute | null>(null);
   const [gpxLoading, setGpxLoading] = useState(false);
   const [gpxError, setGpxError] = useState<string | null>(null);
@@ -42,10 +45,23 @@ export function AddRace() {
     }
   }
 
+  const ultraMiles: number | null =
+    category !== 'ultra'
+      ? null
+      : ultraId === 'custom'
+        ? Number(ultraCustom) > 0
+          ? Math.round(Math.min(Number(ultraCustom), MAX_ULTRA_MILES))
+          : null
+        : (ULTRA_DISTANCES.find((d) => d.id === ultraId)?.miles ?? null);
+
   async function handleSubmit() {
     setError(null);
     if (!name.trim() || !date) {
       setError('Race name and date are required.');
+      return;
+    }
+    if (category === 'ultra' && ultraMiles == null) {
+      setError('Pick an ultra distance (or enter your own).');
       return;
     }
     setSaving(true);
@@ -56,7 +72,7 @@ export function AddRace() {
         isPrimary: false,
         raceName: name.trim(),
         distanceGoal: category === 'ultra' ? 'ultra' : standardDistance,
-        ultraMiles: category === 'ultra' ? gpxRoute?.distanceMiles ?? null : null,
+        ultraMiles,
         firstTime: 'no',
         hillAccess: '',
         gpxRoute: category === 'ultra' ? gpxRoute : null,
@@ -146,25 +162,47 @@ export function AddRace() {
             </Select>
           </Field>
         ) : (
-          <Field label="Course GPX" optional hint="Aid stations, cutoffs, elevation and weather all come from this. You can add it later on the Crew Plan screen.">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-              <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
-                {gpxLoading ? 'Reading…' : gpxRoute ? 'Replace GPX' : 'Upload GPX'}
-              </Button>
-              {gpxRoute && (
-                <span className="text-muted" style={{ fontSize: 13 }}>
-                  {gpxRoute.fileName} — {gpxRoute.distanceMiles} mi, {gpxRoute.waypoints.length} aid station
-                  {gpxRoute.waypoints.length === 1 ? '' : 's'}
-                </span>
-              )}
-              <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpx} style={{ display: 'none' }} />
-            </div>
-            {gpxError && (
-              <div className="rg-auth-error" style={{ marginTop: 'var(--space-2)' }}>
-                {gpxError}
-              </div>
+          <>
+            <Field label="Ultra distance" required>
+              <Select value={ultraId} onChange={(e) => setUltraId(e.target.value as UltraDistanceId)}>
+                <option value="">Select…</option>
+                {ULTRA_DISTANCES.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {ultraId === 'custom' && (
+              <Field label={`Your distance in miles (up to ${MAX_ULTRA_MILES})`}>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={ultraCustom}
+                  onChange={(e) => setUltraCustom(e.target.value.replace(/[^\d]/g, ''))}
+                />
+              </Field>
             )}
-          </Field>
+            <Field label="Course GPX" optional hint="Aid stations, cutoffs, elevation and weather all come from this. You can add it later on the Crew Plan screen.">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <Button variant="secondary" disabled={gpxLoading} onClick={() => fileInputRef.current?.click()}>
+                  {gpxLoading ? 'Reading…' : gpxRoute ? 'Replace GPX' : 'Upload GPX'}
+                </Button>
+                {gpxRoute && (
+                  <span className="text-muted" style={{ fontSize: 13 }}>
+                    {gpxRoute.fileName} — {gpxRoute.distanceMiles} mi, {gpxRoute.waypoints.length} aid station
+                    {gpxRoute.waypoints.length === 1 ? '' : 's'}
+                  </span>
+                )}
+                <input ref={fileInputRef} type="file" accept=".gpx" onChange={handleGpx} style={{ display: 'none' }} />
+              </div>
+              {gpxError && (
+                <div className="rg-auth-error" style={{ marginTop: 'var(--space-2)' }}>
+                  {gpxError}
+                </div>
+              )}
+            </Field>
+          </>
         )}
 
         <div>
