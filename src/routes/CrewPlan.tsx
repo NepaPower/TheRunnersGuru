@@ -17,6 +17,7 @@ import {
   heartbeatCrewPlanLock,
   fetchCrewPlanLock,
   isCrewPlanLockActive,
+  resolveCourseSegmentImage,
   type CrewPlanLockState,
 } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
@@ -251,6 +252,10 @@ export function CrewPlan() {
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [crewModalOpen, setCrewModalOpen] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState<CourseSegment | null>(null);
+  // The open segment's elevation image, resolved to a usable src — a
+  // signed URL for a private-bucket upload, or the value as-is for a
+  // bundled asset. Null while resolving or if there's no image.
+  const [selectedSegmentImageUrl, setSelectedSegmentImageUrl] = useState<string | null>(null);
 
   // Shared mode only — this crew member's own role, used to decide
   // whether to show the Upload/Replace GPX control at all. The real
@@ -319,6 +324,21 @@ export function CrewPlan() {
     };
   }, [plan?.gpxRoute?.waypoints]);
 
+  // Resolve the open segment's elevation image to a displayable src.
+  // Private-bucket uploads need a signed URL; bundled BigFoot assets pass
+  // straight through. Re-runs whenever a different segment card opens.
+  useEffect(() => {
+    setSelectedSegmentImageUrl(null);
+    if (!selectedSegment?.profileImage) return;
+    let cancelled = false;
+    resolveCourseSegmentImage(selectedSegment.profileImage).then((url) => {
+      if (!cancelled) setSelectedSegmentImageUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSegment]);
+
   // The useState calls above only use their initial value on this
   // component's very first render — in shared mode that's BEFORE the
   // async fetch above resolves, when `plan` is still null. React never
@@ -359,15 +379,24 @@ export function CrewPlan() {
     if (!isAlternateWaypointName(wp.name)) acc.push(idx);
     return acc;
   }, []);
-  // BIGFOOT_200_SEGMENTS is hardcoded data matched to waypoints purely by
-  // ORDER, so without a guard it would render BigFoot's leg descriptions
-  // and elevation charts on any other race's first ~13 stations. Until
-  // per-race segment data exists (see crew-plan-centerpiece-spec.md), only
-  // surface it when this really is the BigFoot 200 plan — require BOTH a
-  // name match AND an exact leg-count match, so a different race can't
-  // trip it on name alone or waypoint count alone.
+  // Per-leg "Segment info" cards come from plan.courseSegments when the
+  // plan has its own set (works for any race). Otherwise fall back to the
+  // built-in BIGFOOT_200_SEGMENTS — but only for the actual BigFoot 200
+  // plan: that data is matched to waypoints purely by ORDER, so without a
+  // guard it would render BigFoot's legs on any other race's first ~13
+  // stations. Require BOTH a name match AND an exact leg-count match. This
+  // fallback goes away once BigFoot is migrated into courseSegments (see
+  // crew-plan-centerpiece-spec.md).
   const bigfootSegmentsApply =
     /bigfoot/i.test(plan?.raceName ?? '') && realWaypointIndices.length - 1 === BIGFOOT_200_SEGMENTS.length;
+  const effectiveSegments: CourseSegment[] | null =
+    plan?.courseSegments ?? (bigfootSegmentsApply ? BIGFOOT_200_SEGMENTS : null);
+  // Segments are matched to legs in order, so a count that doesn't equal
+  // the number of legs (real waypoints minus one) means the later cards
+  // line up with the wrong leg. Only flag it for a plan's own segment
+  // data — the built-in BigFoot set is known to match.
+  const segmentCountMismatch =
+    plan?.courseSegments != null && plan.courseSegments.length !== Math.max(0, realWaypointIndices.length - 1);
   // A station's mile marker, preferring the user's manual correction
   // (entered when the GPX file's nearest-track-point estimate is known to
   // be off) over the GPX-derived value. EVERY calculation that needs a
@@ -1046,6 +1075,17 @@ export function CrewPlan() {
             as a whole.
           </p>
 
+          {segmentCountMismatch && (
+            <p
+              className="rg-cp-muted"
+              style={{ marginBottom: 'var(--space-4)', fontSize: 13, color: 'var(--color-accent-2-800, #92400e)' }}
+            >
+              ⚠ This plan has {plan.courseSegments!.length} course segment{plan.courseSegments!.length === 1 ? '' : 's'} but{' '}
+              {Math.max(0, realWaypointIndices.length - 1)} legs between aid stations. Segments are matched in order, so some
+              "Segment info" cards may line up with the wrong leg until the counts match.
+            </p>
+          )}
+
           <div className="rg-cp-stations">
             {waypoints.map((wp, i) => {
               const key = String(i);
@@ -1058,7 +1098,7 @@ export function CrewPlan() {
               const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
               const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((effectiveMile(nextRealIdx) - effectiveMile(i)) * 10) / 10) : null;
               const segmentInfoIndex =
-                bigfootSegmentsApply && !isAlternate && realPos !== -1 && realPos < BIGFOOT_200_SEGMENTS.length ? realPos : null;
+                effectiveSegments && !isAlternate && realPos !== -1 && realPos < effectiveSegments.length ? realPos : null;
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
@@ -1086,7 +1126,7 @@ export function CrewPlan() {
                               <button
                                 type="button"
                                 className="rg-cp-segment-link"
-                                onClick={() => setSelectedSegment(BIGFOOT_200_SEGMENTS[segmentInfoIndex])}
+                                onClick={() => setSelectedSegment(effectiveSegments![segmentInfoIndex])}
                               >
                                 Segment info
                               </button>
@@ -1427,11 +1467,19 @@ export function CrewPlan() {
               </button>
             </div>
             <p style={{ margin: '0 0 var(--space-4)' }}>{selectedSegment.description}</p>
-            <img
-              src={selectedSegment.profileImage}
-              alt={`${selectedSegment.title} elevation profile`}
-              style={{ width: '100%', borderRadius: 10, border: '1px solid var(--color-divider)', display: 'block' }}
-            />
+            {selectedSegment.profileImage ? (
+              selectedSegmentImageUrl ? (
+                <img
+                  src={selectedSegmentImageUrl}
+                  alt={`${selectedSegment.title} elevation profile`}
+                  style={{ width: '100%', borderRadius: 10, border: '1px solid var(--color-divider)', display: 'block' }}
+                />
+              ) : (
+                <div className="rg-cp-muted" style={{ fontSize: 13 }}>
+                  Loading elevation profile…
+                </div>
+              )
+            ) : null}
           </div>
         </div>
       )}

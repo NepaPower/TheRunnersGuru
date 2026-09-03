@@ -284,6 +284,29 @@ export async function updateCrewPlanById(
   if (error) throw error;
 }
 
+// ─── Crew Plan — course segment images ───────────────────────────────────
+// Elevation-profile images for a plan's course segments live in the
+// private `course-segments` Storage bucket, keyed <planId>/<uuid>.<ext>.
+// A CourseSegment's `profileImage` stores that object path prefixed
+// `storage:`. Bundled BigFoot images use a plain asset URL and skip all
+// of this. Bucket RLS (supabase/schema.sql): any accepted crew reads,
+// owner / Chief Crew writes.
+
+export const COURSE_SEGMENT_STORAGE_PREFIX = 'storage:';
+const COURSE_SEGMENTS_BUCKET = 'course-segments';
+
+/** Resolves a segment's `profileImage` to a value usable as an <img src>.
+ * A `storage:`-prefixed path is a private bucket object and gets a
+ * time-limited signed URL; anything else (a bundled asset URL) is
+ * returned unchanged. Null if signing fails. */
+export async function resolveCourseSegmentImage(profileImage: string): Promise<string | null> {
+  if (!profileImage.startsWith(COURSE_SEGMENT_STORAGE_PREFIX)) return profileImage;
+  const path = profileImage.slice(COURSE_SEGMENT_STORAGE_PREFIX.length);
+  const { data, error } = await supabase.storage.from(COURSE_SEGMENTS_BUCKET).createSignedUrl(path, 60 * 60);
+  if (error) return null;
+  return data.signedUrl;
+}
+
 // ─── Crew Plan collaboration ─────────────────────────────────────────────
 
 /** Invites someone (by email) to collaborate on a plan's Crew Plan screen.
