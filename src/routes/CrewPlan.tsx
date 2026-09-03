@@ -71,6 +71,7 @@ type SegmentDraft = {
   descentFt: string;
   description: string;
   profileImage: string;
+  pacerName: string;
 };
 const toSegmentDraft = (s: CourseSegment): SegmentDraft => ({
   title: s.title,
@@ -79,6 +80,7 @@ const toSegmentDraft = (s: CourseSegment): SegmentDraft => ({
   descentFt: s.descentFt ? String(s.descentFt) : '',
   description: s.description,
   profileImage: s.profileImage,
+  pacerName: s.pacerName ?? '',
 });
 const fromSegmentDraft = (d: SegmentDraft): CourseSegment => ({
   title: d.title.trim(),
@@ -87,6 +89,7 @@ const fromSegmentDraft = (d: SegmentDraft): CourseSegment => ({
   descentFt: Number(d.descentFt) || 0,
   description: d.description.trim(),
   profileImage: d.profileImage,
+  pacerName: d.pacerName.trim() || undefined,
 });
 const emptySegmentDraft: SegmentDraft = {
   title: '',
@@ -95,6 +98,7 @@ const emptySegmentDraft: SegmentDraft = {
   descentFt: '',
   description: '',
   profileImage: '',
+  pacerName: '',
 };
 const emptyCourseSegment = (): CourseSegment => ({
   title: '',
@@ -1302,7 +1306,10 @@ export function CrewPlan() {
               // The leg leaving this station (leg N = after real waypoint N).
               const legIndex = !isAlternate && realPos !== -1 && realPos < legCount ? realPos : null;
               const legSegment = legIndex != null ? effectiveSegments?.[legIndex] : undefined;
-              const legHasSegment = !!(legSegment && (legSegment.title || legSegment.description || legSegment.profileImage));
+              const legHasSegment = !!(
+                legSegment &&
+                (legSegment.title || legSegment.description || legSegment.profileImage || legSegment.pacerName)
+              );
               const legClimb = legSegment && (legSegment.ascentFt > 0 || legSegment.descentFt > 0) ? legSegment : null;
               const showSegmentLink = legIndex != null && (legHasSegment || (canEditSegments && !readOnlyMode));
               return (
@@ -1329,6 +1336,11 @@ export function CrewPlan() {
                           {legClimb && (
                             <span className="rg-cp-next-leg-climb">
                               {' · '}+{legClimb.ascentFt.toLocaleString()} ft / −{legClimb.descentFt.toLocaleString()} ft
+                            </span>
+                          )}
+                          {legSegment?.pacerName && (
+                            <span className="rg-cp-next-leg-climb">
+                              {' · '}Pacer: {legSegment.pacerName}
                             </span>
                           )}
                           {showSegmentLink && (
@@ -1672,7 +1684,10 @@ export function CrewPlan() {
               : '';
           const view = effectiveSegments?.[segPopupLeg];
           const ownEntry = plan?.courseSegments?.[segPopupLeg];
-          const canClear = !!(ownEntry && (ownEntry.title || ownEntry.description || ownEntry.profileImage));
+          const canClear = !!(
+            ownEntry &&
+            (ownEntry.title || ownEntry.description || ownEntry.profileImage || ownEntry.pacerName)
+          );
           return (
             <div
               className="rg-cp-crew-modal-backdrop"
@@ -1756,6 +1771,14 @@ export function CrewPlan() {
                         onChange={(e) => setSegForm({ ...segForm, description: e.target.value })}
                       />
                     </Field>
+                    <Field label="Pacer" optional>
+                      <Input
+                        type="text"
+                        value={segForm.pacerName}
+                        placeholder="Who's running this leg with the runner"
+                        onChange={(e) => setSegForm({ ...segForm, pacerName: e.target.value })}
+                      />
+                    </Field>
                     <div className="rg-cp-seg-form-image">
                       {segForm.profileImage ? (
                         <>
@@ -1809,6 +1832,11 @@ export function CrewPlan() {
                           : ''}
                       </p>
                     )}
+                    {view?.pacerName && (
+                      <p style={{ fontSize: 13, margin: '0 0 var(--space-3)' }}>
+                        <strong>Pacer:</strong> {view.pacerName}
+                      </p>
+                    )}
                     {view?.description && <p style={{ margin: '0 0 var(--space-4)' }}>{view.description}</p>}
                     {view?.profileImage ? (
                       segPopupImageUrl ? (
@@ -1823,7 +1851,8 @@ export function CrewPlan() {
                         </div>
                       )
                     ) : (
-                      !view?.description && (
+                      !view?.description &&
+                      !view?.pacerName && (
                         <p className="rg-cp-muted" style={{ fontSize: 13, margin: 0 }}>
                           No details added for this leg yet.
                         </p>

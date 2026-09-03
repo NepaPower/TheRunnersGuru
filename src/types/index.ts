@@ -200,6 +200,10 @@ export interface CourseSegment {
   descentFt: number;
   description: string;
   profileImage: string;
+  // Who is pacing this leg, if anyone — a segment is the stretch between
+  // two aid stations, which is exactly where a pacer runs with the
+  // runner. Optional; absent on segments saved before this field existed.
+  pacerName?: string;
 }
 
 export interface TrainingPlan {
