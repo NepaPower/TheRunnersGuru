@@ -35,6 +35,9 @@ export function EditRace() {
   const [hillAccess, setHillAccess] = useState<HillAccessAnswer>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set after a save that rebuilt the weekly plan — shows a "view the
+  // plan" step instead of dropping straight back to My Races.
+  const [rebuiltPlan, setRebuiltPlan] = useState(false);
 
   // Seed the form from the plan. Re-runs if the plan arrives after mount
   // (deep link / refresh, before ownPlans has hydrated).
@@ -60,6 +63,25 @@ export function EditRace() {
           ← My Races
         </Button>
         <p className="text-muted">This race isn't loaded. Go back to My Races and open it from there.</p>
+      </>
+    );
+  }
+
+  if (rebuiltPlan) {
+    return (
+      <>
+        <h2 style={{ marginBottom: 'var(--space-2)' }}>Training plan rebuilt</h2>
+        <p className="text-muted" style={{ marginBottom: 'var(--space-4)' }}>
+          “{plan.raceName}” was updated and its weekly schedule regenerated for the new details.
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <Button variant="primary" onClick={() => navigate('/training-plan')}>
+            View training plan
+          </Button>
+          <Button variant="ghost" onClick={() => navigate('/races')}>
+            Back to My Races
+          </Button>
+        </div>
       </>
     );
   }
@@ -162,7 +184,12 @@ export function EditRace() {
           quote: merged.quote,
         },
       });
-      navigate('/races');
+      if (willRegenerate) {
+        setSaving(false);
+        setRebuiltPlan(true);
+      } else {
+        navigate('/races');
+      }
     } catch (e) {
       setError(
         e instanceof Error
