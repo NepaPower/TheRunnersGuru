@@ -449,62 +449,28 @@
   padding-bottom: var(--space-8);
 }
 
-/* Course segment editor (owner / chief only) */
-.rg-cp-seg-editor {
-  background: var(--color-bg);
-  border: 1px solid var(--color-divider);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--space-6);
-  overflow: hidden;
-}
-.rg-cp-seg-editor-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--color-text);
-  text-align: left;
-}
-.rg-cp-seg-editor-body {
-  padding: 0 var(--space-6) var(--space-6);
-  border-top: 1px solid var(--color-divider);
-}
-.rg-cp-seg-row {
-  border: 1px solid var(--color-divider);
-  border-radius: 12px;
-  padding: var(--space-4);
-  margin-top: var(--space-4);
+/* "Segment info" popup — edit form (owner / chief) */
+.rg-cp-seg-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-.rg-cp-seg-row-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 13px;
-  font-weight: 600;
-}
-.rg-cp-seg-row-nums {
+.rg-cp-seg-form-nums {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-3);
 }
-.rg-cp-seg-row-image {
+.rg-cp-seg-form-image {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+.rg-cp-seg-form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 .rg-cp-seg-thumb {
   width: 160px;
@@ -513,16 +479,12 @@
   border: 1px solid var(--color-divider);
   display: block;
 }
-.rg-cp-seg-editor-body > .rg-cp-btn,
-.rg-cp-seg-editor-body > button {
-  margin-top: var(--space-4);
-}
 
 @media (max-width: 720px) {
   .rg-cp-setup-grid,
   .rg-cp-station-fields,
   .rg-cp-station-notes,
-  .rg-cp-seg-row-nums {
+  .rg-cp-seg-form-nums {
     grid-template-columns: 1fr;
   }
   .rg-cp-station-head {

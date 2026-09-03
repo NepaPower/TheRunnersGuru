@@ -97,6 +97,14 @@ const emptySegmentDraft: SegmentDraft = {
   description: '',
   profileImage: '',
 };
+const emptyCourseSegment = (): CourseSegment => ({
+  title: '',
+  distanceMiles: 0,
+  ascentFt: 0,
+  descentFt: 0,
+  description: '',
+  profileImage: '',
+});
 
 interface StationWeather {
   climate: ClimateAverage | null;
@@ -289,24 +297,20 @@ export function CrewPlan() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [crewModalOpen, setCrewModalOpen] = useState(false);
-  const [selectedSegment, setSelectedSegment] = useState<CourseSegment | null>(null);
-  // The open segment's elevation image, resolved to a usable src — a
-  // signed URL for a private-bucket upload, or the value as-is for a
-  // bundled asset. Null while resolving or if there's no image.
-  const [selectedSegmentImageUrl, setSelectedSegmentImageUrl] = useState<string | null>(null);
-
-  // Chief/owner-only editor for this plan's own course segments (the
-  // per-leg description + ascent/descent + elevation image shown in the
-  // "Segment info" modal). Drafts hold numbers as strings; see
-  // SegmentDraft. Resolved thumbnail srcs are cached by profileImage ref
-  // (value null = resolve was attempted and failed, so it isn't retried).
-  const [segments, setSegments] = useState<SegmentDraft[]>(() => (plan?.courseSegments ?? []).map(toSegmentDraft));
-  const [segmentsEditorOpen, setSegmentsEditorOpen] = useState(false);
-  const [segImageUrls, setSegImageUrls] = useState<Record<string, string | null>>({});
-  const [segImageUploadingIdx, setSegImageUploadingIdx] = useState<number | null>(null);
-  const [segEditError, setSegEditError] = useState<string | null>(null);
+  // The "Segment info" popup. `segPopupLeg` is the leg it's showing (the
+  // leg AFTER real waypoint N); null when closed. For the owner / Chief
+  // Crew the popup is an editor — `segForm` holds the in-progress draft
+  // (numbers as strings, see SegmentDraft), seeded from the plan's own
+  // segment, or text-only from whatever's currently displayed.
+  // `segPopupImageUrl` is the resolved <img src> for the image the popup
+  // is showing (undefined = still resolving, null = resolve failed).
+  const [segPopupLeg, setSegPopupLeg] = useState<number | null>(null);
+  const [segForm, setSegForm] = useState<SegmentDraft | null>(null);
+  const [segPopupImageUrl, setSegPopupImageUrl] = useState<string | null>(null);
+  const [segSaving, setSegSaving] = useState(false);
+  const [segUploading, setSegUploading] = useState(false);
+  const [segPopupError, setSegPopupError] = useState<string | null>(null);
   const segFileInputRef = useRef<HTMLInputElement>(null);
-  const segUploadTargetIdx = useRef<number | null>(null);
 
   // Shared mode only — this crew member's own role, used to decide
   // whether to show the Upload/Replace GPX control at all. The real
@@ -375,41 +379,6 @@ export function CrewPlan() {
     };
   }, [plan?.gpxRoute?.waypoints]);
 
-  // Resolve the open segment's elevation image to a displayable src.
-  // Private-bucket uploads need a signed URL; bundled BigFoot assets pass
-  // straight through. Re-runs whenever a different segment card opens.
-  useEffect(() => {
-    setSelectedSegmentImageUrl(null);
-    if (!selectedSegment?.profileImage) return;
-    let cancelled = false;
-    resolveCourseSegmentImage(selectedSegment.profileImage).then((url) => {
-      if (!cancelled) setSelectedSegmentImageUrl(url);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSegment]);
-
-  // Resolve thumbnail srcs for any segment images in the editor not yet
-  // in the cache. Storing the result (even null, for a failed resolve)
-  // keeps this from re-attempting the same ref every render.
-  useEffect(() => {
-    const missing = segments.map((s) => s.profileImage).filter((r) => r && !(r in segImageUrls));
-    if (missing.length === 0) return;
-    let cancelled = false;
-    Promise.all(missing.map(async (r) => [r, await resolveCourseSegmentImage(r)] as const)).then((pairs) => {
-      if (cancelled) return;
-      setSegImageUrls((prev) => {
-        const next = { ...prev };
-        for (const [r, url] of pairs) next[r] = url;
-        return next;
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [segments, segImageUrls]);
-
   // The useState calls above only use their initial value on this
   // component's very first render — in shared mode that's BEFORE the
   // async fetch above resolves, when `plan` is still null. React never
@@ -432,7 +401,6 @@ export function CrewPlan() {
     setGoalHours(sharedPlan.goalFinishMinutes != null ? String(Math.floor(sharedPlan.goalFinishMinutes / 60)) : '');
     setGoalMinutes(sharedPlan.goalFinishMinutes != null ? String(sharedPlan.goalFinishMinutes % 60) : '');
     setNotes(buildNotesWithDetectedCutoffs(sharedPlan.gpxRoute?.waypoints ?? [], sharedPlan.crewNotes ?? {}));
-    setSegments((sharedPlan.courseSegments ?? []).map(toSegmentDraft));
     // This is the plan loading in, not a person editing anything — the
     // autosave effect below shouldn't treat it as a change to save.
     skipNextAutosaveRef.current = true;
@@ -463,16 +431,35 @@ export function CrewPlan() {
     /bigfoot/i.test(plan?.raceName ?? '') && realWaypointIndices.length - 1 === BIGFOOT_200_SEGMENTS.length;
   const effectiveSegments: CourseSegment[] | null =
     plan?.courseSegments ?? (bigfootSegmentsApply ? BIGFOOT_200_SEGMENTS : null);
-  // Segments are matched to legs in order, so a count that doesn't equal
-  // the number of legs (real waypoints minus one) means the later cards
-  // line up with the wrong leg. Only flag it for a plan's own segment
-  // data — the built-in BigFoot set is known to match.
-  const segmentCountMismatch =
-    plan?.courseSegments != null && plan.courseSegments.length !== Math.max(0, realWaypointIndices.length - 1);
   // Owner (own plan) or the plan's Chief Crew. The bucket RLS + the
   // enforce_course_setup_chief_only trigger are the real enforcement —
-  // this just hides an editor a regular crew member couldn't save anyway.
+  // this just decides whether the "Segment info" popup opens as an editor
+  // and whether the per-leg "Add segment info" affordance shows.
   const canEditSegments = !isShared || myCrewRole === 'chief';
+  const legCount = Math.max(0, realWaypointIndices.length - 1);
+
+  // Resolve the image the Segment info popup is showing to a displayable
+  // src — the in-progress upload while editing, otherwise the displayed
+  // segment's own image. A private-bucket upload needs a signed URL; a
+  // bundled BigFoot asset URL passes straight through. undefined src =
+  // still resolving; null = resolve failed.
+  const segPopupImageRef =
+    segPopupLeg == null
+      ? undefined
+      : canEditSegments && !readOnlyMode
+        ? segForm?.profileImage || undefined
+        : effectiveSegments?.[segPopupLeg]?.profileImage;
+  useEffect(() => {
+    setSegPopupImageUrl(null);
+    if (!segPopupImageRef) return;
+    let cancelled = false;
+    resolveCourseSegmentImage(segPopupImageRef).then((url) => {
+      if (!cancelled) setSegPopupImageUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [segPopupImageRef]);
   // A station's mile marker, preferring the user's manual correction
   // (entered when the GPX file's nearest-track-point estimate is known to
   // be off) over the GPX-derived value. EVERY calculation that needs a
@@ -706,7 +693,7 @@ export function CrewPlan() {
     // trigger a save; re-running this because e.g. weather data loaded
     // in would autosave nothing new.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, segments, raceDate, raceStartTime, goalHours, goalMinutes]);
+  }, [notes, raceDate, raceStartTime, goalHours, goalMinutes]);
 
   if (isShared && sharedPlanLoading) {
     return (
@@ -760,64 +747,100 @@ export function CrewPlan() {
     setSaved(false);
   }
 
-  // ─── Course segment editor (owner / chief only) ───────────────────────
-  function updateSegment(idx: number, patch: Partial<SegmentDraft>) {
-    setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
-    setSaved(false);
+  // ─── "Segment info" popup — view for everyone, edit for owner / chief ──
+  // Opens the popup for the leg after real waypoint `leg`. The editor
+  // form is seeded from whatever's currently displayed for that leg — the
+  // plan's own saved segment, or the built-in BigFoot fallback when the
+  // plan has none yet, so editing one leg of a BigFoot plan doesn't wipe
+  // the rest (buildSegmentsArray snapshots the whole set on first save).
+  function openSegmentPopup(leg: number) {
+    const src = plan?.courseSegments?.[leg] ?? effectiveSegments?.[leg];
+    setSegForm(src ? toSegmentDraft(src) : { ...emptySegmentDraft });
+    setSegPopupError(null);
+    setSegPopupLeg(leg);
   }
-  function addSegment() {
-    setSegments((prev) => [...prev, { ...emptySegmentDraft }]);
-    setSaved(false);
+  function closeSegmentPopup() {
+    setSegPopupLeg(null);
+    setSegForm(null);
+    setSegPopupError(null);
   }
-  function removeSegment(idx: number) {
-    setSegments((prev) => {
-      const ref = prev[idx]?.profileImage;
-      if (ref) deleteCourseSegmentImage(ref);
-      return prev.filter((_, i) => i !== idx);
-    });
-    setSaved(false);
-  }
-  // One blank row per leg, pre-titled with the leg's two aid stations and
-  // its GPX distance — a starting skeleton so the person only fills in
-  // prose and images.
-  function seedSegmentsFromLegs() {
-    const legCount = Math.max(0, realWaypointIndices.length - 1);
-    setSegments(
-      Array.from({ length: legCount }, (_, i) => {
-        const a = waypoints[realWaypointIndices[i]];
-        const b = waypoints[realWaypointIndices[i + 1]];
-        const miles = Math.max(0, Math.round((effectiveMile(realWaypointIndices[i + 1]) - effectiveMile(realWaypointIndices[i])) * 10) / 10);
-        return { ...emptySegmentDraft, title: `${a.name} → ${b.name}`, distanceMiles: miles ? String(miles) : '' };
-      }),
-    );
-    setSaved(false);
-  }
-  function pickSegmentImage(idx: number) {
-    segUploadTargetIdx.current = idx;
+  function pickSegmentImage() {
     segFileInputRef.current?.click();
-  }
-  function removeSegmentImage(idx: number) {
-    const ref = segments[idx]?.profileImage;
-    if (ref) deleteCourseSegmentImage(ref);
-    updateSegment(idx, { profileImage: '' });
   }
   async function handleSegmentImagePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
-    const idx = segUploadTargetIdx.current;
-    segUploadTargetIdx.current = null;
-    if (!file || idx == null || !plan?.id) return;
-    setSegEditError(null);
-    setSegImageUploadingIdx(idx);
+    if (!file || !plan?.id || !segForm) return;
+    setSegPopupError(null);
+    setSegUploading(true);
     try {
-      const prevRef = segments[idx]?.profileImage;
+      const prevRef = segForm.profileImage;
       const ref = await uploadCourseSegmentImage(plan.id, file);
       if (prevRef) deleteCourseSegmentImage(prevRef);
-      updateSegment(idx, { profileImage: ref });
+      setSegForm((f) => (f ? { ...f, profileImage: ref } : f));
     } catch (err) {
-      setSegEditError(err instanceof Error ? err.message : "Couldn't upload that image.");
+      setSegPopupError(err instanceof Error ? err.message : "Couldn't upload that image.");
     } finally {
-      setSegImageUploadingIdx(null);
+      setSegUploading(false);
+    }
+  }
+  function removeSegmentImage() {
+    setSegForm((f) => {
+      if (f?.profileImage) deleteCourseSegmentImage(f.profileImage);
+      return f ? { ...f, profileImage: '' } : f;
+    });
+  }
+  // courseSegments is stored as a dense array, one entry per leg, indexed
+  // by leg — so a segment can't drift out of alignment with its leg. When
+  // the plan has no segments of its own yet, fall back through
+  // effectiveSegments so the first edit on a BigFoot plan snapshots the
+  // whole built-in set rather than blanking the 12 legs left untouched.
+  function buildSegmentsArray(): CourseSegment[] {
+    return Array.from({ length: legCount }, (_, i) => plan?.courseSegments?.[i] ?? effectiveSegments?.[i] ?? emptyCourseSegment());
+  }
+  async function persistCourseSegments(next: CourseSegment[]) {
+    if (isShared) {
+      if (!plan?.id) return;
+      await updateCrewPlanById(plan.id, { courseSegments: next });
+      setSharedPlan((prev) => (prev ? { ...prev, courseSegments: next } : prev));
+    } else {
+      if (!state.userId) return;
+      await updateCrewPlan(state.userId, { courseSegments: next });
+      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { courseSegments: next } });
+    }
+  }
+  async function saveSegment() {
+    if (segPopupLeg == null || !segForm) return;
+    const next = buildSegmentsArray();
+    next[segPopupLeg] = fromSegmentDraft(segForm);
+    setSegSaving(true);
+    setSegPopupError(null);
+    try {
+      await persistCourseSegments(next);
+      closeSegmentPopup();
+    } catch (err) {
+      setSegPopupError(
+        err instanceof Error ? err.message : "Couldn't save — you may not have permission, or the connection dropped.",
+      );
+    } finally {
+      setSegSaving(false);
+    }
+  }
+  async function clearSegment() {
+    if (segPopupLeg == null) return;
+    const next = buildSegmentsArray();
+    const removed = next[segPopupLeg];
+    next[segPopupLeg] = emptyCourseSegment();
+    setSegSaving(true);
+    setSegPopupError(null);
+    try {
+      await persistCourseSegments(next);
+      if (removed?.profileImage) deleteCourseSegmentImage(removed.profileImage);
+      closeSegmentPopup();
+    } catch (err) {
+      setSegPopupError(err instanceof Error ? err.message : "Couldn't save.");
+    } finally {
+      setSegSaving(false);
     }
   }
 
@@ -826,18 +849,7 @@ export function CrewPlan() {
     setSaving(true);
     try {
       const raceDateToSave = raceDate || plan.raceDate;
-      const updates: {
-        raceDate: string;
-        raceStartTime: string | null;
-        goalFinishMinutes: number | null;
-        crewNotes: Record<string, CrewNoteEntry>;
-        courseSegments?: CourseSegment[] | null;
-      } = { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes };
-      // Only send course segments if this person can actually change them
-      // — otherwise the chief-only trigger would reject the whole save
-      // (a regular crew member editing notes would send an unchanged, but
-      // "distinct from null", empty array and get blocked).
-      if (canEditSegments) updates.courseSegments = segments.length ? segments.map(fromSegmentDraft) : null;
+      const updates = { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes };
       if (isShared) {
         if (!plan.id) return;
         await updateCrewPlanById(plan.id, updates);
@@ -882,8 +894,7 @@ export function CrewPlan() {
         dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes, courseSegments: null } });
       }
       setNotes(freshNotes);
-      setSegments([]);
-      setSegImageUrls({});
+      setSegPopupLeg(null);
       staleSegmentImages.forEach((ref) => deleteCourseSegmentImage(ref));
       skipNextAutosaveRef.current = true;
       setSaved(false);
@@ -1093,160 +1104,6 @@ export function CrewPlan() {
         </div>
       </div>
 
-      {canEditSegments && waypoints.length > 0 && (
-        <div className={`rg-cp-seg-editor${readOnlyMode ? ' rg-cp-readonly' : ''} rg-print-hide`}>
-          <button
-            type="button"
-            className="rg-cp-seg-editor-toggle"
-            aria-expanded={segmentsEditorOpen}
-            onClick={() => setSegmentsEditorOpen((o) => !o)}
-          >
-            <span>
-              Course segments{' '}
-              <span className="rg-cp-muted" style={{ fontWeight: 400 }}>
-                —{' '}
-                {segments.length > 0
-                  ? `${segments.length} of ${Math.max(0, realWaypointIndices.length - 1)} legs described`
-                  : `add per-leg detail for the ${Math.max(0, realWaypointIndices.length - 1)} legs of this course`}
-              </span>
-            </span>
-            <span aria-hidden>{segmentsEditorOpen ? '▾' : '▸'}</span>
-          </button>
-
-          {segmentsEditorOpen && (
-            <div className="rg-cp-seg-editor-body">
-              <p className="rg-cp-muted" style={{ fontSize: 12, marginTop: 0 }}>
-                Shows in the "Segment info" popup on each aid station below. Only the plan owner and Chief Crew can
-                edit this. Segments map to legs in order — segment 1 is the first aid station to the second.
-              </p>
-
-              {segments.length === 0 ? (
-                <Button variant="secondary" disabled={readOnlyMode} onClick={seedSegmentsFromLegs}>
-                  Start with one row per leg
-                </Button>
-              ) : (
-                <>
-                  {segments.map((seg, si) => {
-                    const legCount = Math.max(0, realWaypointIndices.length - 1);
-                    const legLabel =
-                      si < legCount
-                        ? `${waypoints[realWaypointIndices[si]].name} → ${waypoints[realWaypointIndices[si + 1]].name}`
-                        : 'no matching leg — remove this row';
-                    const thumb = seg.profileImage ? segImageUrls[seg.profileImage] : undefined;
-                    return (
-                      <div key={si} className="rg-cp-seg-row">
-                        <div className="rg-cp-seg-row-head">
-                          <span>
-                            Segment {si + 1} <span className="rg-cp-muted">· {legLabel}</span>
-                          </span>
-                          <Button variant="ghost" disabled={readOnlyMode} onClick={() => removeSegment(si)}>
-                            Remove
-                          </Button>
-                        </div>
-                        <Field label="Title">
-                          <Input
-                            type="text"
-                            value={seg.title}
-                            placeholder="e.g. Start to Blue Lake"
-                            onChange={(e) => updateSegment(si, { title: e.target.value })}
-                          />
-                        </Field>
-                        <div className="rg-cp-seg-row-nums">
-                          <Field label="Distance (mi)">
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={seg.distanceMiles}
-                              onChange={(e) => updateSegment(si, { distanceMiles: e.target.value.replace(/[^\d.]/g, '') })}
-                            />
-                          </Field>
-                          <Field label="Ascent (ft)">
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={seg.ascentFt}
-                              onChange={(e) => updateSegment(si, { ascentFt: e.target.value.replace(/[^\d]/g, '') })}
-                            />
-                          </Field>
-                          <Field label="Descent (ft)">
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              value={seg.descentFt}
-                              onChange={(e) => updateSegment(si, { descentFt: e.target.value.replace(/[^\d]/g, '') })}
-                            />
-                          </Field>
-                        </div>
-                        <Field label="Description">
-                          <TextArea
-                            rows={3}
-                            value={seg.description}
-                            placeholder="Terrain, water sources, exposure, what to expect…"
-                            onChange={(e) => updateSegment(si, { description: e.target.value })}
-                          />
-                        </Field>
-                        <div className="rg-cp-seg-row-image">
-                          {seg.profileImage ? (
-                            <>
-                              {thumb ? (
-                                <img src={thumb} alt="" className="rg-cp-seg-thumb" />
-                              ) : thumb === null ? (
-                                <span className="rg-cp-muted" style={{ fontSize: 12 }}>
-                                  Image unavailable
-                                </span>
-                              ) : (
-                                <span className="rg-cp-muted" style={{ fontSize: 12 }}>
-                                  Loading…
-                                </span>
-                              )}
-                              <Button
-                                variant="ghost"
-                                disabled={readOnlyMode || segImageUploadingIdx === si}
-                                onClick={() => pickSegmentImage(si)}
-                              >
-                                {segImageUploadingIdx === si ? 'Uploading…' : 'Replace image'}
-                              </Button>
-                              <Button variant="ghost" disabled={readOnlyMode} onClick={() => removeSegmentImage(si)}>
-                                Remove image
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="secondary"
-                              disabled={readOnlyMode || segImageUploadingIdx === si}
-                              onClick={() => pickSegmentImage(si)}
-                            >
-                              {segImageUploadingIdx === si ? 'Uploading…' : 'Upload elevation image'}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <Button variant="secondary" disabled={readOnlyMode} onClick={addSegment}>
-                    + Add segment
-                  </Button>
-                </>
-              )}
-
-              {segEditError && (
-                <div className="rg-auth-error" style={{ marginTop: 'var(--space-3)' }}>
-                  {segEditError}
-                </div>
-              )}
-
-              <input
-                ref={segFileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={handleSegmentImagePick}
-                style={{ display: 'none' }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       {!isShared && crewModalOpen && (
         <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setCrewModalOpen(false)}>
           <div className="rg-cp-crew-modal-card" role="dialog" aria-modal="true" aria-label="Manage crew">
@@ -1385,17 +1242,6 @@ export function CrewPlan() {
             as a whole.
           </p>
 
-          {segmentCountMismatch && (
-            <p
-              className="rg-cp-muted"
-              style={{ marginBottom: 'var(--space-4)', fontSize: 13, color: 'var(--color-accent-2-800, #92400e)' }}
-            >
-              ⚠ This plan has {plan.courseSegments!.length} course segment{plan.courseSegments!.length === 1 ? '' : 's'} but{' '}
-              {Math.max(0, realWaypointIndices.length - 1)} legs between aid stations. Segments are matched in order, so some
-              "Segment info" cards may line up with the wrong leg until the counts match.
-            </p>
-          )}
-
           <div className="rg-cp-stations">
             {waypoints.map((wp, i) => {
               const key = String(i);
@@ -1407,8 +1253,11 @@ export function CrewPlan() {
               const realPos = realWaypointIndices.indexOf(i);
               const nextRealIdx = !isAlternate && realPos !== -1 ? realWaypointIndices[realPos + 1] : undefined;
               const nextSegmentMiles = nextRealIdx != null ? Math.max(0, Math.round((effectiveMile(nextRealIdx) - effectiveMile(i)) * 10) / 10) : null;
-              const segmentInfoIndex =
-                effectiveSegments && !isAlternate && realPos !== -1 && realPos < effectiveSegments.length ? realPos : null;
+              // The leg leaving this station (leg N = after real waypoint N).
+              const legIndex = !isAlternate && realPos !== -1 && realPos < legCount ? realPos : null;
+              const legSegment = legIndex != null ? effectiveSegments?.[legIndex] : undefined;
+              const legHasSegment = !!(legSegment && (legSegment.title || legSegment.description || legSegment.profileImage));
+              const showSegmentLink = legIndex != null && (legHasSegment || (canEditSegments && !readOnlyMode));
               return (
                 <div key={key} className="rg-cp-station-card">
                   <div className="rg-cp-station-head">
@@ -1430,15 +1279,11 @@ export function CrewPlan() {
                       {nextSegmentMiles != null && (
                         <div className="rg-cp-station-next-leg">
                           {nextSegmentMiles} mi to next stop
-                          {segmentInfoIndex != null && (
+                          {showSegmentLink && (
                             <>
                               {' · '}
-                              <button
-                                type="button"
-                                className="rg-cp-segment-link"
-                                onClick={() => setSelectedSegment(effectiveSegments![segmentInfoIndex])}
-                              >
-                                Segment info
+                              <button type="button" className="rg-cp-segment-link" onClick={() => openSegmentPopup(legIndex!)}>
+                                {legHasSegment ? 'Segment info' : 'Add segment info'}
                               </button>
                             </>
                           )}
@@ -1759,40 +1604,179 @@ export function CrewPlan() {
         </>
       )}
 
-      {selectedSegment && (
-        <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && setSelectedSegment(null)}>
-          <div className="rg-cp-crew-modal-card rg-cp-segment-modal-card" role="dialog" aria-modal="true" aria-label="Segment info">
-            <div className="rg-cp-crew-modal-header">
-              <div>
-                <h3 style={{ margin: 0 }}>{selectedSegment.title}</h3>
-                <p className="rg-cp-muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
-                  {selectedSegment.distanceMiles} mi · +{selectedSegment.ascentFt.toLocaleString()} ft / -
-                  {selectedSegment.descentFt.toLocaleString()} ft
-                </p>
-              </div>
-              <button type="button" className="rg-cp-crew-modal-close" aria-label="Close" onClick={() => setSelectedSegment(null)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-                  <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
-            <p style={{ margin: '0 0 var(--space-4)' }}>{selectedSegment.description}</p>
-            {selectedSegment.profileImage ? (
-              selectedSegmentImageUrl ? (
-                <img
-                  src={selectedSegmentImageUrl}
-                  alt={`${selectedSegment.title} elevation profile`}
-                  style={{ width: '100%', borderRadius: 10, border: '1px solid var(--color-divider)', display: 'block' }}
-                />
-              ) : (
-                <div className="rg-cp-muted" style={{ fontSize: 13 }}>
-                  Loading elevation profile…
+      {segPopupLeg != null &&
+        (() => {
+          const editing = canEditSegments && !readOnlyMode && segForm != null;
+          const legName =
+            segPopupLeg < legCount
+              ? `${waypoints[realWaypointIndices[segPopupLeg]].name} → ${waypoints[realWaypointIndices[segPopupLeg + 1]].name}`
+              : '';
+          const view = effectiveSegments?.[segPopupLeg];
+          const ownEntry = plan?.courseSegments?.[segPopupLeg];
+          const canClear = !!(ownEntry && (ownEntry.title || ownEntry.description || ownEntry.profileImage));
+          return (
+            <div
+              className="rg-cp-crew-modal-backdrop"
+              onClick={(e) => e.target === e.currentTarget && !segSaving && closeSegmentPopup()}
+            >
+              <div
+                className="rg-cp-crew-modal-card rg-cp-segment-modal-card"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Segment info"
+              >
+                <div className="rg-cp-crew-modal-header">
+                  <div>
+                    <h3 style={{ margin: 0 }}>{editing ? 'Segment info' : view?.title || 'Segment info'}</h3>
+                    {legName && (
+                      <p className="rg-cp-muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
+                        {legName}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="rg-cp-crew-modal-close"
+                    aria-label="Close"
+                    onClick={() => !segSaving && closeSegmentPopup()}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                      <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
                 </div>
-              )
-            ) : null}
-          </div>
-        </div>
-      )}
+
+                {editing && segForm ? (
+                  <div className="rg-cp-seg-form">
+                    <Field label="Title">
+                      <Input
+                        type="text"
+                        value={segForm.title}
+                        placeholder={legName}
+                        onChange={(e) => setSegForm({ ...segForm, title: e.target.value })}
+                      />
+                    </Field>
+                    <div className="rg-cp-seg-form-nums">
+                      <Field label="Distance (mi)">
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={segForm.distanceMiles}
+                          onChange={(e) => setSegForm({ ...segForm, distanceMiles: e.target.value.replace(/[^\d.]/g, '') })}
+                        />
+                      </Field>
+                      <Field label="Ascent (ft)">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={segForm.ascentFt}
+                          onChange={(e) => setSegForm({ ...segForm, ascentFt: e.target.value.replace(/[^\d]/g, '') })}
+                        />
+                      </Field>
+                      <Field label="Descent (ft)">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={segForm.descentFt}
+                          onChange={(e) => setSegForm({ ...segForm, descentFt: e.target.value.replace(/[^\d]/g, '') })}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Description">
+                      <TextArea
+                        rows={5}
+                        value={segForm.description}
+                        placeholder="Terrain, water sources, exposure, what to expect on this leg…"
+                        onChange={(e) => setSegForm({ ...segForm, description: e.target.value })}
+                      />
+                    </Field>
+                    <div className="rg-cp-seg-form-image">
+                      {segForm.profileImage ? (
+                        <>
+                          {segPopupImageUrl ? (
+                            <img src={segPopupImageUrl} alt="" className="rg-cp-seg-thumb" />
+                          ) : segPopupImageUrl === null ? (
+                            <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                              Image unavailable
+                            </span>
+                          ) : (
+                            <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                              Loading…
+                            </span>
+                          )}
+                          <Button variant="ghost" disabled={segUploading} onClick={pickSegmentImage}>
+                            {segUploading ? 'Uploading…' : 'Replace image'}
+                          </Button>
+                          <Button variant="ghost" disabled={segUploading} onClick={removeSegmentImage}>
+                            Remove image
+                          </Button>
+                        </>
+                      ) : (
+                        <Button variant="secondary" disabled={segUploading} onClick={pickSegmentImage}>
+                          {segUploading ? 'Uploading…' : 'Upload elevation image'}
+                        </Button>
+                      )}
+                    </div>
+                    {segPopupError && <div className="rg-auth-error">{segPopupError}</div>}
+                    <div className="rg-cp-seg-form-actions">
+                      {canClear && (
+                        <Button variant="ghost" disabled={segSaving} onClick={clearSegment}>
+                          Clear segment
+                        </Button>
+                      )}
+                      <span style={{ flex: 1 }} />
+                      <Button variant="ghost" disabled={segSaving} onClick={closeSegmentPopup}>
+                        Cancel
+                      </Button>
+                      <Button variant="primary" disabled={segSaving || segUploading} onClick={saveSegment}>
+                        {segSaving ? 'Saving…' : 'Save'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {(view?.distanceMiles || view?.ascentFt || view?.descentFt) && (
+                      <p className="rg-cp-muted" style={{ fontSize: 13, margin: '0 0 var(--space-3)' }}>
+                        {view?.distanceMiles ? `${view.distanceMiles} mi` : ''}
+                        {view?.ascentFt || view?.descentFt
+                          ? ` · +${(view?.ascentFt ?? 0).toLocaleString()} ft / −${(view?.descentFt ?? 0).toLocaleString()} ft`
+                          : ''}
+                      </p>
+                    )}
+                    {view?.description && <p style={{ margin: '0 0 var(--space-4)' }}>{view.description}</p>}
+                    {view?.profileImage ? (
+                      segPopupImageUrl ? (
+                        <img
+                          src={segPopupImageUrl}
+                          alt={`${view.title || 'Segment'} elevation profile`}
+                          style={{ width: '100%', borderRadius: 10, border: '1px solid var(--color-divider)', display: 'block' }}
+                        />
+                      ) : (
+                        <div className="rg-cp-muted" style={{ fontSize: 13 }}>
+                          Loading elevation profile…
+                        </div>
+                      )
+                    ) : (
+                      !view?.description && (
+                        <p className="rg-cp-muted" style={{ fontSize: 13, margin: 0 }}>
+                          No details added for this leg yet.
+                        </p>
+                      )
+                    )}
+                  </>
+                )}
+
+                <input
+                  ref={segFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleSegmentImagePick}
+                  style={{ display: 'none' }}
+                />
+              </div>
+            </div>
+          );
+        })()}
     </>
   );
 }
