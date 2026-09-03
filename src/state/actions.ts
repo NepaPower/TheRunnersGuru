@@ -77,5 +77,11 @@ export type Action =
   | { type: 'AUTH_NAME_CHANGE'; value: string }
   // Dispatched after the address has been successfully saved to Supabase.
   | { type: 'ADDRESS_SAVED' }
-  | { type: 'TRAINING_PLAN_UPDATED'; patch: Partial<TrainingPlan> }
+  // Crew Plan edits to one specific race (by id) — keeps that entry in
+  // `ownPlans` in sync, and `trainingPlan` too when it's the same race.
+  | { type: 'PLAN_PATCHED'; planId: string; patch: Partial<TrainingPlan> }
+  // Dispatched after "My Races → Add a race" inserts a new (non-primary) plan.
+  | { type: 'PLAN_ADDED'; plan: TrainingPlan }
+  // Dispatched after a race is deleted.
+  | { type: 'PLAN_DELETED'; planId: string }
   | { type: 'JOIN_EVENT_TOGGLE' };

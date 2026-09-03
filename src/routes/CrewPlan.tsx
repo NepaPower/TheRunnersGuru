@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import {
-  updateCrewPlan,
   updateCrewPlanById,
   fetchTrainingPlanById,
   inviteCrewMember,
@@ -177,13 +176,22 @@ function buildNotesWithDetectedCutoffs(waypoints: GpxWaypoint[], existingNotes: 
 export function CrewPlan() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
-  const { planId: sharedPlanId } = useParams<{ planId: string }>();
-  const isShared = !!sharedPlanId;
+  const { planId: routePlanId } = useParams<{ planId: string }>();
+  const location = useLocation();
+  // Three ways this screen is reached:
+  //   /crew-plan/shared/:planId → a plan this user only crews for (fetched
+  //                               by id into local state; RLS-gated)
+  //   /crew-plan/:planId        → one of this user's OWN races, by id
+  //   /crew-plan                → this user's primary race (back-compat)
+  const isShared = location.pathname.startsWith('/crew-plan/shared/');
+  const sharedPlanId = isShared ? routePlanId : undefined;
+  const ownPlanId = !isShared ? routePlanId : undefined;
+  const ownPlan = ownPlanId ? state.ownPlans.find((p) => p.id === ownPlanId) ?? null : state.trainingPlan;
 
   // Shared mode: this plan isn't the signed-in user's own — fetch it by id
   // (RLS only lets this succeed for an accepted crew member) into local
   // state, never into the global state.trainingPlan slot, which is
-  // reserved for the signed-in user's own plan.
+  // reserved for the signed-in user's own plans.
   const [sharedPlan, setSharedPlan] = useState<TrainingPlan | null>(null);
   const [sharedPlanLoading, setSharedPlanLoading] = useState(isShared);
   const [sharedPlanError, setSharedPlanError] = useState<string | null>(null);
@@ -213,7 +221,7 @@ export function CrewPlan() {
     };
   }, [isShared, sharedPlanId]);
 
-  const plan = isShared ? sharedPlan : state.trainingPlan;
+  const plan = isShared ? sharedPlan : ownPlan;
 
   // Check-in/check-out — a soft lock so two people editing this plan at
   // once (owner + crew, or two crew members) don't silently overwrite
@@ -394,17 +402,24 @@ export function CrewPlan() {
   // that should trigger it.
   const skipNextAutosaveRef = useRef(true);
 
+  // Re-seed the local editable state whenever the plan being viewed
+  // switches (a different race by id, or the shared plan's async fetch
+  // resolving after mount — the useState initializers only ran once, when
+  // `plan` may still have been null). Keyed on `plan?.id` so it does NOT
+  // re-run on the user's own in-progress edits (those change `plan`'s
+  // identity via PLAN_PATCHED but not its id).
   useEffect(() => {
-    if (!isShared || !sharedPlan) return;
-    setRaceDate(sharedPlan.raceDate ?? '');
-    setRaceStartTime(sharedPlan.raceStartTime ?? '');
-    setGoalHours(sharedPlan.goalFinishMinutes != null ? String(Math.floor(sharedPlan.goalFinishMinutes / 60)) : '');
-    setGoalMinutes(sharedPlan.goalFinishMinutes != null ? String(sharedPlan.goalFinishMinutes % 60) : '');
-    setNotes(buildNotesWithDetectedCutoffs(sharedPlan.gpxRoute?.waypoints ?? [], sharedPlan.crewNotes ?? {}));
+    if (!plan) return;
+    setRaceDate(plan.raceDate ?? '');
+    setRaceStartTime(plan.raceStartTime ?? '');
+    setGoalHours(plan.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
+    setGoalMinutes(plan.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
+    setNotes(buildNotesWithDetectedCutoffs(plan.gpxRoute?.waypoints ?? [], plan.crewNotes ?? {}));
     // This is the plan loading in, not a person editing anything — the
     // autosave effect below shouldn't treat it as a change to save.
     skipNextAutosaveRef.current = true;
-  }, [isShared, sharedPlan]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.id]);
 
   const waypoints = plan?.gpxRoute?.waypoints ?? [];
   // Some course files include an "ALTERNATE" waypoint at essentially the
@@ -819,15 +834,7 @@ export function CrewPlan() {
     return Array.from({ length: legCount }, (_, i) => plan?.courseSegments?.[i] ?? effectiveSegments?.[i] ?? emptyCourseSegment());
   }
   async function persistCourseSegments(next: CourseSegment[]) {
-    if (isShared) {
-      if (!plan?.id) return;
-      await updateCrewPlanById(plan.id, { courseSegments: next });
-      setSharedPlan((prev) => (prev ? { ...prev, courseSegments: next } : prev));
-    } else {
-      if (!state.userId) return;
-      await updateCrewPlan(state.userId, { courseSegments: next });
-      dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { courseSegments: next } });
-    }
+    await persistPlanUpdates({ courseSegments: next });
   }
   async function saveSegment() {
     if (segPopupLeg == null || !segForm) return;
@@ -866,20 +873,26 @@ export function CrewPlan() {
     }
   }
 
+  // One writer for every Crew Plan edit, shared or own — always keyed by
+  // plan id. An owner writing their own plan passes the "training plans
+  // are owner-only" RLS policy; a crew member passes "crew members can
+  // edit shared plans". Updates the matching local state either way.
+  async function persistPlanUpdates(updates: Parameters<typeof updateCrewPlanById>[1]) {
+    if (!plan?.id) return;
+    await updateCrewPlanById(plan.id, updates);
+    if (isShared) {
+      setSharedPlan((prev) => (prev ? { ...prev, ...updates } : prev));
+    } else {
+      dispatch({ type: 'PLAN_PATCHED', planId: plan.id, patch: updates as Partial<TrainingPlan> });
+    }
+  }
+
   async function handleSave() {
     if (!state.userId || !plan) return;
     setSaving(true);
     try {
       const raceDateToSave = raceDate || plan.raceDate;
-      const updates = { raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes };
-      if (isShared) {
-        if (!plan.id) return;
-        await updateCrewPlanById(plan.id, updates);
-        setSharedPlan((prev) => (prev ? { ...prev, ...updates } : prev));
-      } else {
-        await updateCrewPlan(state.userId, updates);
-        dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: updates });
-      }
+      await persistPlanUpdates({ raceDate: raceDateToSave, raceStartTime: raceStartTime || null, goalFinishMinutes, crewNotes: notes });
       setSaved(true);
     } finally {
       setSaving(false);
@@ -907,14 +920,7 @@ export function CrewPlan() {
       // GPX swap. Only reachable for owner / chief, so the trigger allows
       // writing course_segments here.
       const staleSegmentImages = (plan.courseSegments ?? []).map((s) => s.profileImage).filter(Boolean);
-      if (isShared) {
-        if (!plan.id) return;
-        await updateCrewPlanById(plan.id, { gpxRoute: route, crewNotes: freshNotes, courseSegments: null });
-        setSharedPlan((prev) => (prev ? { ...prev, gpxRoute: route, crewNotes: freshNotes, courseSegments: null } : prev));
-      } else {
-        await updateCrewPlan(state.userId, { gpxRoute: route, crewNotes: freshNotes, courseSegments: null });
-        dispatch({ type: 'TRAINING_PLAN_UPDATED', patch: { gpxRoute: route, crewNotes: freshNotes, courseSegments: null } });
-      }
+      await persistPlanUpdates({ gpxRoute: route, crewNotes: freshNotes, courseSegments: null });
       setNotes(freshNotes);
       setSegPopupLeg(null);
       staleSegmentImages.forEach((ref) => deleteCourseSegmentImage(ref));

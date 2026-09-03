@@ -35,6 +35,7 @@ export default function App() {
               <Route path="/home" element={<Dashboard />} />
               <Route path="/training-plan" element={<TrainingPlan />} />
               <Route path="/crew-plan" element={<CrewPlan />} />
+              <Route path="/crew-plan/:planId" element={<CrewPlan />} />
               <Route path="/log-run" element={<LogRun />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/run" element={<Run />} />

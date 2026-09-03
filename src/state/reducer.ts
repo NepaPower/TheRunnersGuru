@@ -1,4 +1,4 @@
-import type { AppState } from '../types';
+import type { AppState, TrainingPlan } from '../types';
 import type { Action } from './actions';
 import { SEED_MATCHES } from '../data/constants';
 import { MAX_ULTRA_MILES } from '../data/constants';
@@ -296,13 +296,25 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ADDRESS_SAVED':
       return { ...state, addressSaved: true };
 
-    case 'TRAINING_PLAN_UPDATED': {
-      if (!state.trainingPlan) return state;
-      const updated = { ...state.trainingPlan, ...action.patch };
+    case 'PLAN_PATCHED': {
+      const patchOne = (p: TrainingPlan) => (p.id === action.planId ? { ...p, ...action.patch } : p);
       return {
         ...state,
-        trainingPlan: updated,
-        ownPlans: state.ownPlans.map((p) => (p.id && p.id === updated.id ? updated : p)),
+        ownPlans: state.ownPlans.map(patchOne),
+        trainingPlan: state.trainingPlan && state.trainingPlan.id === action.planId ? patchOne(state.trainingPlan) : state.trainingPlan,
+      };
+    }
+
+    case 'PLAN_ADDED':
+      return { ...state, ownPlans: [...state.ownPlans, action.plan] };
+
+    case 'PLAN_DELETED': {
+      const ownPlans = state.ownPlans.filter((p) => p.id !== action.planId);
+      return {
+        ...state,
+        ownPlans,
+        trainingPlan:
+          state.trainingPlan?.id === action.planId ? ownPlans.find((p) => p.isPrimary) ?? ownPlans[0] ?? null : state.trainingPlan,
       };
     }
 
