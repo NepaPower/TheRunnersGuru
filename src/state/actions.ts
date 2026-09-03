@@ -84,4 +84,6 @@ export type Action =
   | { type: 'PLAN_ADDED'; plan: TrainingPlan }
   // Dispatched after a race is deleted.
   | { type: 'PLAN_DELETED'; planId: string }
+  // Dispatched after the primary-race flag is moved to `planId`.
+  | { type: 'PRIMARY_CHANGED'; planId: string }
   | { type: 'JOIN_EVENT_TOGGLE' };

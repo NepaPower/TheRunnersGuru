@@ -199,6 +199,20 @@ export async function createTrainingPlan(userId: string, plan: TrainingPlan) {
   return planRow;
 }
 
+/** Moves the "primary race" flag to `planId`. Clears the existing primary
+ * first so the partial unique index (one is_primary per user) never sees
+ * two; the brief zero-primary window in between is harmless. */
+export async function setPrimaryRace(userId: string, planId: string) {
+  const { error: clearErr } = await supabase
+    .from('training_plans')
+    .update({ is_primary: false })
+    .eq('user_id', userId)
+    .eq('is_primary', true);
+  if (clearErr) throw clearErr;
+  const { error: setErr } = await supabase.from('training_plans').update({ is_primary: true }).eq('id', planId);
+  if (setErr) throw setErr;
+}
+
 /** Deletes one race. training_plan_weeks and crew_plan_access cascade via
  * FK; segment images in Storage don't, so clear course-segments/<planId>/
  * first (best-effort — a leftover object is harmless). */

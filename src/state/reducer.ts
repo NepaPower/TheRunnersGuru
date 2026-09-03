@@ -308,6 +308,17 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'PLAN_ADDED':
       return { ...state, ownPlans: [...state.ownPlans, action.plan] };
 
+    case 'PRIMARY_CHANGED': {
+      const ownPlans = state.ownPlans.map((p) => {
+        const isPrimary = p.id === action.planId;
+        return p.isPrimary === isPrimary ? p : { ...p, isPrimary };
+      });
+      // The Training Plan screen and the /crew-plan (no id) route both
+      // read state.trainingPlan — point it at the new primary.
+      const newPrimary = ownPlans.find((p) => p.id === action.planId) ?? state.trainingPlan;
+      return { ...state, ownPlans, trainingPlan: newPrimary };
+    }
+
     case 'PLAN_DELETED': {
       const ownPlans = state.ownPlans.filter((p) => p.id !== action.planId);
       return {

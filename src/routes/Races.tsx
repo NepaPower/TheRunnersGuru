@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../state/AppContext';
-import { deleteTrainingPlan } from '../lib/api';
+import { deleteTrainingPlan, setPrimaryRace } from '../lib/api';
 import type { DistanceGoal } from '../types';
 import './races.css';
 
@@ -38,6 +38,7 @@ export function Races() {
   const navigate = useNavigate();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [primaryId, setPrimaryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const plans = state.ownPlans;
@@ -54,6 +55,20 @@ export function Races() {
       setError(e instanceof Error ? e.message : 'Could not delete that race.');
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleMakePrimary(planId: string) {
+    if (!state.userId) return;
+    setError(null);
+    setPrimaryId(planId);
+    try {
+      await setPrimaryRace(state.userId, planId);
+      dispatch({ type: 'PRIMARY_CHANGED', planId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not change your primary race.');
+    } finally {
+      setPrimaryId(null);
     }
   }
 
@@ -124,13 +139,22 @@ export function Races() {
                       <Button variant="primary" onClick={() => navigate(`/crew-plan/${p.id}`)}>
                         Open
                       </Button>
+                      {!p.isPrimary && (
+                        <Button
+                          variant="ghost"
+                          disabled={primaryId === p.id}
+                          onClick={() => p.id && handleMakePrimary(p.id)}
+                        >
+                          {primaryId === p.id ? 'Setting…' : 'Make primary'}
+                        </Button>
+                      )}
                       {canDelete ? (
                         <Button variant="ghost" onClick={() => setConfirmId(p.id ?? null)}>
                           Delete
                         </Button>
                       ) : (
-                        <span className="text-muted" style={{ fontSize: 12 }} title="Make another race primary first">
-                          primary
+                        <span className="text-muted" style={{ fontSize: 12 }} title="Make another race primary to delete this one">
+                          can't delete primary
                         </span>
                       )}
                     </>

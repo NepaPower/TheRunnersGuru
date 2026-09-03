@@ -43,6 +43,32 @@ export function TrainingPlan() {
     );
   }
 
+  // A crew-only race (added via "My Races → Add a race") has no weekly
+  // schedule. If it's been made the primary race, this screen has nothing
+  // to show — point back to My Races.
+  if (plan.rows.length === 0) {
+    return (
+      <>
+        <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
+          ← Back to summary
+        </Button>
+        <h2 style={{ marginBottom: 'var(--space-2)' }}>{plan.raceName}</h2>
+        <p className="text-muted" style={{ marginBottom: 'var(--space-4)' }}>
+          This race was added for crew planning only — it doesn't have a weekly training schedule. The Crew Plan (aid
+          stations, pacing, weather) is where its planning lives.
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <Button variant="primary" onClick={() => navigate(`/crew-plan/${plan.id}`)}>
+            Open Crew Plan
+          </Button>
+          <Button variant="secondary" onClick={() => navigate('/races')}>
+            My Races
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   const isUltra = plan.distanceGoal === 'ultra';
   const timeWarning = getTrainingTimeWarning(plan.distanceGoal, plan.totalWeeks);
   const tableHeaders = isUltra
