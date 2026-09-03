@@ -207,6 +207,11 @@ export interface TrainingPlan {
   // building a fresh plan (buildTrainingPlan) and it actually being saved.
   // Needed to invite crew members and to route to a specific shared plan.
   id?: string;
+  // Whether this is the user's primary race — the one the Training Plan
+  // screen shows and the one that carries a generated weekly schedule.
+  // Exactly one of a user's plans is primary (DB-enforced). Additional
+  // races added via "My Races" are Crew-Plan-only and not primary.
+  isPrimary: boolean;
   raceName: string;
   distanceGoal: DistanceGoal;
   firstTime: FirstTimeAnswer;
@@ -315,7 +320,11 @@ export interface AppState {
   userId: string | null;
   auth: AuthState;
   onboarding: OnboardingState;
-  trainingPlan: TrainingPlan | null; // generated ONCE, persisted, never recomputed
+  // The race currently in focus — the primary race by default, or the one
+  // the active /crew-plan/:planId route resolves to. A convenience view
+  // over `ownPlans`; screens are being ported to read the route instead.
+  trainingPlan: TrainingPlan | null;
+  ownPlans: TrainingPlan[]; // every race this user owns; [] until hydrated
   sharedPlans: SharedPlanEntry[]; // plans this user crews for, not their own
   matches: PartnerMatch[];
   activeChatId: string;

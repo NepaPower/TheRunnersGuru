@@ -57,11 +57,17 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ─── training_plans ──────────────────────────────────────────────────────
--- One row per user (generated once at the end of onboarding, never
--- regenerated — same rule as the frontend prototype).
+-- One row per race a user is planning for. The weekly training schedule
+-- (training_plan_weeks) is generated once, for the user's PRIMARY race
+-- only; additional races are Crew-Plan-only. See "My Races" in
+-- crew-plan-centerpiece-spec.md.
 create table public.training_plans (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade unique,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- Exactly one plan per user is the "primary" race — the one the
+  -- Training Plan screen shows and the one onboarding creates. Enforced
+  -- by training_plans_one_primary_per_user below.
+  is_primary boolean not null default false,
   race_name text not null,
   distance_goal text not null check (distance_goal in ('5k','10k','half','full','ultra')),
   first_time text not null check (first_time in ('yes','no')),
@@ -107,6 +113,12 @@ create table public.training_plans (
   quote text,
   created_at timestamptz not null default now()
 );
+
+-- At most one primary race per user — a partial unique index that only
+-- counts rows where is_primary is true, so a second attempt to mark a
+-- primary for the same user fails rather than relying on app code.
+create unique index training_plans_one_primary_per_user
+  on public.training_plans (user_id) where is_primary;
 
 alter table public.training_plans enable row level security;
 
@@ -460,6 +472,15 @@ create policy "course-segment images: delete by owner or chief"
 --   create policy "course-segment images: delete by owner or chief" on storage.objects for delete
 --     using (bucket_id = 'course-segments'
 --       and public.can_edit_plan_course_setup(((storage.foldername(name))[1])::uuid));
+--
+--   -- Multiple races per account ("My Races"). Drop the one-plan-per-user
+--   -- constraint and add the primary-race flag. Backfill: the existing
+--   -- single plan per user becomes that user's primary.
+--   alter table public.training_plans drop constraint training_plans_user_id_key;
+--   alter table public.training_plans add column is_primary boolean not null default false;
+--   update public.training_plans set is_primary = true;
+--   create unique index training_plans_one_primary_per_user
+--     on public.training_plans (user_id) where is_primary;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

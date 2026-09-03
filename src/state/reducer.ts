@@ -51,6 +51,7 @@ export function buildInitialState(): AppState {
       goalMinutes: '',
     },
     trainingPlan: null,
+    ownPlans: [],
     sharedPlans: [],
     // Partner matching and chat are still mocked client-side — see README
     // "Next steps" for the phased plan to move these onto real tables too.
@@ -90,6 +91,7 @@ export function reducer(state: AppState, action: Action): AppState {
         screen,
         auth: { ...state.auth, name: action.name, firstName, address: action.address, email: action.email },
         trainingPlan: action.trainingPlan,
+        ownPlans: action.ownPlans,
         sharedPlans: action.sharedPlans,
         loggedRuns: action.loggedRuns,
         garminConnected: action.garminConnected,
@@ -202,8 +204,12 @@ export function reducer(state: AppState, action: Action): AppState {
       if (state.onboarding.step === 0) return state;
       return { ...state, onboarding: { ...state.onboarding, step: state.onboarding.step - 1 } };
 
-    case 'ONBOARDING_PLAN_SAVED':
-      return { ...state, screen: 'home', trainingPlan: action.plan };
+    case 'ONBOARDING_PLAN_SAVED': {
+      // The onboarded plan is the primary race — replace it in ownPlans
+      // (by id) and demote any other stale primary.
+      const others = state.ownPlans.filter((p) => p.id !== action.plan.id).map((p) => (p.isPrimary ? { ...p, isPrimary: false } : p));
+      return { ...state, screen: 'home', trainingPlan: action.plan, ownPlans: [action.plan, ...others] };
+    }
 
     case 'MATCH_ACCEPT':
       return { ...state, matches: state.matches.map((m) => (m.id === action.id ? { ...m, status: 'accepted' } : m)) };
@@ -290,8 +296,15 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ADDRESS_SAVED':
       return { ...state, addressSaved: true };
 
-    case 'TRAINING_PLAN_UPDATED':
-      return state.trainingPlan ? { ...state, trainingPlan: { ...state.trainingPlan, ...action.patch } } : state;
+    case 'TRAINING_PLAN_UPDATED': {
+      if (!state.trainingPlan) return state;
+      const updated = { ...state.trainingPlan, ...action.patch };
+      return {
+        ...state,
+        trainingPlan: updated,
+        ownPlans: state.ownPlans.map((p) => (p.id && p.id === updated.id ? updated : p)),
+      };
+    }
 
     case 'JOIN_EVENT_TOGGLE':
       return { ...state, joinedEvent: !state.joinedEvent };

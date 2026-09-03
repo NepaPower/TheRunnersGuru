@@ -28,6 +28,7 @@ export type Action =
       address: Address;
       garminConnected: boolean;
       trainingPlan: TrainingPlan | null;
+      ownPlans: TrainingPlan[];
       loggedRuns: LoggedRun[];
       sharedPlans: SharedPlanEntry[];
     }

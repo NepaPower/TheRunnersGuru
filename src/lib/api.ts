@@ -58,12 +58,16 @@ export async function hydrateUserData(userId: string) {
     }
   }
 
-  const [profile, trainingPlan, loggedRuns, sharedPlans] = await Promise.all([
+  const [profile, ownPlans, loggedRuns, sharedPlans] = await Promise.all([
     fetchProfile(userId),
-    fetchTrainingPlan(userId),
+    fetchTrainingPlans(userId),
     fetchLoggedRuns(userId),
     fetchSharedPlans(userId),
   ]);
+  // The race in focus at boot is the primary one (or the soonest, if none
+  // is flagged). Screens still read state.trainingPlan until they're
+  // ported to route by id.
+  const trainingPlan = ownPlans.find((p) => p.isPrimary) ?? ownPlans[0] ?? null;
   return {
     name: profile?.name ?? '',
     address: {
@@ -76,6 +80,7 @@ export async function hydrateUserData(userId: string) {
     },
     garminConnected: profile?.garmin_connected ?? false,
     trainingPlan,
+    ownPlans,
     loggedRuns,
     sharedPlans,
     email,
@@ -114,37 +119,31 @@ export async function setGarminConnected(userId: string, connected: boolean) {
 
 // ─── Training plan ───────────────────────────────────────────────────────
 
-export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
-  const { data: planRow, error: planErr } = await supabase
-    .from('training_plans')
-    .upsert(
-      {
-        user_id: userId,
-        race_name: plan.raceName,
-        distance_goal: plan.distanceGoal,
-        first_time: plan.firstTime,
-        hill_access: plan.hillAccess || null,
-        gpx_route: plan.gpxRoute ?? null,
-        race_date: plan.raceDate,
-        race_start_time: plan.raceStartTime ?? null,
-        goal_finish_minutes: plan.goalFinishMinutes ?? null,
-        crew_notes: plan.crewNotes ?? {},
-        course_segments: plan.courseSegments ?? null,
-        total_weeks: plan.totalWeeks,
-        quote: plan.quote,
-      },
-      { onConflict: 'user_id' },
-    )
-    .select()
-    .single();
-  if (planErr) throw planErr;
+/** The column payload shared by create/replace of a training plan.
+ * `is_primary` is set by the caller, not here. */
+function planColumns(userId: string, plan: TrainingPlan) {
+  return {
+    user_id: userId,
+    race_name: plan.raceName,
+    distance_goal: plan.distanceGoal,
+    first_time: plan.firstTime,
+    hill_access: plan.hillAccess || null,
+    gpx_route: plan.gpxRoute ?? null,
+    race_date: plan.raceDate,
+    race_start_time: plan.raceStartTime ?? null,
+    goal_finish_minutes: plan.goalFinishMinutes ?? null,
+    crew_notes: plan.crewNotes ?? {},
+    course_segments: plan.courseSegments ?? null,
+    total_weeks: plan.totalWeeks,
+    quote: plan.quote,
+  };
+}
 
-  // Replace any existing week rows for this plan (simplest correct approach
-  // since the plan is only ever generated once, never edited week-by-week).
-  await supabase.from('training_plan_weeks').delete().eq('plan_id', planRow.id);
-
+async function replaceWeekRows(planId: string, plan: TrainingPlan) {
+  await supabase.from('training_plan_weeks').delete().eq('plan_id', planId);
+  if (plan.rows.length === 0) return;
   const weekRows = plan.rows.map((r) => ({
-    plan_id: planRow.id,
+    plan_id: planId,
     week_number: r.week,
     phase: r.phase,
     mon: r.mon,
@@ -160,8 +159,60 @@ export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
   }));
   const { error: weeksErr } = await supabase.from('training_plan_weeks').insert(weekRows);
   if (weeksErr) throw weeksErr;
+}
 
+/** Creates or replaces the user's PRIMARY race (the onboarding path).
+ * A user has at most one primary plan; if one exists it's updated in
+ * place, otherwise a new row is inserted. Additional (non-primary) races
+ * go through createTrainingPlan instead. */
+export async function saveTrainingPlan(userId: string, plan: TrainingPlan) {
+  const { data: existing, error: findErr } = await supabase
+    .from('training_plans')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('is_primary', true)
+    .maybeSingle();
+  if (findErr) throw findErr;
+
+  const columns = { ...planColumns(userId, plan), is_primary: true };
+  const query = existing
+    ? supabase.from('training_plans').update(columns).eq('id', existing.id)
+    : supabase.from('training_plans').insert(columns);
+  const { data: planRow, error: planErr } = await query.select().single();
+  if (planErr) throw planErr;
+
+  await replaceWeekRows(planRow.id, plan);
   return planRow;
+}
+
+/** Inserts an additional race (the "My Races → Add a race" path). Never
+ * primary. Writes week rows only if the plan carries any (the short
+ * add-a-race flow doesn't generate a weekly schedule). */
+export async function createTrainingPlan(userId: string, plan: TrainingPlan) {
+  const { data: planRow, error: planErr } = await supabase
+    .from('training_plans')
+    .insert({ ...planColumns(userId, plan), is_primary: false })
+    .select()
+    .single();
+  if (planErr) throw planErr;
+  await replaceWeekRows(planRow.id, plan);
+  return planRow;
+}
+
+/** Deletes one race. training_plan_weeks and crew_plan_access cascade via
+ * FK; segment images in Storage don't, so clear course-segments/<planId>/
+ * first (best-effort — a leftover object is harmless). */
+export async function deleteTrainingPlan(planId: string) {
+  try {
+    const { data: objects } = await supabase.storage.from('course-segments').list(planId);
+    if (objects && objects.length > 0) {
+      await supabase.storage.from('course-segments').remove(objects.map((o) => `${planId}/${o.name}`));
+    }
+  } catch {
+    // ignore — image cleanup shouldn't block the delete
+  }
+  const { error } = await supabase.from('training_plans').delete().eq('id', planId);
+  if (error) throw error;
 }
 
 async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
@@ -174,6 +225,7 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
 
   return {
     id: planRow.id,
+    isPrimary: planRow.is_primary ?? false,
     raceName: planRow.race_name,
     distanceGoal: planRow.distance_goal,
     firstTime: planRow.first_time,
@@ -204,15 +256,23 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
   };
 }
 
-export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | null> {
-  const { data: planRow, error: planErr } = await supabase
+/** Every race this user owns, primary first then soonest race date. */
+export async function fetchTrainingPlans(userId: string): Promise<TrainingPlan[]> {
+  const { data: rows, error } = await supabase
     .from('training_plans')
     .select('*')
     .eq('user_id', userId)
-    .maybeSingle();
-  if (planErr) throw planErr;
-  if (!planRow) return null;
-  return mapPlanRow(planRow);
+    .order('is_primary', { ascending: false })
+    .order('race_date', { ascending: true });
+  if (error) throw error;
+  return Promise.all((rows ?? []).map(mapPlanRow));
+}
+
+/** Back-compat shim — the user's primary race (or the soonest one if
+ * somehow none is flagged primary). Prefer fetchTrainingPlans. */
+export async function fetchTrainingPlan(userId: string): Promise<TrainingPlan | null> {
+  const plans = await fetchTrainingPlans(userId);
+  return plans.find((p) => p.isPrimary) ?? plans[0] ?? null;
 }
 
 /** Fetches a plan by its id rather than by owner — used for the Crew Plan

@@ -401,6 +401,10 @@ export function buildTrainingPlan(
   });
 
   return {
+    // buildTrainingPlan is only used by onboarding, which creates the
+    // user's primary race. The short "Add a race" flow builds its plan
+    // object separately with isPrimary: false.
+    isPrimary: true,
     raceName: raceName || DISTANCE_LABELS[distanceGoal],
     distanceGoal,
     firstTime,
