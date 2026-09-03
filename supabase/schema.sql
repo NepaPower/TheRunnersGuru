@@ -70,6 +70,10 @@ create table public.training_plans (
   is_primary boolean not null default false,
   race_name text not null,
   distance_goal text not null check (distance_goal in ('5k','10k','half','full','ultra')),
+  -- The specific ultra distance in miles (50K=31 … 300mi, or a custom
+  -- entry). Null for non-ultra plans. Persisted so "Edit race details" can
+  -- pre-fill it and regenerate the plan correctly.
+  ultra_miles int,
   first_time text not null check (first_time in ('yes','no')),
   -- Only asked/set when distance_goal = 'ultra'; determines whether
   -- climbing-specific sessions are prescribed as outdoor hills or their
@@ -326,6 +330,7 @@ create policy "course-segment images: delete by owner or chief"
 --   alter table public.training_plans add column goal_finish_minutes int;
 --   alter table public.training_plans add column crew_notes jsonb not null default '{}'::jsonb;
 --   alter table public.training_plans add column course_segments jsonb;
+--   alter table public.training_plans add column ultra_miles int;
 --
 --   create table public.crew_plan_access (
 --     id uuid primary key default gen_random_uuid(),

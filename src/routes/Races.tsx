@@ -159,6 +159,9 @@ export function Races() {
                       <Button variant="primary" onClick={() => navigate(`/crew-plan/${p.id}`)}>
                         Open
                       </Button>
+                      <Button variant="ghost" onClick={() => navigate(`/races/${p.id}/edit`)}>
+                        Edit
+                      </Button>
                       {!p.isPrimary && (
                         <Button
                           variant="ghost"

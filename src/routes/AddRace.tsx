@@ -56,6 +56,7 @@ export function AddRace() {
         isPrimary: false,
         raceName: name.trim(),
         distanceGoal: category === 'ultra' ? 'ultra' : standardDistance,
+        ultraMiles: category === 'ultra' ? gpxRoute?.distanceMiles ?? null : null,
         firstTime: 'no',
         hillAccess: '',
         gpxRoute: category === 'ultra' ? gpxRoute : null,

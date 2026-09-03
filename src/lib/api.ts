@@ -126,6 +126,7 @@ function planColumns(userId: string, plan: TrainingPlan) {
     user_id: userId,
     race_name: plan.raceName,
     distance_goal: plan.distanceGoal,
+    ultra_miles: plan.ultraMiles ?? null,
     first_time: plan.firstTime,
     hill_access: plan.hillAccess || null,
     gpx_route: plan.gpxRoute ?? null,
@@ -199,6 +200,31 @@ export async function createTrainingPlan(userId: string, plan: TrainingPlan) {
   return planRow;
 }
 
+/** Saves "Edit race details" — the questionnaire answers (name, distance,
+ * ultra miles, race date, goal time, first-time, hill access). Pass the
+ * fully rebuilt plan; when `regenerateWeeks` is true the weekly schedule
+ * rows are replaced too (only relevant for the primary race). Does not
+ * touch crew_notes / course_segments. */
+export async function updateRaceDetails(planId: string, plan: TrainingPlan, opts: { regenerateWeeks: boolean }) {
+  const { error } = await supabase
+    .from('training_plans')
+    .update({
+      race_name: plan.raceName,
+      distance_goal: plan.distanceGoal,
+      ultra_miles: plan.ultraMiles ?? null,
+      first_time: plan.firstTime,
+      hill_access: plan.hillAccess || null,
+      gpx_route: plan.gpxRoute ?? null,
+      race_date: plan.raceDate,
+      goal_finish_minutes: plan.goalFinishMinutes ?? null,
+      total_weeks: plan.totalWeeks,
+      quote: plan.quote,
+    })
+    .eq('id', planId);
+  if (error) throw error;
+  if (opts.regenerateWeeks) await replaceWeekRows(planId, plan);
+}
+
 /** Moves the "primary race" flag to `planId`. Clears the existing primary
  * first so the partial unique index (one is_primary per user) never sees
  * two; the brief zero-primary window in between is harmless. */
@@ -242,6 +268,7 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     isPrimary: planRow.is_primary ?? false,
     raceName: planRow.race_name,
     distanceGoal: planRow.distance_goal,
+    ultraMiles: planRow.ultra_miles ?? null,
     firstTime: planRow.first_time,
     hillAccess: planRow.hill_access ?? '',
     gpxRoute: planRow.gpx_route ?? null,

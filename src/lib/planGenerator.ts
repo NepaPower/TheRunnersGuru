@@ -407,6 +407,7 @@ export function buildTrainingPlan(
     isPrimary: true,
     raceName: raceName || DISTANCE_LABELS[distanceGoal],
     distanceGoal,
+    ultraMiles: distanceGoal === 'ultra' ? ultraMiles : null,
     firstTime,
     hillAccess: distanceGoal === 'ultra' ? hillAccess : '',
     gpxRoute: distanceGoal === 'ultra' ? gpxRoute : null,

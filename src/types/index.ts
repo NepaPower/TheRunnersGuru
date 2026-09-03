@@ -226,6 +226,9 @@ export interface TrainingPlan {
   isPrimary: boolean;
   raceName: string;
   distanceGoal: DistanceGoal;
+  // The chosen ultra distance in miles (50K=31 … or a custom value);
+  // null for non-ultra plans. Feeds plan regeneration on "Edit race".
+  ultraMiles: number | null;
   firstTime: FirstTimeAnswer;
   hillAccess: HillAccessAnswer; // '' for non-ultra plans
   gpxRoute: GpxRoute | null; // '' for non-ultra plans, null if not provided
