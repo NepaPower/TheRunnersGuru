@@ -184,3 +184,135 @@ that race's runner manual, instead of it being a BigFoot-only hardcode.
 4. BigFoot migration: upload the 13 PNGs to the bucket, seed the BigFoot
    plan's `courseSegments`, delete `bigfoot200Segments.ts` and the
    `bigfootSegmentsApply` guard.
+
+---
+
+# Feature spec: multiple races per account ("My Races")
+
+## Why (critical, structural)
+
+The app is hard-wired to one plan per user. A real ultra runner does
+several races a year (the person asking for this runs 5). Today the only
+way to "start a new race" is to re-run onboarding, which **overwrites**
+the existing plan. There is no list, no switch, no delete. This blocks
+the core use case and every downstream feature (per-race segments, crew,
+weather) is scoped to that single plan.
+
+This is squarely the "structural work matters as much as new features"
+priority in CLAUDE.md.
+
+## Current shape (verified against the codebase)
+
+- **DB:** `training_plans.user_id` has a `unique` constraint — one row per
+  user. `training_plan_weeks`, `crew_plan_access`, and the
+  `course-segments` storage paths are already keyed by `plan_id`, so only
+  `training_plans` itself assumes singularity.
+- **API (`src/lib/api.ts`):**
+  - `hydrateUserData()` calls `fetchTrainingPlan(userId)` →
+    `.eq('user_id', userId).maybeSingle()` → one plan.
+  - `saveTrainingPlan(userId, plan)` → `.upsert(..., { onConflict:
+    'user_id' })` → creating a second plan silently overwrites the first.
+  - `updateCrewPlan(userId, updates)` → `.eq('user_id', userId)` (owner
+    path). `updateCrewPlanById(planId, …)` already exists for the shared
+    path and is the pattern to converge on.
+  - `fetchTrainingPlanById(planId)` and `fetchSharedPlans(userId)` (returns
+    an array of `{ accessId, ownerUserId, plan }`) already prove
+    list + id-based access.
+- **State (`src/state`):** `AppState.trainingPlan: TrainingPlan | null` —
+  a single slot, "generated ONCE, persisted, never recomputed".
+  `sharedPlans: SharedPlanEntry[]` is already a list.
+- **Routing (`src/App.tsx`):** `/crew-plan` and `/training-plan` read the
+  single `state.trainingPlan`. `/crew-plan/shared/:planId` already routes
+  by id. `RequirePlan` redirects to `/onboarding` when
+  `!state.trainingPlan`.
+- **Dashboard:** `hasPlan = !!state.trainingPlan`; `isUltra =
+  state.trainingPlan?.distanceGoal === 'ultra'` drives card order.
+- **Onboarding (`src/routes/Onboarding/index.tsx`):** the wizard calls
+  `saveTrainingPlan` once at the end and is gated as the post-signup step.
+
+## Target model
+
+- **Own plans become a list**, exactly like `sharedPlans` already is. Each
+  plan is addressed by its `id`. "The plan you're currently looking at" is
+  a function of the route (`/crew-plan/:planId`), not a global singleton.
+- **A "My Races" screen** lists the user's own plans: race name, date,
+  distance, a countdown, and (later) crew count / readiness. Actions: open
+  (→ that race's Crew Plan), **add a race**, **delete a race**.
+- **Add a race** re-enters the onboarding wizard in an additive mode —
+  inserts a new `training_plans` row, does not touch existing ones,
+  returns to My Races (or straight into the new race's Crew Plan) on
+  finish.
+- **Delete a race** removes the plan; `training_plan_weeks` and
+  `crew_plan_access` already cascade via FK. Segment images in Storage
+  need an explicit cleanup pass (list `course-segments/<planId>/` and
+  remove) since Storage objects don't cascade.
+
+## Decisions
+
+1. **Where "My Races" lives — its own nav item**, reachable from the top
+   nav (alongside Home / Profile) and surfaced on the Dashboard as the
+   first thing an ultra runner sees. Not buried in Profile: switching
+   races is a frequent action, not a settings task.
+2. **Post-login landing:**
+   - 0 own plans → onboarding (unchanged)
+   - exactly 1 own plan → straight into that race (current behaviour
+     preserved for the common case)
+   - 2+ own plans → the My Races list
+   A remembered "last opened race" (localStorage) can later refine the
+   2+ case, but list-first is the safe default.
+3. **`state.trainingPlan` stays during the transition** as a derived
+   "active plan" (the one the current route resolves), so the migration
+   doesn't have to touch every `state.trainingPlan` reader at once. New
+   code reads the route param; old screens read the derived value until
+   they're ported.
+4. **Shared plans and own plans stay separate lists** (`sharedPlans` vs.
+   the new own-plans list). They render similarly but have different
+   permissions and entry points; merging them is out of scope.
+
+## Non-goals for v1
+
+- No shared "race library" / templates (already deferred in the segments
+  spec).
+- No cross-race dashboard/rollup ("all my races this season" analytics).
+- No reordering, tagging, or archiving of races beyond add/open/delete.
+- Training Plan screen stays single-race-at-a-time; no multi-plan
+  training view.
+- No change to the crew-invite or lock model — both are already
+  `plan_id`-scoped.
+
+## Implementation order (low-risk first)
+
+1. **DB + API, no UI change.** Drop `unique (user_id)` on
+   `training_plans` (schema.sql + migration note). Add
+   `fetchTrainingPlans(userId): TrainingPlan[]`, `createTrainingPlan`
+   (plain insert, no upsert), `deleteTrainingPlan(planId)` (+ Storage
+   image cleanup). Keep `fetchTrainingPlan` returning the most-recent as a
+   shim. `hydrateUserData` fetches the array; state gains
+   `ownPlans: TrainingPlan[]` alongside the existing `trainingPlan` slot.
+   Everything still renders the same single plan.
+2. **Route by id for own plans.** Add `/crew-plan/:planId` and
+   `/training-plan/:planId`; make `state.trainingPlan` a selector over
+   `ownPlans` + the route param (falls back to the single/most-recent plan
+   when no param). `RequirePlan` checks `ownPlans.length`.
+3. **My Races screen + nav.** New route `/races`, nav item, Dashboard
+   entry point. List `ownPlans` with open buttons. Landing logic (0 / 1 /
+   2+) from decision 2.
+4. **Add a race.** "Add race" → onboarding in additive mode →
+   `createTrainingPlan` → redirect to the new race. Reset the wizard's
+   local state on entry so it doesn't prefill from a prior race.
+5. **Delete a race.** Confirm dialog, `deleteTrainingPlan`, Storage
+   cleanup, refresh the list. Guard the last-plan case (deleting all →
+   back to onboarding).
+6. **Cleanup.** Remove the `fetchTrainingPlan` shim and any lingering
+   direct `state.trainingPlan` reads once all screens route by id.
+
+## Open questions
+
+1. Is there ever a reason to **copy** a race (same GPX, new date) rather
+   than re-onboard — e.g. an annual race? Cheap to add later; flag if it
+   should be v1.
+2. On **delete**, do we also revoke/notify crew members who had access,
+   or just let the cascade drop their `crew_plan_access` rows silently?
+3. Should the **Training Plan** (weekly schedule) be regenerated per race,
+   or is it acceptable for v1 that only ultras with a Crew Plan really use
+   multi-race and the training schedule stays tied to one "primary" race?
