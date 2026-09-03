@@ -618,28 +618,46 @@ export function CrewPlan() {
     )
     .join(',');
 
-  // Fetches weather for every station once there's enough to compute a
-  // predicted arrival date/time for it (a start time and goal finish time).
-  // Historical climate average is always fetched; the real short-range
-  // forecast only for stations whose predicted arrival falls within
-  // Open-Meteo's ~16-day forecast horizon from today — see lib/weather.ts
-  // for why anything further out can't have a real forecast at all.
+  // Weather per station. The historical climate average needs only the
+  // race date + the station's coordinates, so it shows as soon as a race
+  // has a date and a GPX — and upgrades to each station's PREDICTED
+  // ARRIVAL date once goal finish + start time are set (so a station
+  // reached days into a long race gets that day's average). The
+  // short-range forecast additionally needs that timing: it's keyed to
+  // the day the runner actually arrives, and only for arrivals inside
+  // Open-Meteo's ~16-day horizon — see lib/weather.ts.
   useEffect(() => {
-    if (!plan || goalFinishMinutes == null || !raceStartTime) return;
+    if (!plan || !raceDate) return;
+    const [ry, rmo, rd] = raceDate.split('-').map(Number);
+    if (!ry || !rmo || !rd) return;
     let cancelled = false;
 
     waypoints.forEach((wp, i) => {
       if (wp.lat == null || wp.lon == null) return;
       const key = String(i);
       const elapsed = elapsedByIndex[i];
-      if (elapsed == null) return;
-      const arrival = predictedArrivalDate(raceDate, raceStartTime, elapsed, courseTimeZone);
-      if (!arrival) return;
-      const { year: y, month: mo, day: d, hour: h } = courseTimeZone
-        ? getDatePartsInZone(arrival, courseTimeZone)
-        : { year: arrival.getFullYear(), month: arrival.getMonth() + 1, day: arrival.getDate(), hour: arrival.getHours() };
-      const monthDayLabel = arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: courseTimeZone ?? undefined });
-      const forecastEligible = isWithinForecastHorizon(y, mo, d);
+      const arrival =
+        elapsed != null && raceStartTime ? predictedArrivalDate(raceDate, raceStartTime, elapsed, courseTimeZone) : null;
+
+      let y: number;
+      let mo: number;
+      let d: number;
+      let monthDayLabel: string;
+      if (arrival) {
+        const parts = courseTimeZone
+          ? getDatePartsInZone(arrival, courseTimeZone)
+          : { year: arrival.getFullYear(), month: arrival.getMonth() + 1, day: arrival.getDate() };
+        y = parts.year;
+        mo = parts.month;
+        d = parts.day;
+        monthDayLabel = arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: courseTimeZone ?? undefined });
+      } else {
+        y = ry;
+        mo = rmo;
+        d = rd;
+        monthDayLabel = new Date(`${raceDate}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+      const forecastEligible = arrival != null && isWithinForecastHorizon(y, mo, d);
 
       setWeather((prev) => ({
         ...prev,
@@ -1510,7 +1528,10 @@ export function CrewPlan() {
                             <span style={{ color: tempSlotColors(weather[key]!.climate!.avgLowF).text, fontWeight: 700 }}>
                               {weather[key]!.climate!.avgLowF}°F
                             </span>
-                            <span style={{ fontSize: 12 }}> (avg of last {weather[key]!.climate!.yearsUsed} years)</span>
+                            <span style={{ fontSize: 12 }}>
+                              {' '}
+                              (avg of last {weather[key]!.climate!.yearsUsed} year{weather[key]!.climate!.yearsUsed === 1 ? '' : 's'})
+                            </span>
                           </div>
                         ) : (
                           <div className="rg-cp-station-meta">Loading…</div>
@@ -1579,7 +1600,7 @@ export function CrewPlan() {
                                     : { year: arrival.getFullYear(), month: arrival.getMonth() + 1, day: arrival.getDate() };
                                   return forecastAvailableFromLabel(parts.year, parts.month, parts.day);
                                 })()}`
-                              : ''}
+                              : 'Set race start time and goal finish above to see the day-of forecast.'}
                           </div>
                         )}
                       </div>
