@@ -151,7 +151,12 @@ export interface CrewNoteEntry {
   nutrition: string;
   hydration: string;
   gear: string;
-  crewAccess: 'yes' | 'no' | 'sleep' | ''; // whether crew can meet the runner here, or it's a planned sleep stop
+  // Whether crew can meet the runner at this station. Independent of
+  // sleepStop below — a sleep stop can be crew-accessible or not, and a
+  // crew-accessible station isn't necessarily a sleep stop. (Old records
+  // used a single 'sleep' value here; it's migrated to
+  // crewAccess:'yes' + sleepStop:true on load — see migrateNote.)
+  crewAccess: 'yes' | 'no' | '';
   // Single free-text field ("Day 1, 10:00 PM" style) rather than separate
   // day/time inputs — cutoffs are announced in wildly inconsistent formats
   // across races, so a single editable field is more honest than forcing a
@@ -184,6 +189,9 @@ export interface CrewNoteEntry {
   // not buried in a notes field.
   dropBag: boolean;
   pacerPickup: boolean;
+  // A planned sleep stop — orthogonal to crewAccess. Absent on records
+  // saved before this field existed (see migrateNote).
+  sleepStop: boolean;
 }
 
 /** One leg of the course — the stretch between two consecutive real aid

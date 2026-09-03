@@ -59,7 +59,20 @@ const emptyNote: CrewNoteEntry = {
   avgPaceSec: '',
   dropBag: false,
   pacerPickup: false,
+  sleepStop: false,
 };
+
+/** Normalizes a persisted note. Old records stored a single 'sleep'
+ * value in crewAccess; split it into crewAccess:'yes' + sleepStop:true so
+ * "can crew meet here" and "is this a sleep stop" are independent. */
+function migrateNote(raw: CrewNoteEntry): CrewNoteEntry {
+  const legacySleep = (raw.crewAccess as string) === 'sleep';
+  return {
+    ...raw,
+    crewAccess: legacySleep ? 'yes' : raw.crewAccess,
+    sleepStop: raw.sleepStop ?? legacySleep,
+  };
+}
 
 // Editor-side shape for a course segment — numeric fields held as strings
 // so a half-typed "12." doesn't get coerced mid-edit. Converted to/from
@@ -166,7 +179,8 @@ function stripCutoffMention(text: string | undefined): string | undefined {
  * and after replacing the GPX — a station's cutoff should be picked up
  * automatically either way, not just on first load. */
 function buildNotesWithDetectedCutoffs(waypoints: GpxWaypoint[], existingNotes: Record<string, CrewNoteEntry>): Record<string, CrewNoteEntry> {
-  const withDefaults: Record<string, CrewNoteEntry> = { ...existingNotes };
+  const withDefaults: Record<string, CrewNoteEntry> = {};
+  for (const [k, v] of Object.entries(existingNotes)) withDefaults[k] = migrateNote(v);
   waypoints.forEach((wp, i) => {
     const key = String(i);
     if (!withDefaults[key]?.cutoff) {
@@ -774,12 +788,12 @@ export function CrewPlan() {
     setSaved(false);
   }
 
-  function setCrewAccess(key: string, value: 'yes' | 'no' | 'sleep') {
+  function setCrewAccess(key: string, value: 'yes' | 'no') {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), crewAccess: value } }));
     setSaved(false);
   }
 
-  function toggleNoteFlag(key: string, field: 'dropBag' | 'pacerPickup') {
+  function toggleNoteFlag(key: string, field: 'dropBag' | 'pacerPickup' | 'sleepStop') {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: !(prev[key]?.[field] ?? false) } }));
     setSaved(false);
   }
@@ -1441,7 +1455,6 @@ export function CrewPlan() {
                       <div className="seg" style={{ maxWidth: 220 }}>
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'yes'} onChange={() => setCrewAccess(key, 'yes')} label="Yes" />
                         <SegOption name={`crew-${key}`} checked={note.crewAccess === 'no'} onChange={() => setCrewAccess(key, 'no')} label="No" />
-                        <SegOption name={`crew-${key}`} checked={note.crewAccess === 'sleep'} onChange={() => setCrewAccess(key, 'sleep')} label="Sleep" />
                       </div>
                     </div>
                     <div className="rg-cp-cutoff-field">
@@ -1627,6 +1640,10 @@ export function CrewPlan() {
                     <label className="rg-cp-flag">
                       <input type="checkbox" checked={note.pacerPickup ?? false} onChange={() => toggleNoteFlag(key, 'pacerPickup')} />
                       Pacer pickup here
+                    </label>
+                    <label className="rg-cp-flag">
+                      <input type="checkbox" checked={note.sleepStop ?? false} onChange={() => toggleNoteFlag(key, 'sleepStop')} />
+                      Planned sleep stop
                     </label>
                   </div>
 
