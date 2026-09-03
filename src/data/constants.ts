@@ -45,31 +45,32 @@ export const HILL_ACCESS_OPTIONS = [
 ] as const;
 
 export const PACES_MI = [
-  { id: 'easy', label: 'Easy — 11:00/mi or slower' },
-  { id: 'steady', label: 'Steady — 8:00–11:00/mi' },
-  { id: 'fast', label: 'Fast — under 8:00/mi' },
+  { id: 'easy', label: 'Easy — 11:00 / mile or slower' },
+  { id: 'steady', label: 'Steady — 8:00–11:00 / mile' },
+  { id: 'fast', label: 'Fast — under 8:00 / mile' },
 ] as const;
 
 export const PACES_KM = [
-  { id: 'easy', label: 'Easy — 6:50/km or slower' },
-  { id: 'steady', label: 'Steady — 5:00–6:50/km' },
-  { id: 'fast', label: 'Fast — under 5:00/km' },
+  { id: 'easy', label: 'Easy — 6:50 / km or slower' },
+  { id: 'steady', label: 'Steady — 5:00–6:50 / km' },
+  { id: 'fast', label: 'Fast — under 5:00 / km' },
 ] as const;
 
 /** Used instead of PACES_MI/PACES_KM when distanceGoal === 'ultra' — road
  * pace bands don't hold up once climbing and power-hiking enter the
- * picture, so the whole range shifts slower and "Easy" explicitly covers
- * hiking effort on climbs rather than just a slow jog. */
+ * picture. No "fast" band: sub-12:00/mile isn't a realistic planning pace
+ * for 50K+, and a lot of an ultra is hiked or walked, so "Walk" is its
+ * own choice. */
 export const PACES_MI_ULTRA = [
-  { id: 'easy', label: 'Easy — 16:00/mi or slower (includes hiking on climbs)' },
-  { id: 'steady', label: 'Steady — 12:00–16:00/mi' },
-  { id: 'fast', label: 'Fast — under 12:00/mi' },
+  { id: 'steady', label: 'Steady — 12:00–20:00 / mile' },
+  { id: 'easy', label: 'Easy — around 20:00 / mile (easy jog, hiking the climbs)' },
+  { id: 'walk', label: 'Walk — 20:00–25:00 / mile (mostly power-hiking)' },
 ] as const;
 
 export const PACES_KM_ULTRA = [
-  { id: 'easy', label: 'Easy — 10:00/km or slower (includes hiking on climbs)' },
-  { id: 'steady', label: 'Steady — 7:30–10:00/km' },
-  { id: 'fast', label: 'Fast — under 7:30/km' },
+  { id: 'steady', label: 'Steady — 7:30–12:30 / km' },
+  { id: 'easy', label: 'Easy — around 12:30 / km (easy jog, hiking the climbs)' },
+  { id: 'walk', label: 'Walk — 12:30–15:30 / km (mostly power-hiking)' },
 ] as const;
 
 export const PACE_CUSTOM = { id: 'custom', label: 'Enter my own pace' } as const;

@@ -34,8 +34,10 @@ export function buildInitialState(): AppState {
     },
     onboarding: {
       step: 0,
-      raceCategory: '',
-      distanceGoal: '',
+      // Ultra is the default — this app is built for ultras first. Picking
+      // "5K to Marathon" on step 0 switches it (ONBOARDING_SELECT_RACE_CATEGORY).
+      raceCategory: 'ultra',
+      distanceGoal: 'ultra',
       distanceEditing: false,
       ultraDistanceId: '',
       ultraCustomMiles: '',

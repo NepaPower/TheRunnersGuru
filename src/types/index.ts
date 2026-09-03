@@ -66,7 +66,7 @@ export type FirstTimeAnswer = 'yes' | 'no' | '';
  * treadmill-incline / StairMaster equivalents. */
 export type HillAccessAnswer = 'yes' | 'no' | '';
 
-export type PaceChoice = 'easy' | 'steady' | 'fast' | 'custom' | '';
+export type PaceChoice = 'walk' | 'easy' | 'steady' | 'fast' | 'custom' | '';
 
 export type PaceUnit = 'mi' | 'km';
 

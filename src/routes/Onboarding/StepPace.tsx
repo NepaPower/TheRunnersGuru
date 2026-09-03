@@ -47,7 +47,7 @@ export function StepPace() {
       </div>
 
       {onboarding.pace === 'custom' && (
-        <Field label={`Your pace (${onboarding.paceUnit === 'km' ? 'min/km' : 'min/mi'})`} style={{ marginBottom: 'var(--space-4)' }}>
+        <Field label={`Your pace (${onboarding.paceUnit === 'km' ? 'min / km' : 'min / mile'})`} style={{ marginBottom: 'var(--space-4)' }}>
           <Input
             type="text"
             placeholder={onboarding.paceUnit === 'km' ? 'e.g. 5:30' : 'e.g. 8:45'}
