@@ -1349,17 +1349,17 @@ export function CrewPlan() {
                           {nextSegmentMiles} mi to next stop
                           {legClimb && (
                             <span className="rg-cp-next-leg-climb">
-                              {' · '}+{legClimb.ascentFt.toLocaleString()} ft / −{legClimb.descentFt.toLocaleString()} ft
+                              {' | '}+{legClimb.ascentFt.toLocaleString()} ft / −{legClimb.descentFt.toLocaleString()} ft
                             </span>
                           )}
                           {legSegment?.pacerName && (
                             <span className="rg-cp-next-leg-climb">
-                              {' · '}Pacer: {legSegment.pacerName}
+                              {' | '}Pacer: {legSegment.pacerName}
                             </span>
                           )}
                           {showSegmentLink && (
                             <>
-                              {' · '}
+                              {' | '}
                               <button
                                 type="button"
                                 className="rg-cp-segment-link"
