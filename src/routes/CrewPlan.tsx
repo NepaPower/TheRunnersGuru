@@ -298,13 +298,13 @@ export function CrewPlan() {
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [crewModalOpen, setCrewModalOpen] = useState(false);
   // The "Segment info" popup. `segPopupLeg` is the leg it's showing (the
-  // leg AFTER real waypoint N); null when closed. For the owner / Chief
-  // Crew the popup is an editor — `segForm` holds the in-progress draft
-  // (numbers as strings, see SegmentDraft), seeded from the plan's own
-  // segment, or text-only from whatever's currently displayed.
-  // `segPopupImageUrl` is the resolved <img src> for the image the popup
-  // is showing (undefined = still resolving, null = resolve failed).
+  // leg AFTER real waypoint N); null when closed. It opens in read-only
+  // view for everyone — the owner / Chief Crew get an "Edit" button that
+  // flips `segPopupEditing` on and shows the form (`segForm`, numbers as
+  // strings, see SegmentDraft). `segPopupImageUrl` is the resolved
+  // <img src> the popup is showing (undefined = resolving, null = failed).
   const [segPopupLeg, setSegPopupLeg] = useState<number | null>(null);
+  const [segPopupEditing, setSegPopupEditing] = useState(false);
   const [segForm, setSegForm] = useState<SegmentDraft | null>(null);
   const [segPopupImageUrl, setSegPopupImageUrl] = useState<string | null>(null);
   const [segSaving, setSegSaving] = useState(false);
@@ -446,7 +446,7 @@ export function CrewPlan() {
   const segPopupImageRef =
     segPopupLeg == null
       ? undefined
-      : canEditSegments && !readOnlyMode
+      : segPopupEditing
         ? segForm?.profileImage || undefined
         : effectiveSegments?.[segPopupLeg]?.profileImage;
   useEffect(() => {
@@ -753,16 +753,36 @@ export function CrewPlan() {
   // plan's own saved segment, or the built-in BigFoot fallback when the
   // plan has none yet, so editing one leg of a BigFoot plan doesn't wipe
   // the rest (buildSegmentsArray snapshots the whole set on first save).
-  function openSegmentPopup(leg: number) {
+  function openSegmentPopup(leg: number, startEditing = false) {
     const src = plan?.courseSegments?.[leg] ?? effectiveSegments?.[leg];
     setSegForm(src ? toSegmentDraft(src) : { ...emptySegmentDraft });
     setSegPopupError(null);
+    setSegPopupEditing(startEditing);
     setSegPopupLeg(leg);
+  }
+  function beginSegmentEdit() {
+    if (segPopupLeg == null) return;
+    const src = plan?.courseSegments?.[segPopupLeg] ?? effectiveSegments?.[segPopupLeg];
+    setSegForm(src ? toSegmentDraft(src) : { ...emptySegmentDraft });
+    setSegPopupError(null);
+    setSegPopupEditing(true);
   }
   function closeSegmentPopup() {
     setSegPopupLeg(null);
+    setSegPopupEditing(false);
     setSegForm(null);
     setSegPopupError(null);
+  }
+  // Cancel from the edit form: back to the read-only view when the leg
+  // has something to show, otherwise close the popup entirely.
+  function cancelSegmentEdit() {
+    const view = segPopupLeg == null ? undefined : effectiveSegments?.[segPopupLeg];
+    if (view && (view.title || view.description || view.profileImage)) {
+      setSegPopupEditing(false);
+      setSegPopupError(null);
+    } else {
+      closeSegmentPopup();
+    }
   }
   function pickSegmentImage() {
     segFileInputRef.current?.click();
@@ -817,7 +837,9 @@ export function CrewPlan() {
     setSegPopupError(null);
     try {
       await persistCourseSegments(next);
-      closeSegmentPopup();
+      // Drop back to the read-only view so the person sees what they saved.
+      setSegPopupEditing(false);
+      setSegPopupError(null);
     } catch (err) {
       setSegPopupError(
         err instanceof Error ? err.message : "Couldn't save — you may not have permission, or the connection dropped.",
@@ -1257,6 +1279,7 @@ export function CrewPlan() {
               const legIndex = !isAlternate && realPos !== -1 && realPos < legCount ? realPos : null;
               const legSegment = legIndex != null ? effectiveSegments?.[legIndex] : undefined;
               const legHasSegment = !!(legSegment && (legSegment.title || legSegment.description || legSegment.profileImage));
+              const legClimb = legSegment && (legSegment.ascentFt > 0 || legSegment.descentFt > 0) ? legSegment : null;
               const showSegmentLink = legIndex != null && (legHasSegment || (canEditSegments && !readOnlyMode));
               return (
                 <div key={key} className="rg-cp-station-card">
@@ -1279,10 +1302,19 @@ export function CrewPlan() {
                       {nextSegmentMiles != null && (
                         <div className="rg-cp-station-next-leg">
                           {nextSegmentMiles} mi to next stop
+                          {legClimb && (
+                            <span className="rg-cp-next-leg-climb">
+                              {' · '}+{legClimb.ascentFt.toLocaleString()} ft / −{legClimb.descentFt.toLocaleString()} ft
+                            </span>
+                          )}
                           {showSegmentLink && (
                             <>
                               {' · '}
-                              <button type="button" className="rg-cp-segment-link" onClick={() => openSegmentPopup(legIndex!)}>
+                              <button
+                                type="button"
+                                className="rg-cp-segment-link"
+                                onClick={() => openSegmentPopup(legIndex!, !legHasSegment)}
+                              >
                                 {legHasSegment ? 'Segment info' : 'Add segment info'}
                               </button>
                             </>
@@ -1606,7 +1638,7 @@ export function CrewPlan() {
 
       {segPopupLeg != null &&
         (() => {
-          const editing = canEditSegments && !readOnlyMode && segForm != null;
+          const editing = segPopupEditing && segForm != null;
           const legName =
             segPopupLeg < legCount
               ? `${waypoints[realWaypointIndices[segPopupLeg]].name} → ${waypoints[realWaypointIndices[segPopupLeg + 1]].name}`
@@ -1634,16 +1666,23 @@ export function CrewPlan() {
                       </p>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    className="rg-cp-crew-modal-close"
-                    aria-label="Close"
-                    onClick={() => !segSaving && closeSegmentPopup()}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-                      <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    {!editing && canEditSegments && !readOnlyMode && (
+                      <Button variant="secondary" onClick={beginSegmentEdit}>
+                        Edit
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      className="rg-cp-crew-modal-close"
+                      aria-label="Close"
+                      onClick={() => !segSaving && closeSegmentPopup()}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                        <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 {editing && segForm ? (
@@ -1725,7 +1764,7 @@ export function CrewPlan() {
                         </Button>
                       )}
                       <span style={{ flex: 1 }} />
-                      <Button variant="ghost" disabled={segSaving} onClick={closeSegmentPopup}>
+                      <Button variant="ghost" disabled={segSaving} onClick={cancelSegmentEdit}>
                         Cancel
                       </Button>
                       <Button variant="primary" disabled={segSaving || segUploading} onClick={saveSegment}>

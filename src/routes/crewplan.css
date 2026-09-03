@@ -137,6 +137,10 @@
   color: var(--color-text);
   margin-top: 2px;
 }
+.rg-cp-next-leg-climb {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-text) 82%, transparent);
+}
 .rg-cp-directions-link {
   color: var(--color-accent-800);
   font-weight: 700;
