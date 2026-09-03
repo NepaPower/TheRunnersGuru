@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../state/AppContext';
-import { deleteTrainingPlan, setPrimaryRace } from '../lib/api';
-import type { DistanceGoal } from '../types';
+import { deleteTrainingPlan, fetchCrewAccessList, setPrimaryRace } from '../lib/api';
+import type { CrewAccessEntry, DistanceGoal } from '../types';
 import './races.css';
 
 const DISTANCE_LABEL: Record<DistanceGoal, string> = {
@@ -40,9 +40,23 @@ export function Races() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [primaryId, setPrimaryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Crew list per plan, fetched lazily when the delete confirm opens so
+  // it can name who loses access. undefined = not fetched, null = fetch
+  // failed / still loading.
+  const [crewByPlan, setCrewByPlan] = useState<Record<string, CrewAccessEntry[] | null>>({});
 
   const plans = state.ownPlans;
   const hasMultiple = plans.length > 1;
+
+  function openDeleteConfirm(planId: string) {
+    setConfirmId(planId);
+    if (!(planId in crewByPlan)) {
+      setCrewByPlan((prev) => ({ ...prev, [planId]: null }));
+      fetchCrewAccessList(planId)
+        .then((list) => setCrewByPlan((prev) => ({ ...prev, [planId]: list })))
+        .catch(() => setCrewByPlan((prev) => ({ ...prev, [planId]: [] })));
+    }
+  }
 
   async function handleDelete(planId: string) {
     setError(null);
@@ -125,7 +139,13 @@ export function Races() {
                   {confirmId === p.id ? (
                     <>
                       <span className="text-muted" style={{ fontSize: 13 }}>
-                        Delete this race? Anyone you've shared it with loses access. This can't be undone.
+                        {(() => {
+                          const crew = p.id ? crewByPlan[p.id] : undefined;
+                          if (crew === undefined || crew === null) return 'Delete this race? This can’t be undone.';
+                          if (crew.length === 0) return 'Delete this race? This can’t be undone.';
+                          const names = crew.map((c) => c.invitedEmail).join(', ');
+                          return `Delete this race? ${crew.length} crew member${crew.length === 1 ? '' : 's'} lose access (${names}). This can’t be undone.`;
+                        })()}
                       </span>
                       <Button variant="ghost" disabled={deletingId === p.id} onClick={() => p.id && handleDelete(p.id)}>
                         {deletingId === p.id ? 'Deleting…' : 'Yes, delete'}
@@ -149,7 +169,7 @@ export function Races() {
                         </Button>
                       )}
                       {canDelete ? (
-                        <Button variant="ghost" onClick={() => setConfirmId(p.id ?? null)}>
+                        <Button variant="ghost" onClick={() => p.id && openDeleteConfirm(p.id)}>
                           Delete
                         </Button>
                       ) : (
