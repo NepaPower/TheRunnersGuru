@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
-import { getTrainingTimeWarning } from '../lib/planGenerator';
+import { buildTrainingPlan, getTrainingTimeWarning } from '../lib/planGenerator';
+import { updateRaceDetails } from '../lib/api';
 import './trainingplan.css';
 
 const MONTH_BG = ['var(--color-bg)', 'var(--color-neutral-100)'];
@@ -27,10 +28,42 @@ function classifyWorkout(text: string): 'rest' | 'easy' | 'quality' | 'long' | '
 }
 
 export function TrainingPlan() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const navigate = useNavigate();
   const [view, setView] = useState<'cards' | 'table'>('cards');
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const plan = state.trainingPlan;
+
+  async function handleGenerate() {
+    if (!plan?.id) return;
+    setGenError(null);
+    setGenerating(true);
+    try {
+      const rebuilt = buildTrainingPlan(
+        plan.raceDate,
+        plan.distanceGoal,
+        plan.firstTime,
+        plan.raceName,
+        plan.hillAccess,
+        plan.ultraMiles,
+        plan.gpxRoute,
+        plan.goalFinishMinutes,
+      );
+      if (!rebuilt) throw new Error('This race needs a date and distance first — set them on Edit race.');
+      const merged = { ...plan, rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote };
+      await updateRaceDetails(plan.id, merged, { regenerateWeeks: true });
+      dispatch({
+        type: 'PLAN_PATCHED',
+        planId: plan.id,
+        patch: { rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote },
+      });
+      // Re-renders past the empty state now that plan.rows is populated.
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Could not generate the plan.');
+      setGenerating(false);
+    }
+  }
 
   if (!plan) {
     return (
@@ -54,14 +87,22 @@ export function TrainingPlan() {
         </Button>
         <h2 style={{ marginBottom: 'var(--space-2)' }}>{plan.raceName}</h2>
         <p className="text-muted" style={{ marginBottom: 'var(--space-4)' }}>
-          This race was added for crew planning only — it doesn't have a weekly training schedule. The Crew Plan (aid
-          stations, pacing, weather) is where its planning lives.
+          This race doesn't have a weekly training schedule yet — it was added for crew planning. Generate one now, or
+          keep it crew-only and plan aid stations / pacing / weather on the Crew Plan.
         </p>
+        {genError && (
+          <div className="rg-auth-error" style={{ marginBottom: 'var(--space-4)' }}>
+            {genError}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-          <Button variant="primary" onClick={() => navigate(`/crew-plan/${plan.id}`)}>
+          <Button variant="primary" disabled={generating} onClick={handleGenerate}>
+            {generating ? 'Generating…' : 'Generate training plan'}
+          </Button>
+          <Button variant="secondary" onClick={() => navigate(`/crew-plan/${plan.id}`)}>
             Open Crew Plan
           </Button>
-          <Button variant="secondary" onClick={() => navigate('/races')}>
+          <Button variant="ghost" onClick={() => navigate('/races')}>
             My Races
           </Button>
         </div>
