@@ -283,36 +283,71 @@ priority in CLAUDE.md.
 ## Implementation order (low-risk first)
 
 1. **DB + API, no UI change.** Drop `unique (user_id)` on
-   `training_plans` (schema.sql + migration note). Add
-   `fetchTrainingPlans(userId): TrainingPlan[]`, `createTrainingPlan`
-   (plain insert, no upsert), `deleteTrainingPlan(planId)` (+ Storage
-   image cleanup). Keep `fetchTrainingPlan` returning the most-recent as a
-   shim. `hydrateUserData` fetches the array; state gains
-   `ownPlans: TrainingPlan[]` alongside the existing `trainingPlan` slot.
+   `training_plans`; add `is_primary boolean not null default false` +
+   partial unique index `where is_primary` (schema.sql + migration note).
+   Add `fetchTrainingPlans(userId): TrainingPlan[]` (order by
+   `is_primary desc, race_date asc`), `createTrainingPlan(userId, plan,
+   { primary })` (plain insert, no upsert), `deleteTrainingPlan(planId)`
+   (+ Storage image cleanup). Keep `fetchTrainingPlan` returning the
+   primary (or most-recent) as a shim. `hydrateUserData` fetches the
+   array; state gains `ownPlans: TrainingPlan[]` alongside the existing
+   `trainingPlan` slot. `TrainingPlan` type gains `isPrimary: boolean`.
    Everything still renders the same single plan.
 2. **Route by id for own plans.** Add `/crew-plan/:planId` and
    `/training-plan/:planId`; make `state.trainingPlan` a selector over
-   `ownPlans` + the route param (falls back to the single/most-recent plan
-   when no param). `RequirePlan` checks `ownPlans.length`.
+   `ownPlans` + the route param (falls back to the primary plan when no
+   param). `RequirePlan` checks `ownPlans.length`. Training Plan screen
+   always resolves to the primary plan regardless of param.
 3. **My Races screen + nav.** New route `/races`, nav item, Dashboard
-   entry point. List `ownPlans` with open buttons. Landing logic (0 / 1 /
-   2+) from decision 2.
-4. **Add a race.** "Add race" → onboarding in additive mode →
-   `createTrainingPlan` → redirect to the new race. Reset the wizard's
-   local state on entry so it doesn't prefill from a prior race.
-5. **Delete a race.** Confirm dialog, `deleteTrainingPlan`, Storage
-   cleanup, refresh the list. Guard the last-plan case (deleting all →
-   back to onboarding).
+   entry point. List `ownPlans` — race name, date, distance, countdown,
+   a "Primary" badge — each opening that race's Crew Plan. Landing logic
+   (0 → onboarding / 1 → that race / 2+ → the list) from decision 2.
+4. **Add a race (short flow).** "Add race" on My Races → a trimmed
+   onboarding: race name, date, distance/ultra-distance, GPX upload.
+   Skips training-preference steps and does NOT generate
+   `training_plan_weeks`. `createTrainingPlan(..., { primary: false })`
+   → redirect to the new race's Crew Plan. Wizard local state resets on
+   entry so it doesn't prefill from the primary race.
+5. **Delete a race.** Confirm dialog naming the shared-crew count,
+   `deleteTrainingPlan`, Storage cleanup, refresh the list. Can't delete
+   the primary race while other races exist (must reassign primary
+   first); deleting the last race → back to onboarding.
 6. **Cleanup.** Remove the `fetchTrainingPlan` shim and any lingering
-   direct `state.trainingPlan` reads once all screens route by id.
+   direct `state.trainingPlan` reads once all screens route by id. Add
+   the "make primary" switch on My Races.
 
-## Open questions
+## Resolved (was: open questions)
 
-1. Is there ever a reason to **copy** a race (same GPX, new date) rather
-   than re-onboard — e.g. an annual race? Cheap to add later; flag if it
-   should be v1.
-2. On **delete**, do we also revoke/notify crew members who had access,
-   or just let the cascade drop their `crew_plan_access` rows silently?
-3. Should the **Training Plan** (weekly schedule) be regenerated per race,
-   or is it acceptable for v1 that only ultras with a Crew Plan really use
-   multi-race and the training schedule stays tied to one "primary" race?
+1. **Copy / duplicate a race — no, not in v1.** No guarantee a runner
+   repeats a race year to year, and a real copy needs its own Storage
+   image objects (no folder-copy in Supabase; sharing refs breaks on
+   delete). Re-onboarding is the path. `courseSegments` stays
+   self-contained on the plan row so a "Duplicate" button is a clean
+   follow-up if annual repeats turn out to be common.
+2. **Delete a race — warn, then hard-cascade. No crew notification.**
+   The delete confirm names the blast radius ("shared with N people —
+   they'll lose access"); on confirm, the FK cascade drops
+   `training_plan_weeks` and `crew_plan_access`, and an explicit pass
+   clears `course-segments/<planId>/` in Storage. No notification is sent
+   — the app has no notification system (invites are already out-of-band,
+   "let them know directly"). A crew member opening a deleted plan gets
+   the existing "this plan isn't available" state. Soft-delete rejected:
+   a `deleted_at` filter on every plan query + a cleanup job is more
+   machinery than this needs.
+3. **Training Plan — one "primary" race owns the weekly schedule.**
+   - The first race (full onboarding) gets a generated
+     `training_plan_weeks` schedule and is the primary race.
+   - "Add a race" runs a SHORT flow (race name, date, distance, GPX only
+     — skips the training-preference steps) and creates a **Crew-Plan-only**
+     plan with no `training_plan_weeks`. Fast to add, which matters when
+     adding several.
+   - The Training Plan screen always shows the primary race. A "make this
+     my primary race" switch on My Races is a later add.
+   - Serves both audiences: a beginner has one goal race with a training
+     plan; a repeat runner has a primary race + crew-only secondary
+     races. Real multi-race periodization (overlapping training blocks)
+     is a separate effort, bundled with the existing "insufficient
+     runway" open work.
+   - Schema: add `training_plans.is_primary boolean not null default
+     false` with a partial unique index (`where is_primary`) so at most
+     one primary per user; the onboarded plan sets it true.
