@@ -10,6 +10,8 @@ import { Onboarding } from './routes/Onboarding';
 import { Dashboard } from './routes/Dashboard';
 import { TrainingPlan } from './routes/TrainingPlan';
 import { CrewPlan } from './routes/CrewPlan';
+import { Races } from './routes/Races';
+import { AddRace } from './routes/AddRace';
 import { SharedPlans } from './routes/SharedPlans';
 import { LogRun } from './routes/LogRun';
 import { Partners } from './routes/Partners';
@@ -33,6 +35,8 @@ export default function App() {
           <Route element={<RequirePlan />}>
             <Route element={<AppLayout />}>
               <Route path="/home" element={<Dashboard />} />
+              <Route path="/races" element={<Races />} />
+              <Route path="/races/add" element={<AddRace />} />
               <Route path="/training-plan" element={<TrainingPlan />} />
               <Route path="/crew-plan" element={<CrewPlan />} />
               <Route path="/crew-plan/:planId" element={<CrewPlan />} />

@@ -1,0 +1,88 @@
+/* My Races — list of the user's own races (add / open / delete). */
+
+.rg-races-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.rg-races-empty {
+  border: 1px solid var(--color-divider);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  background: var(--color-bg);
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+}
+
+.rg-races-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rg-races-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  background: var(--color-bg);
+  padding: var(--space-4) var(--space-5);
+}
+
+.rg-races-card-main {
+  min-width: 0;
+}
+
+.rg-races-card-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.rg-races-card-meta {
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.rg-races-badge {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-accent-800);
+  background: var(--color-accent-100);
+  border: 1px solid var(--color-accent-300);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.rg-races-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .rg-races-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rg-races-card-actions {
+    justify-content: flex-end;
+  }
+}

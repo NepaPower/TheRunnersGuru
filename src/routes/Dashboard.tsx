@@ -95,9 +95,25 @@ export function Dashboard() {
   const hasAnyRuns = state.loggedRuns.length > 0;
   const isUltra = state.trainingPlan?.distanceGoal === 'ultra';
 
+  const raceCount = state.ownPlans.length;
+  const myRacesCard = {
+    key: 'races',
+    title: 'My Races',
+    subtitle: raceCount > 1 ? `${raceCount} races` : 'Add another race',
+    to: '/races',
+    enabled: true,
+    icon: (
+      <>
+        <path d="M6 21V3" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M6 4h11l-3 4 3 4H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </>
+    ),
+  };
+
   const navCards = isUltra
     ? [
         NAV_CARDS[0], // Your Training Plan
+        myRacesCard,
         {
           key: 'crewPlan',
           title: 'Crew Plan',
@@ -108,7 +124,7 @@ export function Dashboard() {
         },
         ...NAV_CARDS.slice(1),
       ]
-    : NAV_CARDS;
+    : [NAV_CARDS[0], myRacesCard, ...NAV_CARDS.slice(1)];
 
   // Someone can have their own plan AND crew for someone else's — surface
   // that separately, since it's not otherwise reachable once they land on

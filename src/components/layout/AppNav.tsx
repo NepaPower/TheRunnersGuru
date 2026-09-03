@@ -13,6 +13,16 @@ const NAV_ITEMS = [
     icon: <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-9z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
   },
   {
+    to: '/races',
+    label: 'My Races',
+    icon: (
+      <>
+        <path d="M6 3v18" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M6 4h11l-2.5 3.5L17 11H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </>
+    ),
+  },
+  {
     to: '/partners',
     label: 'Partners',
     hidden: true,
