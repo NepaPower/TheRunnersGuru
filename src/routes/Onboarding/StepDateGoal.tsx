@@ -2,6 +2,7 @@ import { Field, Input, Select } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import { formatRaceDateReadout, goalTimeBreakdownLabel } from '../../lib/format';
 import { monthsLeftLabel, isTrainingTimeShort } from '../../lib/planGenerator';
+import { ultraDistanceMiles } from '../../lib/ultraDistance';
 
 const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
@@ -11,7 +12,8 @@ export function StepDateGoal() {
   const { onboarding } = state;
   const isUltra = onboarding.distanceGoal === 'ultra';
   const months = monthsLeftLabel(onboarding.raceDate);
-  const isShort = !isUltra && isTrainingTimeShort(onboarding.raceDate);
+  const ultraMiles = isUltra ? ultraDistanceMiles(onboarding) : null;
+  const isShort = isTrainingTimeShort(onboarding.raceDate, onboarding.distanceGoal || undefined, ultraMiles);
   const breakdown = isUltra ? goalTimeBreakdownLabel(onboarding.goalHours, onboarding.goalMinutes) : '';
 
   return (
@@ -92,9 +94,9 @@ export function StepDateGoal() {
           </p>
           {isShort && (
             <p style={{ margin: '6px 0 0', fontSize: 13 }}>
-              That's a compressed timeline — under the standard 12-week (about 3 month) training period. We'll still
-              build you a full plan, just expect a faster
-              ramp-up in volume than a longer buildup would allow.
+              {isUltra
+                ? `That's short for ${ultraMiles ? `a ${ultraMiles}-mile` : 'a 50K+'} ultra — not enough runway to safely build new endurance. The plan will focus on keeping your long runs consistent, protecting recovery, and race-day execution (rehearsed fuelling, conservative pacing, hiking the climbs). If your longest run is well short of the distance, consider a race further out or an easier goal.`
+                : "That's a compressed timeline — under the standard 12-week (about 3 month) training period. We'll still build you a full plan, just expect a faster ramp-up in volume than a longer buildup would allow."}
             </p>
           )}
         </div>

@@ -423,27 +423,52 @@ export function buildTrainingPlan(
   };
 }
 
-/** Whether a standard (5K-Marathon) plan's timeline is compressed — under
- * the 12-week standard training period (roughly 3 months) — and the
- * message to show if so. The plan still gets built regardless; this is a
- * heads-up, not a block. Ultra is deliberately excluded here — it has its
- * own separate planning considerations, not this warning. */
-export function getTrainingTimeWarning(distanceGoal: DistanceGoal, totalWeeks: number): string | null {
-  if (distanceGoal === 'ultra' || totalWeeks >= 12) return null;
+/** A rough "you really want at least this much runway" figure for an
+ * ultra of the given distance — 15 weeks for a 50K up to ~24 for a
+ * 200-miler. Not a hard rule: the plan still builds. Below it, there
+ * isn't time to safely add new endurance, only to sharpen what's there. */
+export function recommendedUltraWeeks(miles: number): number {
+  return Math.round(Math.min(24, Math.max(14, 12 + miles / 12)));
+}
+
+/** Whether a plan's timeline is too compressed to build new fitness
+ * safely — the standard 12-week bar for road races, or the
+ * distance-scaled bar for ultras — and the message to show. The plan
+ * still gets built regardless; this is a heads-up, not a block. */
+export function getTrainingTimeWarning(
+  distanceGoal: DistanceGoal,
+  totalWeeks: number,
+  ultraMiles?: number | null,
+): string | null {
+  if (distanceGoal === 'ultra') {
+    const miles = ultraMiles ?? PLAN_TARGETS.ultra.raceMiles;
+    const want = recommendedUltraWeeks(miles);
+    if (totalWeeks >= want) return null;
+    const label = ultraMiles ? `${ultraMiles}-mile` : '50K+';
+    return `Your race is ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} out — a ${label} ultra ideally has ${want}+ weeks of runway, and there isn't time to safely build new endurance for this distance now. So the plan below leans on what you already have: keep your long runs consistent but don't force big weekly jumps, guard recovery and sleep, and put the rest of your prep into race-day execution — fuelling and hydration you've actually rehearsed, conservative early pacing, deliberate hiking on the climbs, and a foot / blister / chafe plan. If your current longest run is well short of race demands, seriously consider a longer-runway race or a more conservative goal.`;
+  }
+  if (totalWeeks >= 12) return null;
   return `Your race is only ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} away — that's less than the standard 12-week (about 3 month) training period. You'll still get a full plan below, but expect a faster ramp-up in volume and less margin for missed days or setbacks than a longer buildup would allow.`;
 }
 
-/** Same 12-week threshold as getTrainingTimeWarning, but usable during
- * onboarding before a plan (and its totalWeeks) exists yet — just needs a
- * race date. Uses the same "start = next Monday" reference point as
- * monthsLeftLabel so the two stay consistent with each other. */
-export function isTrainingTimeShort(raceDateStr: string): boolean {
+/** Same idea as getTrainingTimeWarning, but usable during onboarding
+ * before a plan (and its totalWeeks) exists yet — just needs a race date.
+ * The bar is the standard 12 weeks for a road race, or the
+ * distance-scaled recommendedUltraWeeks for an ultra. Uses the same
+ * "start = next week" reference point as monthsLeftLabel. */
+export function isTrainingTimeShort(
+  raceDateStr: string,
+  distanceGoal?: DistanceGoal,
+  ultraMiles?: number | null,
+): boolean {
   if (!raceDateStr) return false;
   const start = new Date();
   start.setDate(start.getDate() + 7);
   const race = new Date(raceDateStr + 'T00:00:00');
   const totalDays = Math.round((race.getTime() - start.getTime()) / 86400000);
-  return totalDays > 0 && totalDays < 12 * 7;
+  if (totalDays <= 0) return false;
+  const bar = distanceGoal === 'ultra' ? recommendedUltraWeeks(ultraMiles ?? PLAN_TARGETS.ultra.raceMiles) : 12;
+  return totalDays / 7 < bar;
 }
 
 /** "You have X months to train if you start next week" helper for onboarding step 4. */
