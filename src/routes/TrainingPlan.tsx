@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
-import { buildTrainingPlan, getTrainingTimeWarning } from '../lib/planGenerator';
-import { updateRaceDetails } from '../lib/api';
+import { getTrainingTimeWarning } from '../lib/planGenerator';
+import { regeneratePlanWeeks } from '../lib/api';
 import './trainingplan.css';
 
 const MONTH_BG = ['var(--color-bg)', 'var(--color-neutral-100)'];
@@ -40,24 +40,8 @@ export function TrainingPlan() {
     setGenError(null);
     setGenerating(true);
     try {
-      const rebuilt = buildTrainingPlan(
-        plan.raceDate,
-        plan.distanceGoal,
-        plan.firstTime,
-        plan.raceName,
-        plan.hillAccess,
-        plan.ultraMiles,
-        plan.gpxRoute,
-        plan.goalFinishMinutes,
-      );
-      if (!rebuilt) throw new Error('This race needs a date and distance first — set them on Edit race.');
-      const merged = { ...plan, rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote };
-      await updateRaceDetails(plan.id, merged, { regenerateWeeks: true });
-      dispatch({
-        type: 'PLAN_PATCHED',
-        planId: plan.id,
-        patch: { rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote },
-      });
+      const patch = await regeneratePlanWeeks(plan);
+      dispatch({ type: 'PLAN_PATCHED', planId: plan.id, patch });
       // Re-renders past the empty state now that plan.rows is populated.
     } catch (e) {
       setGenError(e instanceof Error ? e.message : 'Could not generate the plan.');

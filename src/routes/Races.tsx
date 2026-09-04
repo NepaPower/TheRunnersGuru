@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../state/AppContext';
-import { deleteTrainingPlan, fetchCrewAccessList, setPrimaryRace } from '../lib/api';
+import { deleteTrainingPlan, fetchCrewAccessList, regeneratePlanWeeks, setPrimaryRace } from '../lib/api';
 import type { CrewAccessEntry, DistanceGoal } from '../types';
 import './races.css';
 
@@ -39,6 +39,7 @@ export function Races() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [primaryId, setPrimaryId] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Crew list per plan, fetched lazily when the delete confirm opens so
   // it can name who loses access. undefined = not fetched, null = fetch
@@ -86,14 +87,30 @@ export function Races() {
     }
   }
 
+  async function handleGeneratePlan(planId: string) {
+    const target = plans.find((p) => p.id === planId);
+    if (!target) return;
+    setError(null);
+    setGeneratingId(planId);
+    try {
+      const patch = await regeneratePlanWeeks(target);
+      dispatch({ type: 'PLAN_PATCHED', planId, patch });
+      navigate('/training-plan');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not generate the plan.');
+    } finally {
+      setGeneratingId(null);
+    }
+  }
+
   return (
     <>
       <div className="rg-races-header">
         <div>
           <h2 style={{ marginBottom: 0 }}>My Races</h2>
           <p className="text-muted" style={{ marginTop: 4 }}>
-            Every race you're planning for. Your primary race carries the weekly training plan; the rest are crew
-            logistics only.
+            Every race you're planning for. Only your <strong>primary</strong> race gets a weekly training plan — make
+            a race primary to generate one. The rest are crew logistics only.
           </p>
         </div>
         <Button variant="primary" onClick={() => navigate('/races/add')}>
@@ -162,6 +179,15 @@ export function Races() {
                       <Button variant="ghost" onClick={() => navigate(`/races/${p.id}/edit`)}>
                         Edit
                       </Button>
+                      {p.isPrimary && p.rows.length === 0 && (
+                        <Button
+                          variant="ghost"
+                          disabled={generatingId === p.id}
+                          onClick={() => p.id && handleGeneratePlan(p.id)}
+                        >
+                          {generatingId === p.id ? 'Generating…' : 'Generate plan'}
+                        </Button>
+                      )}
                       {!p.isPrimary && (
                         <Button
                           variant="ghost"

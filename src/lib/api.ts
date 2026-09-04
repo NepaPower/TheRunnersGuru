@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import type { Address, CourseSegment, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
-import { buildPhaseSummary } from './planGenerator';
+import { buildPhaseSummary, buildTrainingPlan } from './planGenerator';
 
 // ─── Auth ───────────────────────────────────────────────────────────────
 
@@ -223,6 +223,28 @@ export async function updateRaceDetails(planId: string, plan: TrainingPlan, opts
     .eq('id', planId);
   if (error) throw error;
   if (opts.regenerateWeeks) await replaceWeekRows(planId, plan);
+}
+
+/** Builds the weekly schedule for `plan` from its stored details and
+ * persists it. Returns the fields to PLAN_PATCH into state. Throws if the
+ * race has no date/distance. Used by the "Generate training plan" action
+ * on My Races and the Training Plan screen. */
+export async function regeneratePlanWeeks(plan: TrainingPlan): Promise<Partial<TrainingPlan>> {
+  if (!plan.id) throw new Error('This race hasn’t been saved yet.');
+  const rebuilt = buildTrainingPlan(
+    plan.raceDate,
+    plan.distanceGoal,
+    plan.firstTime,
+    plan.raceName,
+    plan.hillAccess,
+    plan.ultraMiles,
+    plan.gpxRoute,
+    plan.goalFinishMinutes,
+  );
+  if (!rebuilt) throw new Error('This race needs a date and distance first — set them on Edit race.');
+  const merged = { ...plan, rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote };
+  await updateRaceDetails(plan.id, merged, { regenerateWeeks: true });
+  return { rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote };
 }
 
 /** Moves the "primary race" flag to `planId`. Clears the existing primary
