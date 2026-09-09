@@ -31,6 +31,10 @@ export type Action =
       ownPlans: TrainingPlan[];
       loggedRuns: LoggedRun[];
       sharedPlans: SharedPlanEntry[];
+      // Set when this hydrate came from the offline IndexedDB snapshot
+      // rather than a live fetch (see AppContext).
+      dataStale?: boolean;
+      dataCachedAt?: number;
     }
   | { type: 'LOGOUT' }
   | { type: 'ONBOARDING_SELECT_RACE_CATEGORY'; category: RaceCategory }

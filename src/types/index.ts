@@ -353,6 +353,12 @@ export interface AppState {
   loggedRuns: LoggedRun[]; // persisted to localStorage
   joinedEvent: boolean;
   addressSaved: boolean;
+  // Offline support (step 3): true when the app booted from the cached
+  // IndexedDB snapshot because Supabase was unreachable — the UI shows a
+  // "saved copy / view only" state. `dataCachedAt` is when that snapshot
+  // was written.
+  dataStale: boolean;
+  dataCachedAt: number | null;
 }
 
 export interface LogRunFormState {

@@ -23,6 +23,7 @@ import {
 } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
 import { useOnlineStatus, describeError } from '../lib/useOnlineStatus';
+import { cacheGet, cacheSet, relativeTime } from '../lib/offlineCache';
 import {
   formatEtaClock,
   formatElapsedLabel,
@@ -215,6 +216,9 @@ export function CrewPlan() {
   const [sharedPlan, setSharedPlan] = useState<TrainingPlan | null>(null);
   const [sharedPlanLoading, setSharedPlanLoading] = useState(isShared);
   const [sharedPlanError, setSharedPlanError] = useState<string | null>(null);
+  // Set when the shared plan on screen came from the offline cache rather
+  // than a live fetch, with the time that snapshot was written.
+  const [sharedPlanStaleAt, setSharedPlanStaleAt] = useState<number | null>(null);
   // Bumped to re-run the fetch below — used to auto-retry when the
   // connection comes back after an offline failure.
   const [sharedPlanRetry, setSharedPlanRetry] = useState(0);
@@ -222,38 +226,47 @@ export function CrewPlan() {
   useEffect(() => {
     if (!isShared || !sharedPlanId) return;
     let cancelled = false;
+    const cacheKey = `plan:${sharedPlanId}`;
     setSharedPlanLoading(true);
     setSharedPlanError(null);
-    fetchTrainingPlanById(sharedPlanId)
-      .then((result) => {
+    (async () => {
+      try {
+        const result = await fetchTrainingPlanById(sharedPlanId);
         if (cancelled) return;
         if (!result) {
           setSharedPlanError("This plan isn't available — you may not have access to it, or it may have been removed.");
           return;
         }
         setSharedPlan(result.plan);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setSharedPlanError(
-            describeError(err, 'Could not load this plan. Try again in a moment.'),
-          );
+        setSharedPlanStaleAt(null);
+        cacheSet<TrainingPlan>(cacheKey, result.plan);
+      } catch (err) {
+        if (cancelled) return;
+        // Offline / fetch failed: fall back to the last saved copy of this
+        // plan so a crew member can still read it at a no-service aid
+        // station. Only surface an error if there's nothing cached.
+        const snap = await cacheGet<TrainingPlan>(cacheKey);
+        if (cancelled) return;
+        if (snap) {
+          setSharedPlan(snap.value);
+          setSharedPlanStaleAt(snap.cachedAt);
+        } else {
+          setSharedPlanError(describeError(err, 'Could not load this plan. Try again in a moment.'));
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setSharedPlanLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
   }, [isShared, sharedPlanId, sharedPlanRetry]);
 
-  // Offline support, step 2: a shared plan that failed to load has no
-  // cached copy to fall back on yet, so the moment we're back online,
-  // retry the fetch automatically instead of making the crew member
-  // reload the page.
+  // The moment we're back online, re-fetch a shared plan that either
+  // failed to load or is currently showing a stale cached copy — so the
+  // crew member doesn't have to reload the page.
   useEffect(() => {
-    if (online && sharedPlanError && !sharedPlanLoading) {
+    if (online && !sharedPlanLoading && (sharedPlanError || sharedPlanStaleAt != null)) {
       setSharedPlanRetry((n) => n + 1);
     }
     // Only react to the online transition, not to every error/loading change.
@@ -271,7 +284,15 @@ export function CrewPlan() {
   const [lockChecked, setLockChecked] = useState(false);
   const myDisplayName = state.auth.name || state.auth.email || 'Someone';
   const iHoldLock = lockChecked && lockState?.userId === state.userId;
-  const readOnlyMode = lockChecked && !iHoldLock && lockState != null && isCrewPlanLockActive(lockState);
+  const lockReadOnly = lockChecked && !iHoldLock && lockState != null && isCrewPlanLockActive(lockState);
+  // Offline support (step 3): a plan that's being shown from the offline
+  // cache — or any plan while the browser is offline — is view-only. Edits
+  // can't reach Supabase, and the copy on screen may be behind whatever
+  // the owner or chief has since changed.
+  const planFromCache = isShared ? sharedPlanStaleAt != null : state.dataStale;
+  const offlineReadOnly = !online || planFromCache;
+  const staleCachedAt = isShared ? sharedPlanStaleAt : state.dataCachedAt;
+  const readOnlyMode = lockReadOnly || offlineReadOnly;
 
   useEffect(() => {
     if (!plan?.id || !state.userId) return;
@@ -710,16 +731,28 @@ export function CrewPlan() {
         },
       }));
 
-      fetchClimateAverage(wp.lat, wp.lon, mo, d, y).then((climate) => {
-        if (cancelled) return;
-        setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climate, climateLoading: false } }));
-      });
+      fetchClimateAverage(wp.lat, wp.lon, mo, d, y)
+        .then((climate) => {
+          if (cancelled) return;
+          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climate, climateLoading: false } }));
+        })
+        .catch(() => {
+          // Offline / Open-Meteo unreachable: stop the spinner and keep
+          // whatever value the cache seeded (see the restore effect below).
+          if (cancelled) return;
+          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climateLoading: false } }));
+        });
 
       if (forecastEligible) {
-        fetchDayTemperatureSlots(wp.lat, wp.lon, y, mo, d).then((daySlots) => {
-          if (cancelled) return;
-          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], daySlots, forecastLoading: false } }));
-        });
+        fetchDayTemperatureSlots(wp.lat, wp.lon, y, mo, d)
+          .then((daySlots) => {
+            if (cancelled) return;
+            setWeather((prev) => ({ ...prev, [key]: { ...prev[key], daySlots, forecastLoading: false } }));
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setWeather((prev) => ({ ...prev, [key]: { ...prev[key], forecastLoading: false } }));
+          });
       }
     });
 
@@ -733,6 +766,37 @@ export function CrewPlan() {
     // browser-timezone fallback gets corrected rather than left stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature, courseTimeZone]);
+
+  // Offline support (step 3): seed the weather panels from the last saved
+  // copy on first load, so an offline open shows real numbers while (or
+  // instead of) the live fetch above. Only seeds when nothing's loaded yet.
+  useEffect(() => {
+    if (!plan?.id) return;
+    let cancelled = false;
+    cacheGet<Record<string, StationWeather>>(`weather:${plan.id}`).then((snap) => {
+      if (cancelled || !snap) return;
+      setWeather((prev) => {
+        if (Object.keys(prev).length > 0) return prev;
+        const seeded: Record<string, StationWeather> = {};
+        for (const [k, v] of Object.entries(snap.value)) {
+          seeded[k] = { ...v, climateLoading: false, forecastLoading: false };
+        }
+        return seeded;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan?.id]);
+
+  // Persist resolved weather so the seed effect above has something to
+  // restore next time. Skipped while anything is still loading.
+  useEffect(() => {
+    if (!plan?.id) return;
+    const entries = Object.values(weather);
+    if (entries.length === 0 || entries.some((w) => w.climateLoading || w.forecastLoading)) return;
+    cacheSet<Record<string, StationWeather>>(`weather:${plan.id}`, weather);
+  }, [weather, plan?.id]);
 
   // Autosave — a crew member editing notes mid-race on spotty signal
   // shouldn't be able to lose that work just because they forgot to tap
@@ -946,6 +1010,9 @@ export function CrewPlan() {
   // edit shared plans". Updates the matching local state either way.
   async function persistPlanUpdates(updates: Parameters<typeof updateCrewPlanById>[1]) {
     if (!plan?.id) return;
+    // View-only: someone else holds the edit lock, we're offline, or this
+    // is a cached copy. Skip the write rather than let it fail loudly.
+    if (readOnlyMode) return;
     await updateCrewPlanById(plan.id, updates);
     if (isShared) {
       setSharedPlan((prev) => (prev ? { ...prev, ...updates } : prev));
@@ -1057,7 +1124,7 @@ export function CrewPlan() {
         ← Back to {isShared ? 'shared plans' : 'summary'}
       </Button>
 
-      {readOnlyMode && lockState && (
+      {lockReadOnly && lockState && (
         <div className="rg-cp-lock-banner rg-print-hide">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
             <rect x="5" y="11" width="14" height="9" rx="1.5" strokeWidth="2" />
@@ -1067,6 +1134,33 @@ export function CrewPlan() {
             <strong>{lockState.name || 'Someone'}</strong> is currently editing this plan — you can view everything
             below, but editing is locked until they finish or their session times out. This page checks
             automatically and will unlock as soon as it's free.
+          </span>
+        </div>
+      )}
+
+      {offlineReadOnly && !lockReadOnly && (
+        <div className="rg-cp-lock-banner rg-print-hide">
+          <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeLinecap="round">
+            <path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 14 0M1.5 9.5a15 15 0 0 1 21 0" strokeWidth="2" />
+          </svg>
+          <span>
+            {online ? (
+              <>
+                Showing the copy saved{' '}
+                <strong>{staleCachedAt ? relativeTime(staleCachedAt) : 'earlier'}</strong>. View only — reconnecting
+                now to load the latest.
+              </>
+            ) : (
+              <>
+                You're offline.{' '}
+                {staleCachedAt ? (
+                  <>
+                    Showing the copy saved <strong>{relativeTime(staleCachedAt)}</strong>.{' '}
+                  </>
+                ) : null}
+                Editing is disabled until you reconnect — changes made here won't be saved.
+              </>
+            )}
           </span>
         </div>
       )}

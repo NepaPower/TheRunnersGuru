@@ -6,6 +6,9 @@ import { fetchTemperatureForZipAndDate } from './../lib/weather';
 import { supabase } from '../lib/supabaseClient';
 import { hydrateUserData } from '../lib/api';
 import { updateLoggedRunTemperature } from '../lib/api';
+import { cacheGet, cacheSet } from '../lib/offlineCache';
+
+type HydratedUserData = Awaited<ReturnType<typeof hydrateUserData>>;
 
 interface AppContextValue {
   state: AppState;
@@ -23,19 +26,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // On first load, and whenever Supabase's auth state changes (sign-in,
   // sign-out, token refresh), pull the user's data and hydrate local state.
   useEffect(() => {
+    // Online path: fetch fresh, hydrate, and stash a copy in IndexedDB so
+    // a later offline open has something to show.
     async function hydrateFromSession(userId: string) {
       const hydrated = await hydrateUserData(userId);
       dispatch({ type: 'AUTH_HYDRATE', userId, ...hydrated });
+      cacheSet<HydratedUserData>(`user:${userId}`, hydrated);
+    }
+
+    // Offline (or fetch-failed) path: if this browser has a valid session
+    // but we can't reach Supabase, boot from the last cached snapshot
+    // instead of bouncing a signed-in person to /signin. `dataStale` marks
+    // the app as running on a saved copy.
+    async function hydrateFromCache(userId: string): Promise<boolean> {
+      const snap = await cacheGet<HydratedUserData>(`user:${userId}`);
+      if (!snap) return false;
+      dispatch({ type: 'AUTH_HYDRATE', userId, ...snap.value, dataStale: true, dataCachedAt: snap.cachedAt });
+      return true;
     }
 
     supabase.auth.getSession().then(({ data }) => {
       const userId = data.session?.user.id;
-      (userId ? hydrateFromSession(userId) : Promise.resolve()).finally(() => setAuthReady(true));
+      if (!userId) {
+        setAuthReady(true);
+        return;
+      }
+      hydrateFromSession(userId)
+        .catch(() => hydrateFromCache(userId))
+        .finally(() => setAuthReady(true));
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user.id) {
-        hydrateFromSession(session.user.id);
+        hydrateFromSession(session.user.id).catch(() => {});
       }
       if (event === 'SIGNED_OUT') {
         dispatch({ type: 'LOGOUT' });

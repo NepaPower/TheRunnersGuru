@@ -75,6 +75,8 @@ export function buildInitialState(): AppState {
     loggedRuns: [],
     joinedEvent: false,
     addressSaved: false,
+    dataStale: false,
+    dataCachedAt: null,
   };
 }
 
@@ -97,6 +99,10 @@ export function reducer(state: AppState, action: Action): AppState {
         sharedPlans: action.sharedPlans,
         loggedRuns: action.loggedRuns,
         garminConnected: action.garminConnected,
+        // Set only when we booted from the IndexedDB snapshot because the
+        // network was unreachable — the app is running on a saved copy.
+        dataStale: action.dataStale ?? false,
+        dataCachedAt: action.dataCachedAt ?? null,
       };
     }
 
