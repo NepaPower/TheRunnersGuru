@@ -1144,23 +1144,15 @@ export function CrewPlan() {
             <path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 14 0M1.5 9.5a15 15 0 0 1 21 0" strokeWidth="2" />
           </svg>
           <span>
-            {online ? (
+            {!online && <>You're offline. </>}
+            {staleCachedAt ? (
               <>
-                Showing the copy saved{' '}
-                <strong>{staleCachedAt ? relativeTime(staleCachedAt) : 'earlier'}</strong>. View only — reconnecting
-                now to load the latest.
+                Showing the copy saved <strong>{relativeTime(staleCachedAt)}</strong>.{' '}
               </>
-            ) : (
-              <>
-                You're offline.{' '}
-                {staleCachedAt ? (
-                  <>
-                    Showing the copy saved <strong>{relativeTime(staleCachedAt)}</strong>.{' '}
-                  </>
-                ) : null}
-                Editing is disabled until you reconnect — changes made here won't be saved.
-              </>
-            )}
+            ) : null}
+            {online
+              ? 'View only — reload to get the latest and make changes.'
+              : "Editing is disabled until you reconnect — changes made here won't be saved."}
           </span>
         </div>
       )}
