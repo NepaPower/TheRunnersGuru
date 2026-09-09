@@ -351,3 +351,260 @@ priority in CLAUDE.md.
    - Schema: add `training_plans.is_primary boolean not null default
      false` with a partial unique index (`where is_primary`) so at most
      one primary per user; the onboarded plan sets it true.
+
+---
+
+# Feature spec: Offline access to a Crew Plan (no-service aid stations)
+
+## Why
+
+Crewing an ultra means driving to aid stations in the backcountry — forest
+roads, canyon bottoms, high passes. Cell and wifi coverage there is
+routinely absent. Right now, if a crew member opens TheRunnersGuru at an
+aid station with no signal, they get nothing: the app shell won't load
+(it's fetched fresh every visit) and even if it did, every screen depends
+on a live Supabase call. The plan they spent a week building is
+unreachable exactly when they need it.
+
+The current answer is the **Print button** on the Crew Plan
+(`window.print()`) — a paper copy is genuinely the most reliable offline
+artifact and should stay. But it's static: no live weather, no last-minute
+cutoff edit the chief pushed from the trailhead, and easy to leave in the
+car. A cached in-app view covers the "I have my phone but no bars" case.
+
+Scope of this spec is a **read-only offline layer**: a crew member can
+*open the app and view the active Crew Plan* with no connectivity. Editing
+stays online-only. Full offline editing with sync-on-reconnect is a
+separate, much larger project (see Non-goals).
+
+## Current shape (verified against the codebase)
+
+- **No PWA.** `index.html` is minimal — no `manifest`, no service-worker
+  registration. `main.tsx` just mounts React. Nothing is cached; every
+  load is a network fetch of the JS/CSS bundle.
+- **No offline detection.** No `navigator.onLine` check, no `online` /
+  `offline` listeners anywhere in `src/`.
+- **Every screen is live-fetch.** `CrewPlan.tsx` mounts and immediately
+  calls Supabase: `fetchTrainingPlanById` (shared mode),
+  `fetchCrewPlanLock`, `fetchMyCrewRole`, `fetchCrewAccessList`, plus
+  `fetchClimateAverage` / `fetchDayTemperatureSlots` (Open-Meteo) for
+  weather. No response is persisted client-side. A failed fetch = a
+  broken screen, not a degraded one.
+- **Segment images are short-lived signed URLs.**
+  `resolveCourseSegmentImage` mints a Supabase Storage signed URL that
+  **expires after 1 hour** (`createSignedUrl(path, 60 * 60)`). Caching
+  the URL string is useless offline; the image *bytes* have to be stored.
+- **Weather is Open-Meteo, no key.** `weather.ts` responses are plain
+  JSON over HTTPS and are cache-friendly. Climate averages are stable;
+  the short-range forecast goes stale in hours but a day-old forecast
+  beats a blank panel.
+- **Deploy is GitHub Pages at a subpath.** `vite.config.ts` sets `base`
+  to `/TheRunnersGuru/` under GitHub Actions. A service worker's scope is
+  tied to its own URL, so the SW file and its `scope` must be registered
+  under `/TheRunnersGuru/`, not `/`. The workflow already does
+  `cp dist/index.html dist/404.html` for SPA deep links — the SW must
+  precache the app-shell HTML so offline deep links boot the same way.
+- **Edit-lock model assumes connectivity.** The soft crew edit-lock is
+  heartbeat-based (`fetchCrewPlanLock`, periodic writes). It has no
+  meaning offline and must be treated as "not held / not checkable" when
+  there's no network.
+
+## Target model
+
+Two layers, both read-only.
+
+### 1. App-shell precache (service worker)
+
+Add `vite-plugin-pwa` (Workbox under the hood). On build it emits a
+service worker that precaches the hashed JS/CSS/font assets and the
+app-shell HTML, and serves them cache-first when offline. Registered in
+`main.tsx` with `base`-aware scope so it works under `/TheRunnersGuru/`.
+
+- **Update strategy:** `registerType: 'prompt'` (or auto with a
+  "refresh for the latest" toast). A crew member mid-race must not be
+  force-reloaded into a new bundle at an aid station.
+- **Navigation fallback:** unmatched routes serve the cached
+  `index.html` so a hard refresh on `/crew-plan/<id>` still boots
+  offline and lets React Router take over — mirrors the existing
+  `404.html` trick.
+- `runtimeCaching` for Open-Meteo: `StaleWhileRevalidate`, short max-age,
+  capped entry count — so a previously-seen weather panel renders from
+  cache offline and refreshes when back online.
+- Add a minimal `manifest.webmanifest` (name, icons, theme colour,
+  `display: standalone`) so the app is installable / "Add to Home
+  Screen" — useful for crew, and required for a real PWA.
+
+### 2. Active Crew Plan data cache (IndexedDB)
+
+When a Crew Plan is opened **while online**, write a snapshot to
+IndexedDB keyed by `plan.id`:
+
+- the plan JSON (`fetchTrainingPlanById` result — aid stations,
+  `courseSegments`, cutoffs, all `CrewNoteEntry` fields, rest times,
+  crew-access flags, pacer names, timing inputs);
+- `crewAccessList` and the viewer's own crew role (so the offline view
+  renders the right permission-gated UI);
+- the resolved **weather** for each station (climate average +
+  last-fetched forecast slots);
+- each segment **image as a Blob** (fetch the signed URL once while
+  online, downscale to ~1600 px / ~200–300 KB, store the bytes;
+  regenerate an object URL on read). Fill in leg order, hard-stop at
+  25 MB per plan (Resolved #3).
+- a `cachedAt` timestamp and the plan's `updatedAt`.
+
+On Crew Plan mount: try the network first; if it fails (or
+`navigator.onLine` is false), hydrate from the IndexedDB snapshot and
+render in **offline mode**:
+
+- a persistent banner: **"Offline — showing the plan saved [relative
+  time]. View only; changes are disabled until you reconnect."**
+- all editing controls disabled (inputs, autosave, "Segment info" Edit,
+  GPX replace, Manage Crew, cutoff fields). No write is attempted; the
+  edit-lock is not acquired.
+- weather panel shows its cached values with a "last updated [time]"
+  note.
+- when connectivity returns (`online` event), auto-retry the fetch,
+  swap back to live mode, refresh the snapshot.
+
+### "Available offline" affordance
+
+The cache only exists if the plan was opened online at least once on
+*this device / browser*. That's a sharp edge for a crew member who
+installs the app in the car park and drives straight into a canyon. So:
+
+- On the Crew Plan, show an **"Available offline ✓"** indicator once a
+  snapshot exists, with its `cachedAt` time.
+- Before that, show a **"Save for offline"** button that force-fetches
+  everything (plan + weather + all image blobs) and writes the snapshot,
+  with a progress / current-image state and the total size.
+- Re-save is available to refresh a stale snapshot (e.g. chief pushed a
+  cutoff change that morning).
+- Copy near it: *"Save this before you lose signal. Offline shows a saved
+  copy — reconnect for live edits and the latest weather."*
+
+## Decisions
+
+1. **Read-only offline, editing online-only.** Supabase has no built-in
+   offline persistence or sync. Real offline editing needs a write
+   outbox/queue, conflict resolution on reconnect, offline handling of
+   the auth token (JWT refresh fails with no network), and a rethink of
+   the heartbeat edit-lock. That's weeks of work and a new class of
+   data-integrity bugs. Out of scope here; called out as its own project
+   below.
+2. **IndexedDB, not localStorage.** Image blobs and a full plan snapshot
+   blow past the ~5 MB localStorage limit and the string-only API. One
+   small wrapper (`idb-keyval`-style, or hand-rolled — no dependency
+   needed) keyed by `plan.id`.
+3. **Snapshot only the active plan, not all of a user's races.** Keeps
+   the cache small and the "save for offline" action explicit. The `My
+   Races` list can work offline from a lightweight cached index (names,
+   dates) but each plan is saved individually.
+4. **`vite-plugin-pwa` is a new build dependency.** CLAUDE.md bans
+   component/icon/charting libraries; a build-time PWA plugin is a
+   different category (no runtime UI, standard Vite ecosystem). The
+   alternative is a hand-written SW + manual precache-manifest
+   generation, which is more fragile for no real gain. Adopted — see
+   Resolved #1.
+5. **Keep the Print button.** It's the zero-dependency fallback and the
+   only truly device-independent one. This feature complements it.
+6. **Weather offline is best-effort.** Show cached values with an honest
+   "last updated" stamp. Don't hide the panel; don't pretend it's live.
+
+## Non-goals for v1
+
+- **Offline editing / sync-on-reconnect.** Separate project. Would need:
+  a write queue persisted in IndexedDB, replay + conflict handling on
+  reconnect, last-write-wins vs. field-merge policy per `CrewNoteEntry`
+  field, offline auth-token tolerance, and replacing the heartbeat edit
+  lock with something that degrades offline. High risk to plan-data
+  integrity — the one thing crew must be able to trust.
+- **Background sync / periodic refresh** of cached plans while the app is
+  closed (Background Sync API is flaky cross-browser, iOS especially).
+- **Caching plans the user only crews for, en masse.** Same per-plan
+  "save for offline" path applies; no bulk prefetch.
+- **Offline map / GPX track rendering** beyond what's already in the
+  plan JSON.
+- **Push notifications** (no notification system in the app at all).
+- **Conflict UI** for "the plan changed since you cached it" beyond
+  showing `cachedAt` and refreshing on reconnect.
+
+## Implementation order (low-risk first)
+
+1. **PWA shell only.** Add `vite-plugin-pwa` + `manifest.webmanifest`;
+   register the SW in `main.tsx` with `base`-aware scope;
+   `registerType: 'prompt'` with a small "update available" toast;
+   navigation fallback to cached `index.html`. Verify on the deployed
+   `/TheRunnersGuru/` subpath (scope, 404 boot, DevTools "Offline"
+   reload of the shell). No data-layer change yet — app still needs
+   network for content, but now *loads* offline. ~1 day incl. subpath
+   debugging.
+2. **Offline detection + banner.** `navigator.onLine` + `online` /
+   `offline` listeners in app state. On Crew Plan, catch fetch failure →
+   render a static "You're offline — reconnect to view this plan"
+   placeholder (no cache yet). Wire the `online` event to auto-retry.
+3. **IndexedDB snapshot (data, no images).** Small IDB wrapper. On
+   online Crew Plan load, write plan JSON + `crewAccessList` + role +
+   resolved weather, keyed by `plan.id`. On fetch failure, hydrate from
+   it and render offline mode with everything editable disabled and the
+   "Offline — saved [time]" banner.
+4. **Image blobs.** Extend the snapshot to fetch, downscale, and store
+   each segment image as a Blob while online; on read,
+   `URL.createObjectURL`. Leg-order fill, 25 MB hard cap, "legs N+
+   skipped" notice.
+5. **"Save for offline" / "Available offline ✓".** The one prominent-
+   but-quiet pill near the plan title + `cachedAt`, with progress state,
+   total size, and a "text only (skip images)" checkbox. Re-save to
+   refresh.
+6. **Open-Meteo runtime cache** via Workbox `runtimeCaching`
+   (`StaleWhileRevalidate`) so the weather panel degrades gracefully
+   without the app doing its own weather persistence.
+7. **Polish.** "Update available" handling that never interrupts an
+   active race view; `My Races` offline index; QA matrix (iOS Safari
+   PWA, Android Chrome, desktop; airplane mode; stale-then-reconnect).
+
+## Recommended timing
+
+After the beta feedback from the 7-8 testers has landed and settled.
+It's a self-contained, well-scoped piece that doesn't block the beta, and
+the beta may reshape priorities. The Print button covers the gap in the
+meantime.
+
+## Resolved (was: open questions)
+
+1. **`vite-plugin-pwa` as a build dependency — yes, adopt it.** It's the
+   one item here that touches the CLAUDE.md "no libraries" rule, so it
+   gets called out explicitly: it's build-time only (Vite-team
+   ecosystem, Workbox under the hood), adds no meaningful weight to the
+   app bundle, and the SW runtime it ships is a few KB. The alternative
+   — a hand-written service worker plus our own precache-manifest
+   generation — silently breaks whenever the build output layout
+   changes, for no gain. If a `package.json` line for this needs a
+   second look at review time, this is the line.
+2. **"Save for offline" — one prominent-but-quiet control, not a menu
+   item.** A single small pill near the plan title that state-swaps:
+   *"Save for offline"* when nothing is cached → *"Available offline ✓ ·
+   saved 2h ago"* once it is (tap to refresh). Low visual weight so it
+   doesn't compete with the plan, but visible without hunting — the
+   car-park crew member has to notice it before losing signal. Not
+   buried behind a "⋯" menu.
+3. **Image cache — 25 MB hard cap per plan, downscaled, with a "skip
+   images" option.** Store a downscaled copy of each segment image
+   (~1600 px long edge, JPEG ~200–300 KB), not the original upload. Fill
+   the snapshot in leg order and stop at 25 MB, showing *"images for
+   legs N+ skipped to stay under the offline size limit."* The "Save for
+   offline" control has a **"text only (skip images)"** checkbox for a
+   fast, tiny save on a marginal connection. Rationale: a 20-leg race
+   with 2–3 photos per leg is 40–120 MB of originals — too much for
+   phone storage and too slow to pull before the bars vanish.
+4. **`registerType: 'prompt'`.** A crew member reopening the app mid-race
+   must never be swapped onto a fresh bundle (different behaviour,
+   possible re-auth) without asking. Show a dismissible *"New version
+   available — refresh"* toast they can ignore until after the race.
+   Accepting that some users run a build or two behind is the right
+   trade for this usage pattern and beta size.
+5. **Ship the manifest + installability now; stay silent about it.**
+   `manifest.webmanifest` is ~15 lines and the SW/standalone story needs
+   it — retrofitting icons and manifest later is a second QA round. So
+   the app *is* installable for any tester who chooses "Add to Home
+   Screen," but no install prompt or nag in the UI during the beta. A
+   deliberate "Install this app" affordance is a post-beta decision.
