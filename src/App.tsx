@@ -19,6 +19,7 @@ import { Partners } from './routes/Partners';
 import { Run } from './routes/Run';
 import { Chat } from './routes/Chat';
 import { Profile } from './routes/Profile';
+import { UpdatePrompt } from './components/UpdatePrompt';
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <UpdatePrompt />
     </AppProvider>
   );
 }
