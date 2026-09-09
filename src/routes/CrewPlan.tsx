@@ -22,6 +22,7 @@ import {
   type CrewPlanLockState,
 } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
+import { useOnlineStatus, describeError } from '../lib/useOnlineStatus';
 import {
   formatEtaClock,
   formatElapsedLabel,
@@ -194,6 +195,7 @@ function buildNotesWithDetectedCutoffs(waypoints: GpxWaypoint[], existingNotes: 
 export function CrewPlan() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
+  const online = useOnlineStatus();
   const { planId: routePlanId } = useParams<{ planId: string }>();
   const location = useLocation();
   // Three ways this screen is reached:
@@ -213,6 +215,9 @@ export function CrewPlan() {
   const [sharedPlan, setSharedPlan] = useState<TrainingPlan | null>(null);
   const [sharedPlanLoading, setSharedPlanLoading] = useState(isShared);
   const [sharedPlanError, setSharedPlanError] = useState<string | null>(null);
+  // Bumped to re-run the fetch below — used to auto-retry when the
+  // connection comes back after an offline failure.
+  const [sharedPlanRetry, setSharedPlanRetry] = useState(0);
 
   useEffect(() => {
     if (!isShared || !sharedPlanId) return;
@@ -229,7 +234,11 @@ export function CrewPlan() {
         setSharedPlan(result.plan);
       })
       .catch((err) => {
-        if (!cancelled) setSharedPlanError(err instanceof Error ? err.message : 'Could not load this plan.');
+        if (!cancelled) {
+          setSharedPlanError(
+            describeError(err, 'Could not load this plan. Try again in a moment.'),
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setSharedPlanLoading(false);
@@ -237,7 +246,19 @@ export function CrewPlan() {
     return () => {
       cancelled = true;
     };
-  }, [isShared, sharedPlanId]);
+  }, [isShared, sharedPlanId, sharedPlanRetry]);
+
+  // Offline support, step 2: a shared plan that failed to load has no
+  // cached copy to fall back on yet, so the moment we're back online,
+  // retry the fetch automatically instead of making the crew member
+  // reload the page.
+  useEffect(() => {
+    if (online && sharedPlanError && !sharedPlanLoading) {
+      setSharedPlanRetry((n) => n + 1);
+    }
+    // Only react to the online transition, not to every error/loading change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   const plan = isShared ? sharedPlan : ownPlan;
 
@@ -764,6 +785,16 @@ export function CrewPlan() {
           ← Back to shared plans
         </Button>
         <div className="rg-auth-error">{sharedPlanError}</div>
+        <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <Button variant="secondary" onClick={() => setSharedPlanRetry((n) => n + 1)}>
+            Try again
+          </Button>
+          {!online && (
+            <span className="rg-cp-muted" style={{ fontSize: 13 }}>
+              Will retry on its own once you're back online.
+            </span>
+          )}
+        </div>
       </>
     );
   }

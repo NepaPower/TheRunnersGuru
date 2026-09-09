@@ -20,6 +20,7 @@ import { Run } from './routes/Run';
 import { Chat } from './routes/Chat';
 import { Profile } from './routes/Profile';
 import { UpdatePrompt } from './components/UpdatePrompt';
+import { OfflineBanner } from './components/OfflineBanner';
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <OfflineBanner />
       <UpdatePrompt />
     </AppProvider>
   );

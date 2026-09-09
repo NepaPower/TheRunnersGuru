@@ -5,12 +5,14 @@ import { Button } from '../components/ui/Button';
 import { BrandHeader } from '../components/Logo';
 import { signIn, hydrateUserData } from '../lib/api';
 import { useApp } from '../state/AppContext';
+import { useOnlineStatus, describeError } from '../lib/useOnlineStatus';
 import './auth.css';
 
 export function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
   const { dispatch } = useApp();
+  const online = useOnlineStatus();
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -18,6 +20,10 @@ export function SignIn() {
 
   async function handleSubmit() {
     setError(null);
+    if (!online) {
+      setError("You're offline. Signing in needs an internet connection — reconnect and try again.");
+      return;
+    }
     setSubmitting(true);
     try {
       const { user } = await signIn(email, password);
@@ -35,7 +41,7 @@ export function SignIn() {
               : '/onboarding',
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not sign in.');
+      setError(describeError(e, 'Could not sign in. Check your email and password.'));
       setSubmitting(false);
     }
   }
