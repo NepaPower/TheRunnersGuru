@@ -25,6 +25,11 @@ import { parseGpxFile } from '../lib/gpx';
 import { useOnlineStatus, describeError } from '../lib/useOnlineStatus';
 import { cacheGet, cacheSet, relativeTime } from '../lib/offlineCache';
 import {
+  cacheSegmentImage,
+  getCachedSegmentImageURL,
+  IMAGE_CACHE_CAP_BYTES,
+} from '../lib/offlineImages';
+import {
   formatEtaClock,
   formatElapsedLabel,
   formatPaceMinPerMile,
@@ -131,6 +136,16 @@ interface StationWeather {
   forecastLoading: boolean;
   forecastEligible: boolean;
   monthDayLabel: string;
+}
+
+/** What the last "save for offline" of this plan captured — persisted in
+ * IndexedDB under `offline:meta:<planId>` so the pill can show
+ * "Available offline ✓ · saved <when>" after a reload. */
+interface OfflineSaveMeta {
+  savedAt: number;
+  imagesSaved: number;
+  imagesSkipped: number;
+  bytes: number;
 }
 
 /** Best-effort extraction of a cutoff mention from a waypoint's raw GPX
@@ -375,6 +390,15 @@ export function CrewPlan() {
   const [segPopupEditing, setSegPopupEditing] = useState(false);
   const [segForm, setSegForm] = useState<SegmentDraft | null>(null);
   const [segPopupImageUrl, setSegPopupImageUrl] = useState<string | null>(null);
+
+  // Offline support (3b/3c): the "Save for offline" control near the plan
+  // title. `offlineMeta` (loaded from cache) drives the "Available
+  // offline ✓" state across reloads; `offlineSaving` shows progress
+  // during an explicit save.
+  const [offlineMeta, setOfflineMeta] = useState<OfflineSaveMeta | null>(null);
+  const [offlineSaving, setOfflineSaving] = useState<{ done: number; total: number } | null>(null);
+  const [offlineSkipImages, setOfflineSkipImages] = useState(false);
+  const autoOfflineSaveDoneFor = useRef<string | null>(null);
   const [segSaving, setSegSaving] = useState(false);
   const [segUploading, setSegUploading] = useState(false);
   const [segPopupError, setSegPopupError] = useState<string | null>(null);
@@ -513,6 +537,88 @@ export function CrewPlan() {
   const canEditSegments = !isShared || myCrewRole === 'chief';
   const legCount = Math.max(0, realWaypointIndices.length - 1);
 
+  // Offline support (3b/3c): write everything needed to view this plan
+  // with no connection — the plan JSON, the resolved weather, and each
+  // segment elevation image (downscaled, capped at 25 MB, filled in leg
+  // order). Runs silently once per plan when it's opened online, and
+  // again on demand from the "Save for offline" pill.
+  async function runOfflineSave(opts: { silent: boolean; skipImages: boolean }) {
+    if (!plan?.id) return;
+    const planId = plan.id;
+    const imageRefs = (effectiveSegments ?? [])
+      .map((s) => s?.profileImage)
+      .filter((r): r is string => !!r && r.startsWith('storage:'));
+
+    if (!opts.silent) {
+      setOfflineSaving({ done: 0, total: opts.skipImages ? 0 : imageRefs.length });
+    }
+
+    await cacheSet<TrainingPlan>(`plan:${planId}`, plan);
+    const weatherSettled =
+      Object.keys(weather).length === 0 ||
+      Object.values(weather).every((w) => !w.climateLoading && !w.forecastLoading);
+    if (Object.keys(weather).length > 0 && weatherSettled) {
+      await cacheSet<Record<string, StationWeather>>(`weather:${planId}`, weather);
+    }
+
+    let imagesSaved = 0;
+    let imagesSkipped = 0;
+    let bytes = 0;
+    if (!opts.skipImages) {
+      for (const ref of imageRefs) {
+        if (bytes >= IMAGE_CACHE_CAP_BYTES) {
+          imagesSkipped += 1;
+        } else {
+          const size = await cacheSegmentImage(ref);
+          if (size > 0) {
+            imagesSaved += 1;
+            bytes += size;
+          } else {
+            imagesSkipped += 1;
+          }
+        }
+        if (!opts.silent) setOfflineSaving((p) => (p ? { ...p, done: p.done + 1 } : p));
+      }
+    } else {
+      imagesSkipped = imageRefs.length;
+    }
+
+    const meta: OfflineSaveMeta = { savedAt: Date.now(), imagesSaved, imagesSkipped, bytes };
+    await cacheSet<OfflineSaveMeta>(`offline:meta:${planId}`, meta);
+    setOfflineMeta(meta);
+    if (!opts.silent) setOfflineSaving(null);
+  }
+
+  // Load the last save's summary so the pill can show "Available
+  // offline ✓ · saved <when>" without re-doing the work.
+  useEffect(() => {
+    if (!plan?.id) {
+      setOfflineMeta(null);
+      return;
+    }
+    let cancelled = false;
+    cacheGet<OfflineSaveMeta>(`offline:meta:${plan.id}`).then((snap) => {
+      if (!cancelled) setOfflineMeta(snap?.value ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [plan?.id]);
+
+  // Silent auto-save once per plan, after it's loaded online and weather
+  // has settled — so "opened once online" is enough to have it offline.
+  useEffect(() => {
+    if (!plan?.id || !online || sharedPlanLoading) return;
+    if (autoOfflineSaveDoneFor.current === plan.id) return;
+    const weatherSettled =
+      Object.keys(weather).length === 0 ||
+      Object.values(weather).every((w) => !w.climateLoading && !w.forecastLoading);
+    if (!weatherSettled) return;
+    autoOfflineSaveDoneFor.current = plan.id;
+    runOfflineSave({ silent: true, skipImages: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.id, online, sharedPlanLoading, weather]);
+
   // Resolve the image the Segment info popup is showing to a displayable
   // src — the in-progress upload while editing, otherwise the displayed
   // segment's own image. A private-bucket upload needs a signed URL; a
@@ -528,11 +634,25 @@ export function CrewPlan() {
     setSegPopupImageUrl(null);
     if (!segPopupImageRef) return;
     let cancelled = false;
-    resolveCourseSegmentImage(segPopupImageRef).then((url) => {
+    let objectUrl: string | null = null;
+    (async () => {
+      // Offline support (3b): a cached blob renders with no connection;
+      // fall back to a fresh signed URL when there's no cached copy.
+      objectUrl = await getCachedSegmentImageURL(segPopupImageRef);
+      if (cancelled) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      if (objectUrl) {
+        setSegPopupImageUrl(objectUrl);
+        return;
+      }
+      const url = await resolveCourseSegmentImage(segPopupImageRef);
       if (!cancelled) setSegPopupImageUrl(url);
-    });
+    })();
     return () => {
       cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [segPopupImageRef]);
   // A station's mile marker, preferring the user's manual correction
@@ -1200,6 +1320,78 @@ export function CrewPlan() {
               </Button>
             )}
           </div>
+        </div>
+
+        <div
+          className="rg-print-hide"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            flexWrap: 'wrap',
+            fontSize: 13,
+            padding: '0 var(--space-6) var(--space-4)',
+          }}
+        >
+          {offlineSaving ? (
+            <span className="rg-cp-muted">
+              Saving for offline… {offlineSaving.done}/{offlineSaving.total || '—'}
+            </span>
+          ) : offlineMeta ? (
+            <>
+              <span
+                style={{
+                  color: 'var(--color-accent-800)',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+                Available offline
+              </span>
+              <span className="rg-cp-muted">
+                saved {relativeTime(offlineMeta.savedAt)}
+                {offlineMeta.imagesSkipped > 0
+                  ? ` · ${offlineMeta.imagesSkipped} image${offlineMeta.imagesSkipped === 1 ? '' : 's'} skipped`
+                  : ''}
+              </span>
+              <button
+                type="button"
+                onClick={() => runOfflineSave({ silent: false, skipImages: offlineSkipImages })}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: 'var(--color-accent)',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 3,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                Update saved copy
+              </button>
+            </>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => runOfflineSave({ silent: false, skipImages: offlineSkipImages })}>
+                Save for offline
+              </Button>
+              <label className="rg-cp-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={offlineSkipImages}
+                  onChange={(e) => setOfflineSkipImages(e.target.checked)}
+                />
+                skip images
+              </label>
+              <span className="rg-cp-muted">Save this before you lose signal — the plan stays readable offline.</span>
+            </>
+          )}
         </div>
 
         <div className={`rg-cp-gpx-row${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
