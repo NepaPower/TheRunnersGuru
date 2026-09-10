@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer, useRef } from 'react';
-import type { AppState } from '../types';
+import type { AppState, TrainingPlan } from '../types';
 import type { Action } from './actions';
 import { buildInitialState, reducer } from './reducer';
 import { fetchTemperatureForZipAndDate } from './../lib/weather';
@@ -8,7 +8,11 @@ import { hydrateUserData } from '../lib/api';
 import { updateLoggedRunTemperature } from '../lib/api';
 import { cacheGet, cacheSet } from '../lib/offlineCache';
 
-type HydratedUserData = Awaited<ReturnType<typeof hydrateUserData>>;
+// `hydrateUserData` can actually return a null trainingPlan at runtime
+// (a user with no races) even though its inferred type doesn't say so.
+type HydratedUserData = Omit<Awaited<ReturnType<typeof hydrateUserData>>, 'trainingPlan'> & {
+  trainingPlan: TrainingPlan | null;
+};
 
 interface AppContextValue {
   state: AppState;
@@ -26,12 +30,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // On first load, and whenever Supabase's auth state changes (sign-in,
   // sign-out, token refresh), pull the user's data and hydrate local state.
   useEffect(() => {
-    // Online path: fetch fresh, hydrate, and stash a copy in IndexedDB so
-    // a later offline open has something to show.
+    // Online path: fetch fresh and hydrate. The snapshot-sync effect below
+    // then mirrors this (and every later edit) into IndexedDB.
     async function hydrateFromSession(userId: string) {
       const hydrated = await hydrateUserData(userId);
       dispatch({ type: 'AUTH_HYDRATE', userId, ...hydrated });
-      cacheSet<HydratedUserData>(`user:${userId}`, hydrated);
     }
 
     // Offline (or fetch-failed) path: if this browser has a valid session
@@ -85,6 +88,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, [state.run.active]);
+
+  // Offline support (step 3): keep the IndexedDB snapshot in step with
+  // live state, so an offline reload after some edits shows the edited
+  // plan — not whatever was cached at the last full page load. Skipped
+  // while `dataStale` (we booted FROM the cache and can't reach the
+  // server, so state has nothing newer to write).
+  useEffect(() => {
+    if (!state.userId || state.dataStale) return;
+    const snapshot: HydratedUserData = {
+      name: state.auth.name,
+      address: state.auth.address,
+      garminConnected: state.garminConnected,
+      trainingPlan: state.trainingPlan,
+      ownPlans: state.ownPlans,
+      loggedRuns: state.loggedRuns,
+      sharedPlans: state.sharedPlans,
+      email: state.auth.email,
+    };
+    cacheSet<HydratedUserData>(`user:${state.userId}`, snapshot);
+  }, [
+    state.userId,
+    state.dataStale,
+    state.auth.name,
+    state.auth.address,
+    state.auth.email,
+    state.garminConnected,
+    state.trainingPlan,
+    state.ownPlans,
+    state.loggedRuns,
+    state.sharedPlans,
+  ]);
 
   // Whenever a logged run is waiting on a weather lookup ("Looking up…"),
   // resolve it against Open-Meteo and write the result back to Supabase.

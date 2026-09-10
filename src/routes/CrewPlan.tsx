@@ -290,6 +290,16 @@ export function CrewPlan() {
 
   const plan = isShared ? sharedPlan : ownPlan;
 
+  // Offline support (step 3): keep the cached copy of a SHARED plan in
+  // step with edits made this session (persistPlanUpdates patches
+  // `sharedPlan` locally but doesn't re-fetch). The owner's own plan is
+  // handled by the snapshot-sync effect in AppContext.
+  useEffect(() => {
+    if (isShared && sharedPlan?.id && sharedPlanStaleAt == null) {
+      cacheSet<TrainingPlan>(`plan:${sharedPlan.id}`, sharedPlan);
+    }
+  }, [isShared, sharedPlan, sharedPlanStaleAt]);
+
   // Check-in/check-out — a soft lock so two people editing this plan at
   // once (owner + crew, or two crew members) don't silently overwrite
   // each other. See the crew-plan-lock functions in lib/api.ts for the
