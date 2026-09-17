@@ -66,6 +66,7 @@ const emptyNote: CrewNoteEntry = {
   avgPaceSec: '',
   dropBag: false,
   pacerPickup: false,
+  pacing: false,
   sleepStop: false,
 };
 
@@ -1018,7 +1019,7 @@ export function CrewPlan() {
     setSaved(false);
   }
 
-  function toggleNoteFlag(key: string, field: 'dropBag' | 'pacerPickup' | 'sleepStop') {
+  function toggleNoteFlag(key: string, field: 'dropBag' | 'pacerPickup' | 'pacing' | 'sleepStop') {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: !(prev[key]?.[field] ?? false) } }));
     setSaved(false);
   }
@@ -1958,7 +1959,11 @@ export function CrewPlan() {
                     </label>
                     <label className="rg-cp-flag">
                       <input type="checkbox" checked={note.pacerPickup ?? false} onChange={() => toggleNoteFlag(key, 'pacerPickup')} />
-                      Pacer pickup here
+                      Pacer Pick-Up/Drop-Off
+                    </label>
+                    <label className="rg-cp-flag">
+                      <input type="checkbox" checked={note.pacing ?? false} onChange={() => toggleNoteFlag(key, 'pacing')} />
+                      Pacing
                     </label>
                     <label className="rg-cp-flag">
                       <input type="checkbox" checked={note.sleepStop ?? false} onChange={() => toggleNoteFlag(key, 'sleepStop')} />

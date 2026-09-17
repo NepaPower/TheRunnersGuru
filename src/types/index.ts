@@ -189,6 +189,10 @@ export interface CrewNoteEntry {
   // not buried in a notes field.
   dropBag: boolean;
   pacerPickup: boolean;
+  // Whether a pacer runs WITH the runner starting from this station —
+  // distinct from pacerPickup/drop-off above, which just flags the
+  // hand-off point. Absent on records saved before this field existed.
+  pacing: boolean;
   // A planned sleep stop — orthogonal to crewAccess. Absent on records
   // saved before this field existed (see migrateNote).
   sleepStop: boolean;
