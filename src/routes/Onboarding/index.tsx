@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
+import { Dialog } from '../../components/ui/Dialog';
 import { BrandHeader } from '../../components/Logo';
 import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
@@ -31,12 +32,27 @@ export function Onboarding() {
   const paceStep = isUltra ? 4 : 3;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Finishing onboarding again while a primary race already exists
+  // OVERWRITES that race's row in place — same id, every column replaced
+  // (weekly schedule, crew notes, GPX, course segments, all of it). This
+  // wizard is only reachable for the primary race, so that's the one at
+  // risk; confirm before it's too late to back out.
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
-  async function handleNext() {
+  function handleNext() {
     if (step < lastStep) {
       dispatch({ type: 'ONBOARDING_NEXT' });
       return;
     }
+    if (state.trainingPlan) {
+      setConfirmOverwrite(true);
+      return;
+    }
+    doSave();
+  }
+
+  async function doSave() {
+    setConfirmOverwrite(false);
     if (!state.userId) {
       setError('You need to be signed in to save a training plan.');
       return;
@@ -130,6 +146,28 @@ export function Onboarding() {
           </Button>
         </div>
       </div>
+
+      {confirmOverwrite && state.trainingPlan && (
+        <Dialog
+          title="Replace your primary race?"
+          onDismiss={() => setConfirmOverwrite(false)}
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => setConfirmOverwrite(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={doSave}>
+                Replace it
+              </Button>
+            </>
+          }
+        >
+          You already have a primary race, <strong>{state.trainingPlan.raceName}</strong>. Finishing this wizard will
+          overwrite it with the race you just set up — its training plan, crew notes, GPX, and course details will be
+          replaced and can't be recovered. If you meant to add a second race instead, go to My Races → Add a race
+          instead of this wizard.
+        </Dialog>
+      )}
     </div>
   );
 }
