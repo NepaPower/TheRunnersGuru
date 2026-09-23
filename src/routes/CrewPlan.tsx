@@ -209,6 +209,45 @@ function buildNotesWithDetectedCutoffs(waypoints: GpxWaypoint[], existingNotes: 
   return withDefaults;
 }
 
+// Weather caching, keyed by (lat, lon, month-day) rather than by plan or
+// station — a historical average or forecast for a given place and date
+// is the same regardless of which race/leg it's attached to, so this
+// reuses across stations, races, and page reloads via the same
+// IndexedDB store the offline cache uses.
+const CLIMATE_CACHE_PREFIX = 'climate-avg';
+const FORECAST_CACHE_PREFIX = 'forecast-day';
+// Open-Meteo's own forecast model only refreshes every few hours, so
+// re-fetching more often than this buys nothing — it just burns quota.
+const FORECAST_FRESH_MS = 60 * 60 * 1000;
+
+function weatherCacheKey(prefix: string, lat: number, lon: number, mo: number, d: number): string {
+  return `${prefix}:${lat.toFixed(3)}:${lon.toFixed(3)}:${mo}-${d}`;
+}
+
+/** A historical average for a given place + calendar date never
+ * meaningfully changes, so once fetched it's cached indefinitely — no
+ * freshness check, no re-fetch, ever, for that (lat, lon, month, day). */
+async function getClimateAverage(lat: number, lon: number, mo: number, d: number, y: number): Promise<ClimateAverage | null> {
+  const key = weatherCacheKey(CLIMATE_CACHE_PREFIX, lat, lon, mo, d);
+  const cached = await cacheGet<ClimateAverage>(key);
+  if (cached) return cached.value;
+  const climate = await fetchClimateAverage(lat, lon, mo, d, y).catch(() => null);
+  if (climate) cacheSet(key, climate);
+  return climate;
+}
+
+/** A short-range forecast does change over time, but not faster than
+ * Open-Meteo's own model updates — reuse a fetched result for up to
+ * FORECAST_FRESH_MS before asking again. */
+async function getDayForecast(lat: number, lon: number, y: number, mo: number, d: number): Promise<DaySlotForecast[] | null> {
+  const key = weatherCacheKey(FORECAST_CACHE_PREFIX, lat, lon, mo, d);
+  const cached = await cacheGet<DaySlotForecast[]>(key);
+  if (cached && Date.now() - cached.cachedAt < FORECAST_FRESH_MS) return cached.value;
+  const daySlots = await fetchDayTemperatureSlots(lat, lon, y, mo, d).catch(() => null);
+  if (daySlots) cacheSet(key, daySlots);
+  return daySlots;
+}
+
 export function CrewPlan() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -862,28 +901,20 @@ export function CrewPlan() {
         },
       }));
 
-      fetchClimateAverage(wp.lat, wp.lon, mo, d, y)
-        .then((climate) => {
-          if (cancelled) return;
-          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climate, climateLoading: false } }));
-        })
-        .catch(() => {
-          // Offline / Open-Meteo unreachable: stop the spinner and keep
-          // whatever value the cache seeded (see the restore effect below).
-          if (cancelled) return;
-          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climateLoading: false } }));
-        });
+      // Both helpers check the cross-session cache first and only hit
+      // Open-Meteo on a real miss; neither rejects (a fetch failure just
+      // resolves null), so a plain .then covers both the cached-hit and
+      // network-failure paths.
+      getClimateAverage(wp.lat, wp.lon, mo, d, y).then((climate) => {
+        if (cancelled) return;
+        setWeather((prev) => ({ ...prev, [key]: { ...prev[key], climate, climateLoading: false } }));
+      });
 
       if (forecastEligible) {
-        fetchDayTemperatureSlots(wp.lat, wp.lon, y, mo, d)
-          .then((daySlots) => {
-            if (cancelled) return;
-            setWeather((prev) => ({ ...prev, [key]: { ...prev[key], daySlots, forecastLoading: false } }));
-          })
-          .catch(() => {
-            if (cancelled) return;
-            setWeather((prev) => ({ ...prev, [key]: { ...prev[key], forecastLoading: false } }));
-          });
+        getDayForecast(wp.lat, wp.lon, y, mo, d).then((daySlots) => {
+          if (cancelled) return;
+          setWeather((prev) => ({ ...prev, [key]: { ...prev[key], daySlots, forecastLoading: false } }));
+        });
       }
     });
 
