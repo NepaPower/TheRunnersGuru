@@ -431,6 +431,27 @@ export function recommendedUltraWeeks(miles: number): number {
   return Math.round(Math.min(24, Math.max(14, 12 + miles / 12)));
 }
 
+/** Same idea for the standard road distances — deliberately generous
+ * (padded for a first-timer needing to build a base, not just someone
+ * sharpening an existing one) rather than the leanest plan that could
+ * technically work. */
+const STANDARD_RECOMMENDED_WEEKS: Record<'5k' | '10k' | 'half' | 'full', number> = {
+  '5k': 8,
+  '10k': 12,
+  half: 12,
+  full: 16,
+};
+
+/** The "aim for at least this many weeks" figure for any distance goal —
+ * the distance-scaled ultra figure, or the standard-distance table above.
+ * The single source both getTrainingTimeWarning and isTrainingTimeShort
+ * key off, plus the always-visible recommendation on the onboarding
+ * date/goal step. */
+export function recommendedWeeksFor(distanceGoal: DistanceGoal, ultraMiles?: number | null): number {
+  if (distanceGoal === 'ultra') return recommendedUltraWeeks(ultraMiles ?? PLAN_TARGETS.ultra.raceMiles);
+  return STANDARD_RECOMMENDED_WEEKS[distanceGoal] ?? 12;
+}
+
 /** Whether a plan's timeline is too compressed to build new fitness
  * safely — the standard 12-week bar for road races, or the
  * distance-scaled bar for ultras — and the message to show. The plan
@@ -447,8 +468,10 @@ export function getTrainingTimeWarning(
     const label = ultraMiles ? `${ultraMiles}-mile` : '50K+';
     return `Your race is ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} out — a ${label} ultra ideally has ${want}+ weeks of runway, and there isn't time to safely build new endurance for this distance now. So the plan below leans on what you already have: keep your long runs consistent but don't force big weekly jumps, guard recovery and sleep, and put the rest of your prep into race-day execution — fuelling and hydration you've actually rehearsed, conservative early pacing, deliberate hiking on the climbs, and a foot / blister / chafe plan. If your current longest run is well short of race demands, seriously consider a longer-runway race or a more conservative goal.`;
   }
-  if (totalWeeks >= 12) return null;
-  return `Your race is only ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} away — that's less than the standard 12-week (about 3 month) training period. You'll still get a full plan below, but expect a faster ramp-up in volume and less margin for missed days or setbacks than a longer buildup would allow.`;
+  const want = recommendedWeeksFor(distanceGoal);
+  if (totalWeeks >= want) return null;
+  const label = DISTANCE_LABELS[distanceGoal] ?? 'this race';
+  return `Your race is only ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} away — a ${label} ideally has ${want}+ weeks of runway to build up safely, especially if it's your first time at the distance. You'll still get a full plan below, but expect a faster ramp-up in volume and less margin for missed days or setbacks than a longer buildup would allow.`;
 }
 
 /** Same idea as getTrainingTimeWarning, but usable during onboarding
@@ -467,7 +490,7 @@ export function isTrainingTimeShort(
   const race = new Date(raceDateStr + 'T00:00:00');
   const totalDays = Math.round((race.getTime() - start.getTime()) / 86400000);
   if (totalDays <= 0) return false;
-  const bar = distanceGoal === 'ultra' ? recommendedUltraWeeks(ultraMiles ?? PLAN_TARGETS.ultra.raceMiles) : 12;
+  const bar = distanceGoal ? recommendedWeeksFor(distanceGoal, ultraMiles) : 12;
   return totalDays / 7 < bar;
 }
 

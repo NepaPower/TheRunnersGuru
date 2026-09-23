@@ -1,8 +1,9 @@
 import { Field, Input, Select } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import { formatRaceDateReadout, goalTimeBreakdownLabel } from '../../lib/format';
-import { monthsLeftLabel, isTrainingTimeShort } from '../../lib/planGenerator';
+import { monthsLeftLabel, isTrainingTimeShort, recommendedWeeksFor } from '../../lib/planGenerator';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
+import { DISTANCE_LABELS } from '../../data/constants';
 
 const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
@@ -15,6 +16,17 @@ export function StepDateGoal() {
   const ultraMiles = isUltra ? ultraDistanceMiles(onboarding) : null;
   const isShort = isTrainingTimeShort(onboarding.raceDate, onboarding.distanceGoal || undefined, ultraMiles);
   const breakdown = isUltra ? goalTimeBreakdownLabel(onboarding.goalHours, onboarding.goalMinutes) : '';
+  // Distance-scaled "aim for at least this many weeks" — shown regardless
+  // of whether the chosen date already meets it, so picking a race date
+  // is informed by the target up front, not just flagged after the fact.
+  const recommendedWeeks = onboarding.distanceGoal ? recommendedWeeksFor(onboarding.distanceGoal, ultraMiles) : null;
+  const distanceLabel = isUltra
+    ? ultraMiles
+      ? `a ${ultraMiles}-mile ultra`
+      : 'a 50K+ ultra'
+    : onboarding.distanceGoal
+      ? `a ${DISTANCE_LABELS[onboarding.distanceGoal]}`
+      : '';
 
   return (
     <>
@@ -92,11 +104,16 @@ export function StepDateGoal() {
           <p style={{ margin: 0 }}>
             You have <strong>{months}</strong> to train if you start next week.
           </p>
+          {recommendedWeeks != null && distanceLabel && (
+            <p className="text-muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
+              Recommended for {distanceLabel}: <strong>{recommendedWeeks}+ weeks</strong>.
+            </p>
+          )}
           {isShort && (
             <p style={{ margin: '6px 0 0', fontSize: 13 }}>
               {isUltra
-                ? `That's short for ${ultraMiles ? `a ${ultraMiles}-mile` : 'a 50K+'} ultra — not enough runway to safely build new endurance. The plan will focus on keeping your long runs consistent, protecting recovery, and race-day execution (rehearsed fuelling, conservative pacing, hiking the climbs). If your longest run is well short of the distance, consider a race further out or an easier goal.`
-                : "That's a compressed timeline — under the standard 12-week (about 3 month) training period. We'll still build you a full plan, just expect a faster ramp-up in volume than a longer buildup would allow."}
+                ? `That's short for ${distanceLabel} — not enough runway to safely build new endurance. The plan will focus on keeping your long runs consistent, protecting recovery, and race-day execution (rehearsed fuelling, conservative pacing, hiking the climbs). If your longest run is well short of the distance, consider a race further out or an easier goal.`
+                : `That's a compressed timeline for ${distanceLabel} — under the recommended ${recommendedWeeks}+ weeks. We'll still build you a full plan, just expect a faster ramp-up in volume than a longer buildup would allow, especially if this is your first time at the distance.`}
             </p>
           )}
         </div>

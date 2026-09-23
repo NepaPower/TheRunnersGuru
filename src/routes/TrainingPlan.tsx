@@ -5,6 +5,7 @@ import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { getTrainingTimeWarning } from '../lib/planGenerator';
 import { regeneratePlanWeeks } from '../lib/api';
+import { DISTANCE_LABELS } from '../data/constants';
 import './trainingplan.css';
 
 const MONTH_BG = ['var(--color-bg)', 'var(--color-neutral-100)'];
@@ -96,6 +97,11 @@ export function TrainingPlan() {
 
   const isUltra = plan.distanceGoal === 'ultra';
   const timeWarning = getTrainingTimeWarning(plan.distanceGoal, plan.totalWeeks, plan.ultraMiles);
+  const distanceLabel = isUltra
+    ? plan.ultraMiles
+      ? `${plan.ultraMiles}-Mile Ultra`
+      : DISTANCE_LABELS.ultra
+    : DISTANCE_LABELS[plan.distanceGoal];
   const tableHeaders = isUltra
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
     : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
@@ -129,7 +135,9 @@ export function TrainingPlan() {
               <path d="M9 6v14M15 4v14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <div className="rg-tp-race-name">Your training plan for {plan.raceName}</div>
+          <div className="rg-tp-race-name">
+            Your {distanceLabel} training plan for {plan.raceName}
+          </div>
           <div className="rg-tp-weeks">{plan.totalWeeks} week training plan</div>
           <div className="rg-tp-quote">"{plan.quote}"</div>
         </div>
