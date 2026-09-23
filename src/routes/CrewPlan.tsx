@@ -1457,7 +1457,7 @@ export function CrewPlan() {
               </>
             )}
           </div>
-          <div className="rg-print-hide" style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <div className="rg-print-hide" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
             <Button variant="secondary" onClick={() => window.print()}>
               Print
             </Button>
