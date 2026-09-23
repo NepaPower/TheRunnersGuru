@@ -35,7 +35,10 @@ export function SharedPlans() {
               }}
             >
               <div style={{ minWidth: 0, wordBreak: 'break-word' }}>
-                <div style={{ fontWeight: 600 }}>{s.plan.raceName}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {s.plan.raceName}
+                  {s.ownerName && <span className="text-muted" style={{ fontWeight: 400 }}> — crewing for {s.ownerName}</span>}
+                </div>
                 <div className="text-muted" style={{ fontSize: 13 }}>
                   {s.plan.raceDate}
                 </div>

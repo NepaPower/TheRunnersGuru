@@ -260,6 +260,28 @@ as $$
   );
 $$;
 
+-- `profiles` is owner-select-only (see below) — a crew member can't read
+-- anything about the plan owner's profile via a normal query, including
+-- their name. This narrow RPC is the one deliberate exception: it
+-- returns ONLY the name (never address/phone/anything else) and only to
+-- someone can_read_plan already allows (the owner or an accepted crew
+-- member) — called from the Shared Plans list so a crew member helping
+-- several runners can tell the races apart.
+create or replace function public.get_plan_owner_name(p_plan_id uuid)
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select pr.name
+  from public.training_plans tp
+  join public.profiles pr on pr.id = tp.user_id
+  where tp.id = p_plan_id
+    and public.can_read_plan(p_plan_id);
+$$;
+grant execute on function public.get_plan_owner_name(uuid) to authenticated;
+
 create or replace function public.enforce_course_setup_chief_only()
 returns trigger
 language plpgsql
@@ -515,6 +537,19 @@ create policy "course-segment images: delete by owner or chief"
 --     return new;
 --   end;
 --   $$;
+--
+--   -- Lets a crew member see the plan owner's name on the Shared Plans
+--   -- list (profiles stays owner-select-only otherwise — this returns
+--   -- ONLY the name, to only the owner or an accepted crew member).
+--   create or replace function public.get_plan_owner_name(p_plan_id uuid)
+--   returns text language sql security definer set search_path = public stable as $$
+--     select pr.name
+--     from public.training_plans tp
+--     join public.profiles pr on pr.id = tp.user_id
+--     where tp.id = p_plan_id
+--       and public.can_read_plan(p_plan_id);
+--   $$;
+--   grant execute on function public.get_plan_owner_name(uuid) to authenticated;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

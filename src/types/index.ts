@@ -337,6 +337,10 @@ export type ProfileTab = 'stats' | 'leaderboard' | 'challenges' | 'settings';
 export interface SharedPlanEntry {
   accessId: string;
   ownerUserId: string;
+  // The runner's name, so a crew member helping several people can tell
+  // the races apart on the Shared Plans list — null if it couldn't be
+  // resolved (RPC failure, or the owner never set a name in Profile).
+  ownerName: string | null;
   plan: TrainingPlan;
 }
 

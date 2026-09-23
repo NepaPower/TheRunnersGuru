@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { Address, CourseSegment, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, TrainingPlan } from '../types';
+import type { Address, CourseSegment, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, SharedPlanEntry, TrainingPlan } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
 import { buildPhaseSummary, buildTrainingPlan } from './planGenerator';
 
@@ -637,7 +637,7 @@ export async function claimPendingInvites(userId: string, email: string) {
 
 /** All plans (accepted invites only) shared with this user as crew —
  * someone could conceivably be crewing for more than one runner. */
-export async function fetchSharedPlans(userId: string): Promise<{ accessId: string; ownerUserId: string; plan: TrainingPlan }[]> {
+export async function fetchSharedPlans(userId: string): Promise<SharedPlanEntry[]> {
   const { data: accessRows, error: accessErr } = await supabase
     .from('crew_plan_access')
     .select('id, plan_id, owner_user_id')
@@ -650,10 +650,21 @@ export async function fetchSharedPlans(userId: string): Promise<{ accessId: stri
     accessRows.map(async (row) => {
       const fetched = await fetchTrainingPlanById(row.plan_id);
       if (!fetched) return null;
-      return { accessId: row.id, ownerUserId: row.owner_user_id, plan: fetched.plan };
+      // `profiles` is owner-select-only, so the runner's name comes
+      // through this one narrow RPC instead of a normal query — see
+      // get_plan_owner_name in schema.sql. Best-effort: a failure here
+      // shouldn't hide the plan itself, just its owner's name.
+      let ownerName: string | null = null;
+      try {
+        const { data } = await supabase.rpc('get_plan_owner_name', { p_plan_id: row.plan_id });
+        ownerName = data ?? null;
+      } catch {
+        // leave ownerName null
+      }
+      return { accessId: row.id, ownerUserId: row.owner_user_id, ownerName, plan: fetched.plan };
     }),
   );
-  return results.filter((r): r is { accessId: string; ownerUserId: string; plan: TrainingPlan } => r !== null);
+  return results.filter((r): r is SharedPlanEntry => r !== null);
 }
 
 // ─── Logged runs ─────────────────────────────────────────────────────────
