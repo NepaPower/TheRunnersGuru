@@ -818,7 +818,7 @@ export function CrewPlan() {
   // the day the runner actually arrives, and only for arrivals inside
   // Open-Meteo's ~16-day horizon — see lib/weather.ts.
   useEffect(() => {
-    if (!plan || !raceDate) return;
+    if (!raceDate) return;
     const [ry, rmo, rd] = raceDate.split('-').map(Number);
     if (!ry || !rmo || !rd) return;
     let cancelled = false;
@@ -890,13 +890,16 @@ export function CrewPlan() {
     return () => {
       cancelled = true;
     };
-    // Re-runs when the inputs that change the predicted arrival date/time
-    // change — waypoints/totalMiles are derived from plan.gpxRoute, which
-    // is included via `plan` itself. Also re-runs once courseTimeZone
-    // resolves (starts null), so weather already fetched using the
-    // browser-timezone fallback gets corrected rather than left stale.
+    // Re-runs only when something that actually changes the predicted
+    // arrival date/time changes — `waypoints` (not the whole `plan`
+    // object) so unrelated saves like a note checkbox or a Nutrition edit
+    // don't retrigger 18 stations' worth of weather fetches; `waypoints`
+    // itself only gets a new reference on a real GPX replace. Also re-runs
+    // once courseTimeZone resolves (starts null), so weather already
+    // fetched using the browser-timezone fallback gets corrected rather
+    // than left stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, raceDate, raceStartTime, goalFinishMinutes, restSignature, courseTimeZone]);
+  }, [waypoints, raceDate, raceStartTime, goalFinishMinutes, restSignature, courseTimeZone]);
 
   // Offline support (step 3): seed the weather panels from the last saved
   // copy on first load, so an offline open shows real numbers while (or
@@ -1857,11 +1860,11 @@ export function CrewPlan() {
                     </div>
                   </div>
 
-                  {(wp.lat != null && wp.lon != null && (weather[key]?.climate || weather[key]?.climateLoading)) && (
+                  {wp.lat != null && wp.lon != null && (
                     <div className="rg-cp-weather-row">
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-                          Historical average — {weather[key]?.monthDayLabel}
+                          Historical average{weather[key]?.monthDayLabel ? ` — ${weather[key]?.monthDayLabel}` : ''}
                         </div>
                         {weather[key]?.climate ? (
                           <div className="rg-cp-station-meta">
@@ -1878,8 +1881,12 @@ export function CrewPlan() {
                               (avg of last {weather[key]!.climate!.yearsUsed} year{weather[key]!.climate!.yearsUsed === 1 ? '' : 's'})
                             </span>
                           </div>
-                        ) : (
+                        ) : weather[key]?.climateLoading ? (
                           <div className="rg-cp-station-meta">Loading…</div>
+                        ) : (
+                          <div className="rg-cp-station-meta">
+                            Not available right now — the weather service may be temporarily unreachable or rate-limited.
+                          </div>
                         )}
                       </div>
                       <div>
