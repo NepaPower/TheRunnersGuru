@@ -32,11 +32,21 @@ export default function App() {
 
         <Route element={<RequireAuth />}>
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/shared-plans" element={<SharedPlans />} />
-          <Route path="/crew-plan/shared/:planId" element={<CrewPlan />} />
 
-          <Route element={<RequirePlan />}>
-            <Route element={<AppLayout />}>
+          {/* AppLayout (nav + page shell) wraps both the shared-plan
+              screens below AND the RequirePlan-gated ones nested inside
+              it — shared/crew-only routes stay outside RequirePlan so a
+              user with no race of their own (invited to crew only) isn't
+              forced into onboarding just to see nav or a shared plan. */}
+          <Route element={<AppLayout />}>
+            <Route path="/shared-plans" element={<SharedPlans />} />
+            <Route path="/crew-plan/shared/:planId" element={<CrewPlan />} />
+            {/* Profile is account-level (name, address, Garmin, sign out) —
+                nothing on it needs a race, so it stays reachable for a
+                crew-only user the same as Shared Plans does. */}
+            <Route path="/profile" element={<Profile />} />
+
+            <Route element={<RequirePlan />}>
               <Route path="/home" element={<Dashboard />} />
               <Route path="/races" element={<Races />} />
               <Route path="/races/add" element={<AddRace />} />
@@ -48,7 +58,6 @@ export default function App() {
               <Route path="/partners" element={<Partners />} />
               <Route path="/run" element={<Run />} />
               <Route path="/chat" element={<Chat />} />
-              <Route path="/profile" element={<Profile />} />
             </Route>
           </Route>
         </Route>
