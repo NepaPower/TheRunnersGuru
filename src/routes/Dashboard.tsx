@@ -110,9 +110,35 @@ export function Dashboard() {
     ),
   };
 
+  // Someone can have their own plan AND crew for someone else's — surface
+  // that separately, since it's not otherwise reachable once they land on
+  // their own Dashboard (the auto-redirect to /shared-plans only fires
+  // for a plan-less crew-only user). Spliced in right after Crew Plan
+  // below so the race-logistics cards stay grouped together.
+  const sharedPlansCard =
+    state.sharedPlans.length > 0
+      ? {
+          key: 'sharedPlans',
+          title: 'Races I’m Crewing',
+          subtitle: `${state.sharedPlans.length} shared plan${state.sharedPlans.length === 1 ? '' : 's'}`,
+          to: '/shared-plans',
+          enabled: true,
+          icon: (
+            <path
+              d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M15 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 20v-1a3.5 3.5 0 0 0-2.5-3.36M15.5 3.13a3.5 3.5 0 0 1 0 6.75"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ),
+        }
+      : null;
+
   const navCards = isUltra
     ? [
         NAV_CARDS[0], // Your Training Plan
+        NAV_CARDS[1], // Log a Run
         myRacesCard,
         {
           key: 'crewPlan',
@@ -122,36 +148,10 @@ export function Dashboard() {
           enabled: true,
           icon: <path d="M6 21V4M6 4h11l-3 4 3 4H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
         },
-        ...NAV_CARDS.slice(1),
+        ...(sharedPlansCard ? [sharedPlansCard] : []),
+        ...NAV_CARDS.slice(2),
       ]
-    : [NAV_CARDS[0], myRacesCard, ...NAV_CARDS.slice(1)];
-
-  // Someone can have their own plan AND crew for someone else's — surface
-  // that separately, since it's not otherwise reachable once they land on
-  // their own Dashboard (the auto-redirect to /shared-plans only fires for
-  // a plan-less crew-only user).
-  const navCardsWithShared =
-    state.sharedPlans.length > 0
-      ? [
-          ...navCards,
-          {
-            key: 'sharedPlans',
-            title: 'Crews I\u2019m Helping',
-            subtitle: `${state.sharedPlans.length} shared plan${state.sharedPlans.length === 1 ? '' : 's'}`,
-            to: '/shared-plans',
-            enabled: true,
-            icon: (
-              <path
-                d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M15 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 20v-1a3.5 3.5 0 0 0-2.5-3.36M15.5 3.13a3.5 3.5 0 0 1 0 6.75"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            ),
-          },
-        ]
-      : navCards;
+    : [NAV_CARDS[0], NAV_CARDS[1], myRacesCard, ...(sharedPlansCard ? [sharedPlansCard] : []), ...NAV_CARDS.slice(2)];
 
   return (
     <>
@@ -202,7 +202,7 @@ export function Dashboard() {
 
       {hasPlan && (
         <div className="rg-dash-nav-grid">
-          {navCardsWithShared.map((c) => (
+          {navCards.map((c) => (
             <button
               key={c.key}
               type="button"
