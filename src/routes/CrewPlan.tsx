@@ -2359,7 +2359,7 @@ export function CrewPlan() {
 
       {mandatoryGearOpen && (
         <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && closeMandatoryGear()}>
-          <div className="rg-cp-crew-modal-card" role="dialog" aria-modal="true" aria-label="Mandatory Gear">
+          <div className="rg-cp-crew-modal-card rg-cp-segment-modal-card" role="dialog" aria-modal="true" aria-label="Mandatory Gear">
             <div className="rg-cp-crew-modal-header">
               <h3 style={{ margin: 0 }}>Mandatory Gear</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
