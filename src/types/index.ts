@@ -250,6 +250,13 @@ export interface TrainingPlan {
   // falls back to the built-in BigFoot set for the BigFoot plan only.
   // Persisted as a jsonb column, same as crewNotes / gpxRoute.
   courseSegments: CourseSegment[] | null;
+  // Race-wide mandatory-gear reference (not per-leg, unlike
+  // courseSegments): an optional image — same `storage:`-prefixed private
+  // object convention as CourseSegment.profileImage, reusing the
+  // course-segments bucket — plus an optional free-text note. Owner /
+  // Chief Crew only, like the rest of course setup.
+  mandatoryGearImage: string | null;
+  mandatoryGearNotes: string;
   totalWeeks: number;
   rows: TrainingPlanRow[];
   phases: PhaseSummaryItem[];

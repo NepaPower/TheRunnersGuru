@@ -135,6 +135,8 @@ function planColumns(userId: string, plan: TrainingPlan) {
     goal_finish_minutes: plan.goalFinishMinutes ?? null,
     crew_notes: plan.crewNotes ?? {},
     course_segments: plan.courseSegments ?? null,
+    mandatory_gear_image: plan.mandatoryGearImage ?? null,
+    mandatory_gear_notes: plan.mandatoryGearNotes || null,
     total_weeks: plan.totalWeeks,
     quote: plan.quote,
   };
@@ -299,6 +301,8 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     goalFinishMinutes: planRow.goal_finish_minutes ?? null,
     crewNotes: planRow.crew_notes ?? {},
     courseSegments: planRow.course_segments ?? null,
+    mandatoryGearImage: planRow.mandatory_gear_image ?? null,
+    mandatoryGearNotes: planRow.mandatory_gear_notes ?? '',
     totalWeeks: planRow.total_weeks,
     quote: planRow.quote ?? '',
     phases: buildPhaseSummary(planRow.total_weeks),
@@ -393,6 +397,8 @@ export async function updateCrewPlanById(
     crewNotes?: Record<string, CrewNoteEntry>;
     courseSegments?: CourseSegment[] | null;
     gpxRoute?: GpxRoute | null;
+    mandatoryGearImage?: string | null;
+    mandatoryGearNotes?: string;
   },
 ) {
   const patch: Record<string, unknown> = {};
@@ -402,6 +408,8 @@ export async function updateCrewPlanById(
   if ('crewNotes' in updates) patch.crew_notes = updates.crewNotes ?? {};
   if ('courseSegments' in updates) patch.course_segments = updates.courseSegments ?? null;
   if ('gpxRoute' in updates) patch.gpx_route = updates.gpxRoute ?? null;
+  if ('mandatoryGearImage' in updates) patch.mandatory_gear_image = updates.mandatoryGearImage ?? null;
+  if ('mandatoryGearNotes' in updates) patch.mandatory_gear_notes = updates.mandatoryGearNotes || null;
 
   const { error } = await supabase.from('training_plans').update(patch).eq('id', planId);
   if (error) throw error;

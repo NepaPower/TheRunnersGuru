@@ -416,6 +416,8 @@ export function buildTrainingPlan(
     goalFinishMinutes,
     crewNotes: {},
     courseSegments: null,
+    mandatoryGearImage: null,
+    mandatoryGearNotes: '',
     totalWeeks,
     rows,
     phases: buildPhaseSummary(totalWeeks),

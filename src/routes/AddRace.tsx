@@ -81,6 +81,8 @@ export function AddRace() {
         goalFinishMinutes: null,
         crewNotes: {},
         courseSegments: null,
+        mandatoryGearImage: null,
+        mandatoryGearNotes: '',
         totalWeeks: 0,
         rows: [],
         phases: [],

@@ -99,6 +99,14 @@ create table public.training_plans (
   -- own. Editing will be gated to owner + Chief Crew (an extension of
   -- enforce_gpx_route_chief_only) once the entry UI lands.
   course_segments jsonb,
+  -- Race-wide mandatory-gear reference (not per-leg, unlike
+  -- course_segments): an optional image — same storage:-prefixed private
+  -- object convention as a course segment's profileImage, reusing the
+  -- course-segments bucket — plus an optional free-text note. Gated by
+  -- enforce_course_setup_chief_only below, same as gpx_route /
+  -- course_segments.
+  mandatory_gear_image text,
+  mandatory_gear_notes text,
   -- Soft-lock for Crew Plan editing — set when someone (owner or crew)
   -- has the Crew Plan screen open, so a second person opening it sees a
   -- "someone's editing this" notice and gets a read-only view instead of
@@ -260,9 +268,11 @@ set search_path = public
 as $$
 begin
   if (new.gpx_route is distinct from old.gpx_route
-      or new.course_segments is distinct from old.course_segments)
+      or new.course_segments is distinct from old.course_segments
+      or new.mandatory_gear_image is distinct from old.mandatory_gear_image
+      or new.mandatory_gear_notes is distinct from old.mandatory_gear_notes)
      and not public.can_edit_plan_course_setup(old.id) then
-    raise exception 'Only the plan owner or Chief Crew can change the course file or segment info';
+    raise exception 'Only the plan owner or Chief Crew can change the course file, segment info, or mandatory gear';
   end if;
   return new;
 end;
@@ -486,6 +496,25 @@ create policy "course-segment images: delete by owner or chief"
 --   update public.training_plans set is_primary = true;
 --   create unique index training_plans_one_primary_per_user
 --     on public.training_plans (user_id) where is_primary;
+--
+--   -- Mandatory-gear reference (image + notes), gated the same as course
+--   -- setup (owner/Chief Crew only). Reuses the course-segments bucket —
+--   -- no new bucket or storage policies needed.
+--   alter table public.training_plans add column mandatory_gear_image text;
+--   alter table public.training_plans add column mandatory_gear_notes text;
+--   create or replace function public.enforce_course_setup_chief_only()
+--   returns trigger language plpgsql security definer set search_path = public as $$
+--   begin
+--     if (new.gpx_route is distinct from old.gpx_route
+--         or new.course_segments is distinct from old.course_segments
+--         or new.mandatory_gear_image is distinct from old.mandatory_gear_image
+--         or new.mandatory_gear_notes is distinct from old.mandatory_gear_notes)
+--        and not public.can_edit_plan_course_setup(old.id) then
+--       raise exception 'Only the plan owner or Chief Crew can change the course file, segment info, or mandatory gear';
+--     end if;
+--     return new;
+--   end;
+--   $$;
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

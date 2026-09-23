@@ -454,6 +454,19 @@ export function CrewPlan() {
   const [segPopupError, setSegPopupError] = useState<string | null>(null);
   const segFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Mandatory Gear popup — a single race-wide image + note, not per-leg
+  // like course segments. Same view/edit + upload pattern as the Segment
+  // info popup above, just simpler (no title/distance/pacer fields).
+  const [mandatoryGearOpen, setMandatoryGearOpen] = useState(false);
+  const [mandatoryGearEditing, setMandatoryGearEditing] = useState(false);
+  const [mandatoryGearImageDraft, setMandatoryGearImageDraft] = useState('');
+  const [mandatoryGearNotesDraft, setMandatoryGearNotesDraft] = useState('');
+  const [mandatoryGearImageUrl, setMandatoryGearImageUrl] = useState<string | null>(null);
+  const [mandatoryGearSaving, setMandatoryGearSaving] = useState(false);
+  const [mandatoryGearUploading, setMandatoryGearUploading] = useState(false);
+  const [mandatoryGearError, setMandatoryGearError] = useState<string | null>(null);
+  const mandatoryGearFileInputRef = useRef<HTMLInputElement>(null);
+
   // Shared mode only — this crew member's own role, used to decide
   // whether to show the Upload/Replace GPX control at all. The real
   // restriction is enforced server-side regardless (see schema.sql's
@@ -595,9 +608,9 @@ export function CrewPlan() {
   async function runOfflineSave(opts: { silent: boolean; skipImages: boolean }) {
     if (!plan?.id) return;
     const planId = plan.id;
-    const imageRefs = (effectiveSegments ?? [])
-      .map((s) => s?.profileImage)
-      .filter((r): r is string => !!r && r.startsWith('storage:'));
+    const imageRefs = [plan.mandatoryGearImage, ...(effectiveSegments ?? []).map((s) => s?.profileImage)].filter(
+      (r): r is string => !!r && r.startsWith('storage:'),
+    );
 
     if (!opts.silent) {
       setOfflineSaving({ done: 0, total: opts.skipImages ? 0 : imageRefs.length });
@@ -705,6 +718,33 @@ export function CrewPlan() {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [segPopupImageRef]);
+
+  // Same resolve pattern as the Segment info popup, for the single
+  // race-wide Mandatory Gear image.
+  const mandatoryGearImageRef = mandatoryGearEditing ? mandatoryGearImageDraft || undefined : plan?.mandatoryGearImage || undefined;
+  useEffect(() => {
+    setMandatoryGearImageUrl(null);
+    if (!mandatoryGearImageRef) return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    (async () => {
+      objectUrl = await getCachedSegmentImageURL(mandatoryGearImageRef);
+      if (cancelled) {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      if (objectUrl) {
+        setMandatoryGearImageUrl(objectUrl);
+        return;
+      }
+      const url = await resolveCourseSegmentImage(mandatoryGearImageRef);
+      if (!cancelled) setMandatoryGearImageUrl(url);
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [mandatoryGearImageRef]);
   // A station's mile marker, preferring the user's manual correction
   // (entered when the GPX file's nearest-track-point estimate is known to
   // be off) over the GPX-derived value. EVERY calculation that needs a
@@ -1121,6 +1161,68 @@ export function CrewPlan() {
       return f ? { ...f, profileImage: '' } : f;
     });
   }
+
+  function openMandatoryGear() {
+    setMandatoryGearOpen(true);
+    setMandatoryGearEditing(false);
+    setMandatoryGearError(null);
+  }
+  function closeMandatoryGear() {
+    if (mandatoryGearSaving) return;
+    setMandatoryGearOpen(false);
+    setMandatoryGearEditing(false);
+    setMandatoryGearError(null);
+  }
+  function beginMandatoryGearEdit() {
+    setMandatoryGearImageDraft(plan?.mandatoryGearImage ?? '');
+    setMandatoryGearNotesDraft(plan?.mandatoryGearNotes ?? '');
+    setMandatoryGearError(null);
+    setMandatoryGearEditing(true);
+  }
+  function cancelMandatoryGearEdit() {
+    setMandatoryGearEditing(false);
+    setMandatoryGearError(null);
+  }
+  function pickMandatoryGearImage() {
+    mandatoryGearFileInputRef.current?.click();
+  }
+  async function handleMandatoryGearImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !plan?.id) return;
+    setMandatoryGearError(null);
+    setMandatoryGearUploading(true);
+    try {
+      const prevRef = mandatoryGearImageDraft;
+      const ref = await uploadCourseSegmentImage(plan.id, file);
+      if (prevRef) deleteCourseSegmentImage(prevRef);
+      setMandatoryGearImageDraft(ref);
+    } catch (err) {
+      setMandatoryGearError(err instanceof Error ? err.message : "Couldn't upload that image.");
+    } finally {
+      setMandatoryGearUploading(false);
+    }
+  }
+  function removeMandatoryGearImage() {
+    if (mandatoryGearImageDraft) deleteCourseSegmentImage(mandatoryGearImageDraft);
+    setMandatoryGearImageDraft('');
+  }
+  async function saveMandatoryGear() {
+    if (!plan?.id) return;
+    setMandatoryGearError(null);
+    setMandatoryGearSaving(true);
+    try {
+      await persistPlanUpdates({
+        mandatoryGearImage: mandatoryGearImageDraft || null,
+        mandatoryGearNotes: mandatoryGearNotesDraft,
+      });
+      setMandatoryGearEditing(false);
+    } catch (err) {
+      setMandatoryGearError(err instanceof Error ? err.message : "Couldn't save — you may not have permission.");
+    } finally {
+      setMandatoryGearSaving(false);
+    }
+  }
   // courseSegments is stored as a dense array, one entry per leg, indexed
   // by leg — so a segment can't drift out of alignment with its leg. When
   // the plan has no segments of its own yet, fall back through
@@ -1358,6 +1460,9 @@ export function CrewPlan() {
           <div className="rg-print-hide" style={{ display: 'flex', gap: 'var(--space-2)' }}>
             <Button variant="secondary" onClick={() => window.print()}>
               Print
+            </Button>
+            <Button variant="secondary" onClick={openMandatoryGear}>
+              Mandatory Gear
             </Button>
             {!isShared && (
               <Button variant="secondary" disabled={readOnlyMode} onClick={() => setCrewModalOpen(true)}>
@@ -2251,6 +2356,105 @@ export function CrewPlan() {
             </div>
           );
         })()}
+
+      {mandatoryGearOpen && (
+        <div className="rg-cp-crew-modal-backdrop" onClick={(e) => e.target === e.currentTarget && closeMandatoryGear()}>
+          <div className="rg-cp-crew-modal-card" role="dialog" aria-modal="true" aria-label="Mandatory Gear">
+            <div className="rg-cp-crew-modal-header">
+              <h3 style={{ margin: 0 }}>Mandatory Gear</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                {!mandatoryGearEditing && canEditSegments && !readOnlyMode && (
+                  <Button variant="secondary" onClick={beginMandatoryGearEdit}>
+                    Edit
+                  </Button>
+                )}
+                <button type="button" className="rg-cp-crew-modal-close" aria-label="Close" onClick={closeMandatoryGear}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+                    <path d="M6 6l12 12M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {mandatoryGearEditing ? (
+              <div className="rg-cp-seg-form">
+                <Field label="Notes" optional>
+                  <TextArea
+                    rows={5}
+                    value={mandatoryGearNotesDraft}
+                    placeholder="Required items, a packing checklist, a link to the official gear list…"
+                    onChange={(e) => setMandatoryGearNotesDraft(e.target.value)}
+                  />
+                </Field>
+                <div className="rg-cp-seg-form-image">
+                  {mandatoryGearImageDraft ? (
+                    <>
+                      {mandatoryGearImageUrl ? (
+                        <img src={mandatoryGearImageUrl} alt="" className="rg-cp-seg-thumb" />
+                      ) : (
+                        <span className="rg-cp-muted" style={{ fontSize: 12 }}>
+                          Loading…
+                        </span>
+                      )}
+                      <Button variant="ghost" disabled={mandatoryGearUploading} onClick={pickMandatoryGearImage}>
+                        {mandatoryGearUploading ? 'Uploading…' : 'Replace image'}
+                      </Button>
+                      <Button variant="ghost" disabled={mandatoryGearUploading} onClick={removeMandatoryGearImage}>
+                        Remove image
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="secondary" disabled={mandatoryGearUploading} onClick={pickMandatoryGearImage}>
+                      {mandatoryGearUploading ? 'Uploading…' : 'Upload image'}
+                    </Button>
+                  )}
+                </div>
+                {mandatoryGearError && <div className="rg-auth-error">{mandatoryGearError}</div>}
+                <div className="rg-cp-seg-form-actions">
+                  <span style={{ flex: 1 }} />
+                  <Button variant="ghost" disabled={mandatoryGearSaving} onClick={cancelMandatoryGearEdit}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" disabled={mandatoryGearSaving || mandatoryGearUploading} onClick={saveMandatoryGear}>
+                    {mandatoryGearSaving ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {plan?.mandatoryGearNotes && <p style={{ margin: '0 0 var(--space-4)' }}>{plan.mandatoryGearNotes}</p>}
+                {plan?.mandatoryGearImage ? (
+                  mandatoryGearImageUrl ? (
+                    <img
+                      src={mandatoryGearImageUrl}
+                      alt="Mandatory gear"
+                      style={{ width: '100%', borderRadius: 10, border: '1px solid var(--color-divider)', display: 'block' }}
+                    />
+                  ) : (
+                    <div className="rg-cp-muted" style={{ fontSize: 13 }}>
+                      Loading image…
+                    </div>
+                  )
+                ) : (
+                  !plan?.mandatoryGearNotes && (
+                    <p className="rg-cp-muted" style={{ fontSize: 13, margin: 0 }}>
+                      No mandatory gear info added yet.
+                    </p>
+                  )
+                )}
+              </>
+            )}
+
+            <input
+              ref={mandatoryGearFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleMandatoryGearImagePick}
+              style={{ display: 'none' }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
