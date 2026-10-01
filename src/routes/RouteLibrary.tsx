@@ -34,6 +34,23 @@ function countryOf(route: SharedRoute): string {
   return parts.length > 0 ? parts[parts.length - 1] : 'Other';
 }
 
+// Supabase/PostgREST errors (RLS denials, constraint violations, etc.) carry
+// the real cause in `.message`, but aren't always `instanceof Error` once
+// they've crossed an async boundary — checking only `instanceof Error` was
+// silently swallowing those and showing a generic, sometimes misleading,
+// fallback instead (e.g. blaming "a valid GPX file" for what was actually a
+// database error). Logging the raw error too so the full detail/hint/code
+// is available in devtools even when the UI only has room for `message`.
+function describeError(err: unknown, fallback: string): string {
+  console.error(err);
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === 'object' && 'message' in err) {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === 'string' && message) return message;
+  }
+  return fallback;
+}
+
 /** "Local Trails, Global Guru." — a standalone place to share and
  * discover GPX routes, deliberately separate from any race's own course
  * file (onboarding / Crew Plan's GPX upload). Sign-in required to browse
@@ -81,7 +98,7 @@ export function RouteLibrary() {
     try {
       setRoutes(await fetchSharedRoutes());
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not load the route library.');
+      setLoadError(describeError(err, 'Could not load the route library.'));
     } finally {
       setLoading(false);
     }
@@ -157,7 +174,7 @@ export function RouteLibrary() {
       setRoutes((prev) => [saved, ...prev]);
       setShareOpen(false);
     } catch (err) {
-      setShareError(err instanceof Error ? err.message : "Couldn't share that route — check it's a valid GPX file.");
+      setShareError(describeError(err, "Couldn't share that route — check it's a valid GPX file."));
     } finally {
       setSharing(false);
     }
@@ -208,7 +225,7 @@ export function RouteLibrary() {
       }
       setEditing(false);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Couldn't save changes — check it's a valid GPX file.");
+      setEditError(describeError(err, 'Could not save changes.'));
     } finally {
       setEditSaving(false);
     }
@@ -223,7 +240,7 @@ export function RouteLibrary() {
       setRoutes((prev) => prev.filter((r) => r.id !== viewRoute.id));
       setViewRoute(null);
     } catch (err) {
-      setViewError(err instanceof Error ? err.message : 'Could not remove this route.');
+      setViewError(describeError(err, 'Could not remove this route.'));
     } finally {
       setDeleting(false);
     }
