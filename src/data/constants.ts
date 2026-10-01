@@ -142,4 +142,5 @@ export const LANDING_FEATURES = [
   { title: 'Gear That Fits Your Run', desc: 'Recommendations tailored to your distance, weather, and terrain.' },
   { title: 'Strength That Supports Speed', desc: 'Targeted strength work to keep you injury-free and running strong.' },
   { title: 'Never Run Alone', desc: 'Get matched with partners and groups who run your pace, your way.' },
+  { title: 'Local Trails, Global Guru', desc: 'Browse and share GPX routes other runners have mapped — run like a local, wherever you are.' },
 ];

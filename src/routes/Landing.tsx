@@ -16,6 +16,13 @@ const FEATURE_ICONS = [
   <path key="f" d="M5 21l4-11 3 6 3-9 4 14M5 21h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
   <path key="g" d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
   <path key="h" d="M17 11a5 5 0 10-10 0c0 3 2 4 2 7h6c0-3 2-4 2-7z M9 21h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  // Route Library's trail motif (start dot - winding path - end dot) —
+  // same icon used in AppNav, so it reads as the same feature everywhere.
+  <g key="i">
+    <circle cx="5" cy="19" r="2" strokeWidth="2" fill="none" />
+    <circle cx="19" cy="5" r="2" strokeWidth="2" fill="none" />
+    <path d="M7 18c3-2 2-6 5-8s3-5 6-6" strokeWidth="2" strokeLinecap="round" fill="none" />
+  </g>,
 ];
 
 export function Landing() {
