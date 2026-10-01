@@ -15,6 +15,19 @@ import './routelibrary.css';
 // file by accident.
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
+// locationTag is stored as "City, State/region, Country" (see
+// handleShare below) — there's no separate country column, so grouping
+// just reads the last comma-separated segment. A route shared before
+// the Country dropdown existed, or with no location at all, falls into
+// "Other" rather than breaking the grouping.
+function countryOf(route: SharedRoute): string {
+  const parts = route.locationTag
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : 'Other';
+}
+
 /** "Local Trails, Global Guru." — a standalone place to share and
  * discover GPX routes, deliberately separate from any race's own course
  * file (onboarding / Crew Plan's GPX upload). Sign-in required to browse
@@ -69,6 +82,24 @@ export function RouteLibrary() {
           r.description.toLowerCase().includes(q),
       )
     : routes;
+
+  // Group by country (derived from locationTag — see countryOf above),
+  // alphabetical, with "Other" always last regardless of where it'd
+  // otherwise sort.
+  const groupedByCountry: [string, SharedRoute[]][] = (() => {
+    const groups = new Map<string, SharedRoute[]>();
+    for (const r of filtered) {
+      const key = countryOf(r);
+      const existing = groups.get(key);
+      if (existing) existing.push(r);
+      else groups.set(key, [r]);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => {
+      if (a === 'Other') return 1;
+      if (b === 'Other') return -1;
+      return a.localeCompare(b);
+    });
+  })();
 
   function openShare() {
     setTitle('');
@@ -175,23 +206,30 @@ export function RouteLibrary() {
           {routes.length === 0 ? 'No routes shared yet — be the first.' : 'No routes match that search.'}
         </p>
       ) : (
-        <div className="rg-rl-grid">
-          {filtered.map((r) => (
-            <button key={r.id} type="button" className="rg-rl-card" onClick={() => openRoute(r)}>
-              {r.gpxRoute.trackPoints && (
-                <div className="rg-rl-card-map">
-                  <RoutePreviewMap trackPoints={r.gpxRoute.trackPoints} height={110} />
-                </div>
-              )}
-              <div className="rg-rl-card-title">{r.title}</div>
-              {r.locationTag && <div className="rg-rl-card-location">{r.locationTag}</div>}
-              <div className="rg-rl-card-stats">
-                {r.gpxRoute.distanceMiles} mi · +{r.gpxRoute.elevationGainFt.toLocaleString()} ft
-              </div>
-              {r.uploaderName && <div className="text-muted rg-rl-card-uploader">Shared by {r.uploaderName}</div>}
-            </button>
-          ))}
-        </div>
+        groupedByCountry.map(([country, countryRoutes]) => (
+          <div key={country} className="rg-rl-country-group">
+            <h3 className="rg-rl-country-heading">{country}</h3>
+            <div className="rg-rl-grid">
+              {countryRoutes.map((r) => (
+                <button key={r.id} type="button" className="rg-rl-card" onClick={() => openRoute(r)}>
+                  {r.gpxRoute.trackPoints && (
+                    <div className="rg-rl-card-map">
+                      <RoutePreviewMap trackPoints={r.gpxRoute.trackPoints} height={110} />
+                    </div>
+                  )}
+                  <div className="rg-rl-card-title">{r.title}</div>
+                  {r.locationTag && <div className="rg-rl-card-location">{r.locationTag}</div>}
+                  <div className="rg-rl-card-stats">
+                    {r.gpxRoute.distanceMiles} mi · +{r.gpxRoute.elevationGainFt.toLocaleString()} ft
+                  </div>
+                  {r.uploaderName && (
+                    <div className="text-muted rg-rl-card-uploader">Shared by {r.uploaderName}</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))
       )}
 
       {shareOpen && (
@@ -301,7 +339,11 @@ export function RouteLibrary() {
               )}
               <span style={{ flex: 1 }} />
               {downloadUrl ? (
-                <a className="btn btn-primary" href={downloadUrl} download={`${viewRoute.title}.gpx`}>
+                <a
+                  className="btn btn-primary"
+                  href={downloadUrl}
+                  download={viewRoute.gpxRoute.fileName || `${viewRoute.title}.gpx`}
+                >
                   Download GPX
                 </a>
               ) : (
