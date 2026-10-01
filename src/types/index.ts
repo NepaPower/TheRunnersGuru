@@ -57,6 +57,13 @@ export interface GpxRoute {
   elevationGainFt: number;
   elevationLossFt: number;
   waypoints: GpxWaypoint[];
+  // A downsampled lat/lon trace of the full track (not just the named
+  // waypoints above), for drawing a lightweight route-shape preview.
+  // Opt-in via parseGpxFile's `includeTrackPreview` — undefined for every
+  // normal GPX upload (training plans, race courses) so their stored jsonb
+  // doesn't carry a point list they never use. Only the Route Library asks
+  // for it.
+  trackPoints?: { lat: number; lon: number }[];
 }
 
 /** One entry in the Route Library ("Local Trails, Global Guru.") — a

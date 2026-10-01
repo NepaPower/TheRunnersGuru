@@ -21,6 +21,23 @@ interface TrackPoint {
   elevationFt: number | null;
 }
 
+// A full track can be thousands of points — way more detail than a small
+// preview line needs. Stride-sampled down to this many, always keeping
+// the exact first and last point so the preview's endpoints match the
+// real route.
+const MAX_PREVIEW_TRACK_POINTS = 300;
+
+function downsampleTrack(points: TrackPoint[], maxPoints: number): { lat: number; lon: number }[] {
+  if (points.length <= maxPoints) return points.map((p) => ({ lat: p.lat, lon: p.lon }));
+  const stride = (points.length - 1) / (maxPoints - 1);
+  const out: { lat: number; lon: number }[] = [];
+  for (let i = 0; i < maxPoints; i++) {
+    const idx = Math.min(points.length - 1, Math.round(i * stride));
+    out.push({ lat: points[idx].lat, lon: points[idx].lon });
+  }
+  return out;
+}
+
 function extractPoints(els: Element[]): TrackPoint[] {
   return els
     .map((el) => {
@@ -53,7 +70,7 @@ function extractPoints(els: Element[]): TrackPoint[] {
  *
  * Browser-only (uses DOMParser). Throws on malformed XML or a file with
  * no usable points in either form. */
-export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
+export function parseGpxText(xmlText: string, fileName: string, opts?: { includeTrackPreview?: boolean }): GpxRoute {
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   if (doc.getElementsByTagName('parsererror').length > 0) {
     throw new Error("That file couldn't be read as GPX — please check it's a valid GPX export.");
@@ -174,16 +191,17 @@ export function parseGpxText(xmlText: string, fileName: string): GpxRoute {
     elevationGainFt: Math.round(gainFt),
     elevationLossFt: Math.round(lossFt),
     waypoints,
+    ...(opts?.includeTrackPreview ? { trackPoints: downsampleTrack(points, MAX_PREVIEW_TRACK_POINTS) } : {}),
   };
 }
 
 /** Reads a File (from an <input type="file"> selection) and parses it as GPX. */
-export function parseGpxFile(file: File): Promise<GpxRoute> {
+export function parseGpxFile(file: File, opts?: { includeTrackPreview?: boolean }): Promise<GpxRoute> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        resolve(parseGpxText(String(reader.result ?? ''), file.name));
+        resolve(parseGpxText(String(reader.result ?? ''), file.name, opts));
       } catch (e) {
         reject(e instanceof Error ? e : new Error('Could not parse that GPX file.'));
       }

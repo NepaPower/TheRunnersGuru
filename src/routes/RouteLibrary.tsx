@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
 import { Field, Input, TextArea } from '../components/ui/Form';
+import { RoutePreviewMap } from '../components/RoutePreviewMap';
 import { useApp } from '../state/AppContext';
 import { deleteSharedRoute, fetchSharedRoutes, resolveSharedRouteDownloadUrl, uploadSharedRoute } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
@@ -28,7 +29,8 @@ export function RouteLibrary() {
   const [shareOpen, setShareOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [locationTag, setLocationTag] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -68,7 +70,8 @@ export function RouteLibrary() {
   function openShare() {
     setTitle('');
     setDescription('');
-    setLocationTag('');
+    setCity('');
+    setCountry('');
     setFile(null);
     setShareError(null);
     setShareOpen(true);
@@ -91,12 +94,13 @@ export function RouteLibrary() {
     setShareError(null);
     setSharing(true);
     try {
-      const gpxRoute = await parseGpxFile(file);
+      const gpxRoute = await parseGpxFile(file, { includeTrackPreview: true });
       const uploaderName = state.auth.name || state.auth.email || 'A runner';
+      const locationTag = [city.trim(), country.trim()].filter(Boolean).join(', ');
       const saved = await uploadSharedRoute(
         state.userId,
         uploaderName,
-        { title: title.trim(), description: description.trim(), locationTag: locationTag.trim() },
+        { title: title.trim(), description: description.trim(), locationTag },
         gpxRoute,
         file,
       );
@@ -169,6 +173,11 @@ export function RouteLibrary() {
         <div className="rg-rl-grid">
           {filtered.map((r) => (
             <button key={r.id} type="button" className="rg-rl-card" onClick={() => openRoute(r)}>
+              {r.gpxRoute.trackPoints && (
+                <div className="rg-rl-card-map">
+                  <RoutePreviewMap trackPoints={r.gpxRoute.trackPoints} height={110} />
+                </div>
+              )}
               <div className="rg-rl-card-title">{r.title}</div>
               {r.locationTag && <div className="rg-rl-card-location">{r.locationTag}</div>}
               <div className="rg-rl-card-stats">
@@ -203,14 +212,14 @@ export function RouteLibrary() {
               onChange={(e) => setTitle(e.target.value)}
             />
           </Field>
-          <Field label="Location" style={{ marginBottom: 'var(--space-3)' }}>
-            <Input
-              type="text"
-              value={locationTag}
-              placeholder="e.g. Annapurna region, Nepal"
-              onChange={(e) => setLocationTag(e.target.value)}
-            />
-          </Field>
+          <div className="rg-rl-location-fields">
+            <Field label="City / region">
+              <Input type="text" value={city} placeholder="e.g. Annapurna region" onChange={(e) => setCity(e.target.value)} />
+            </Field>
+            <Field label="Country">
+              <Input type="text" value={country} placeholder="e.g. Nepal" onChange={(e) => setCountry(e.target.value)} />
+            </Field>
+          </div>
           <Field label="Description" optional style={{ marginBottom: 'var(--space-3)' }}>
             <TextArea
               rows={4}
@@ -262,6 +271,11 @@ export function RouteLibrary() {
             </>
           }
         >
+          {viewRoute.gpxRoute.trackPoints && (
+            <div className="rg-rl-detail-map">
+              <RoutePreviewMap trackPoints={viewRoute.gpxRoute.trackPoints} height={220} />
+            </div>
+          )}
           {viewRoute.locationTag && (
             <p className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>
               {viewRoute.locationTag}
