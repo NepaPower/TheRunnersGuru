@@ -1,0 +1,70 @@
+/* Route Library — "Local Trails, Global Guru." Standalone GPX sharing. */
+
+.rg-rl-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.rg-rl-tagline {
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.rg-rl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.rg-rl-card {
+  display: block;
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  padding: var(--space-4);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.rg-rl-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-divider));
+}
+
+.rg-rl-card-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.rg-rl-card-location {
+  font-size: 13px;
+  color: var(--color-accent-800);
+  margin-bottom: var(--space-2);
+}
+
+.rg-rl-card-stats {
+  font-size: 13px;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.rg-rl-card-uploader {
+  font-size: 12px;
+}
+
+.rg-rl-file-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}

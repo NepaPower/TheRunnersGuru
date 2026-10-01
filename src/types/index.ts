@@ -59,6 +59,25 @@ export interface GpxRoute {
   waypoints: GpxWaypoint[];
 }
 
+/** One entry in the Route Library ("Local Trails, Global Guru.") — a
+ * standalone GPX-sharing feature, not tied to any race or Crew Plan.
+ * `gpxRoute` is the parsed summary (same shape used everywhere else) so
+ * a card can show stats without an extra fetch; `gpxFilePath` is the
+ * real downloadable file, kept in the private `route-library` Storage
+ * bucket. `uploaderName` is captured once at upload time, not looked up
+ * live — see schema.sql. */
+export interface SharedRoute {
+  id: string;
+  uploaderUserId: string;
+  uploaderName: string | null;
+  title: string;
+  description: string;
+  locationTag: string;
+  gpxRoute: GpxRoute;
+  gpxFilePath: string;
+  createdAt: string;
+}
+
 export type FirstTimeAnswer = 'yes' | 'no' | '';
 
 /** Only asked when distanceGoal === 'ultra' — determines whether the plan's

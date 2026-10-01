@@ -1,5 +1,15 @@
 import { supabase } from './supabaseClient';
-import type { Address, CourseSegment, CrewAccessEntry, CrewNoteEntry, GpxRoute, LoggedRun, SharedPlanEntry, TrainingPlan } from '../types';
+import type {
+  Address,
+  CourseSegment,
+  CrewAccessEntry,
+  CrewNoteEntry,
+  GpxRoute,
+  LoggedRun,
+  SharedPlanEntry,
+  SharedRoute,
+  TrainingPlan,
+} from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
 import { buildPhaseSummary, buildTrainingPlan } from './planGenerator';
 
@@ -460,6 +470,94 @@ export async function deleteCourseSegmentImage(profileImage: string): Promise<vo
   if (!profileImage.startsWith(COURSE_SEGMENT_STORAGE_PREFIX)) return;
   const path = profileImage.slice(COURSE_SEGMENT_STORAGE_PREFIX.length);
   await supabase.storage.from(COURSE_SEGMENTS_BUCKET).remove([path]).then(
+    () => {},
+    () => {},
+  );
+}
+
+// ─── Route Library ────────────────────────────────────────────────────────
+// "Local Trails, Global Guru." Standalone GPX sharing — deliberately NOT
+// wired into any race's own GPX upload. Any signed-in user can browse and
+// upload; only the uploader can delete their own (RLS, supabase/schema.sql).
+
+const ROUTE_LIBRARY_BUCKET = 'route-library';
+
+function mapSharedRouteRow(row: any): SharedRoute {
+  return {
+    id: row.id,
+    uploaderUserId: row.uploader_user_id,
+    uploaderName: row.uploader_name ?? null,
+    title: row.title,
+    description: row.description ?? '',
+    locationTag: row.location_tag ?? '',
+    gpxRoute: row.gpx_route,
+    gpxFilePath: row.gpx_file_path,
+    createdAt: row.created_at,
+  };
+}
+
+export async function fetchSharedRoutes(): Promise<SharedRoute[]> {
+  const { data, error } = await supabase.from('shared_routes').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapSharedRouteRow);
+}
+
+/** `gpxRoute` is the already-parsed summary (parseGpxFile, same as every
+ * other GPX upload in the app — see CrewPlan.tsx's handleGpxReplace for
+ * the pattern); `file` is the original, uploaded as-is so it stays a real
+ * downloadable GPX for whoever picks this route later. */
+export async function uploadSharedRoute(
+  userId: string,
+  uploaderName: string,
+  details: { title: string; description: string; locationTag: string },
+  gpxRoute: GpxRoute,
+  file: File,
+): Promise<SharedRoute> {
+  const ext = (file.name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'gpx';
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const { error: uploadErr } = await supabase.storage.from(ROUTE_LIBRARY_BUCKET).upload(path, file, {
+    contentType: file.type || 'application/gpx+xml',
+    upsert: false,
+  });
+  if (uploadErr) throw uploadErr;
+
+  const { data, error } = await supabase
+    .from('shared_routes')
+    .insert({
+      uploader_user_id: userId,
+      uploader_name: uploaderName || null,
+      title: details.title,
+      description: details.description || null,
+      location_tag: details.locationTag || null,
+      gpx_route: gpxRoute,
+      gpx_file_path: path,
+    })
+    .select()
+    .single();
+  if (error) {
+    // Best-effort cleanup — don't leave an orphaned file if the row
+    // insert failed (e.g. a RLS/validation rejection).
+    await supabase.storage.from(ROUTE_LIBRARY_BUCKET).remove([path]).then(
+      () => {},
+      () => {},
+    );
+    throw error;
+  }
+  return mapSharedRouteRow(data);
+}
+
+/** Time-limited signed URL for downloading one route's original GPX. */
+export async function resolveSharedRouteDownloadUrl(gpxFilePath: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from(ROUTE_LIBRARY_BUCKET).createSignedUrl(gpxFilePath, 60 * 60);
+  if (error) return null;
+  return data.signedUrl;
+}
+
+/** RLS only lets this succeed for the route's own uploader. */
+export async function deleteSharedRoute(routeId: string, gpxFilePath: string): Promise<void> {
+  const { error } = await supabase.from('shared_routes').delete().eq('id', routeId);
+  if (error) throw error;
+  await supabase.storage.from(ROUTE_LIBRARY_BUCKET).remove([gpxFilePath]).then(
     () => {},
     () => {},
   );

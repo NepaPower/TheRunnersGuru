@@ -23,6 +23,17 @@ const NAV_ITEMS = [
     ),
   },
   {
+    to: '/route-library',
+    label: 'Route Library',
+    icon: (
+      <>
+        <circle cx="5" cy="19" r="2" strokeWidth="2" fill="none" />
+        <circle cx="19" cy="5" r="2" strokeWidth="2" fill="none" />
+        <path d="M7 18c3-2 2-6 5-8s3-5 6-6" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </>
+    ),
+  },
+  {
     to: '/partners',
     label: 'Partners',
     hidden: true,

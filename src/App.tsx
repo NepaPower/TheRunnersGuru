@@ -19,6 +19,7 @@ import { Partners } from './routes/Partners';
 import { Run } from './routes/Run';
 import { Chat } from './routes/Chat';
 import { Profile } from './routes/Profile';
+import { RouteLibrary } from './routes/RouteLibrary';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { OfflineBanner } from './components/OfflineBanner';
 
@@ -45,6 +46,9 @@ export default function App() {
                 nothing on it needs a race, so it stays reachable for a
                 crew-only user the same as Shared Plans does. */}
             <Route path="/profile" element={<Profile />} />
+            {/* Route Library ("Local Trails, Global Guru.") — standalone GPX
+                sharing, unrelated to any race, so it only needs sign-in. */}
+            <Route path="/route-library" element={<RouteLibrary />} />
 
             <Route element={<RequirePlan />}>
               <Route path="/home" element={<Dashboard />} />

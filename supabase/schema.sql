@@ -550,6 +550,108 @@ create policy "course-segment images: delete by owner or chief"
 --       and public.can_read_plan(p_plan_id);
 --   $$;
 --   grant execute on function public.get_plan_owner_name(uuid) to authenticated;
+--
+--   -- Route Library ("Local Trails, Global Guru.") — standalone GPX
+--   -- sharing, not wired into Crew Plan/onboarding's own GPX upload.
+--   create table public.shared_routes (
+--     id uuid primary key default gen_random_uuid(),
+--     uploader_user_id uuid not null references auth.users(id) on delete cascade,
+--     uploader_name text,
+--     title text not null,
+--     description text,
+--     location_tag text,
+--     gpx_route jsonb not null,
+--     gpx_file_path text not null,
+--     created_at timestamptz not null default now()
+--   );
+--   alter table public.shared_routes enable row level security;
+--   create policy "shared routes are readable by any signed-in user"
+--     on public.shared_routes for select using (auth.uid() is not null);
+--   create policy "shared routes are insertable by their uploader"
+--     on public.shared_routes for insert with check (auth.uid() = uploader_user_id);
+--   create policy "shared routes are editable by their uploader"
+--     on public.shared_routes for update
+--     using (auth.uid() = uploader_user_id) with check (auth.uid() = uploader_user_id);
+--   create policy "shared routes are deletable by their uploader"
+--     on public.shared_routes for delete using (auth.uid() = uploader_user_id);
+--   insert into storage.buckets (id, name, public)
+--     values ('route-library', 'route-library', false) on conflict (id) do nothing;
+--   create policy "route library files: read by any signed-in user" on storage.objects for select
+--     using (bucket_id = 'route-library' and auth.uid() is not null);
+--   create policy "route library files: insert by their owner" on storage.objects for insert
+--     with check (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
+--   create policy "route library files: delete by their owner" on storage.objects for delete
+--     using (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ─── shared_routes (Route Library) ───────────────────────────────────────
+-- "Local Trails, Global Guru." A standalone GPX-sharing library — NOT
+-- wired into onboarding/Crew Plan's own GPX upload, deliberately kept
+-- separate. Any signed-in user can upload a route (file + description);
+-- any signed-in user can browse and download it; only the uploader can
+-- edit or delete their own. uploader_name is captured at upload time
+-- (not looked up live) — profiles stays owner-select-only, and unlike
+-- get_plan_owner_name above there's no "already allowed to see this
+-- person's plan" relationship to key a read exception off here, so the
+-- simplest correct thing is: the uploader is publishing their name on
+-- purpose when they share a route.
+create table public.shared_routes (
+  id uuid primary key default gen_random_uuid(),
+  uploader_user_id uuid not null references auth.users(id) on delete cascade,
+  uploader_name text,
+  title text not null,
+  description text,
+  -- Free-text, not geocoded — "Annapurna region, Nepal" is plenty to
+  -- filter/browse by for a v1; real geocoding is a later upgrade if the
+  -- library gets big enough to need it.
+  location_tag text,
+  -- Parsed summary (distance, elevation, waypoints) — same shape as
+  -- training_plans.gpx_route — so a card can show stats with no extra
+  -- fetch. Never authoritative for download; gpx_file_path is the real
+  -- file, in the bucket below.
+  gpx_route jsonb not null,
+  gpx_file_path text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.shared_routes enable row level security;
+
+create policy "shared routes are readable by any signed-in user"
+  on public.shared_routes for select
+  using (auth.uid() is not null);
+
+create policy "shared routes are insertable by their uploader"
+  on public.shared_routes for insert
+  with check (auth.uid() = uploader_user_id);
+
+create policy "shared routes are editable by their uploader"
+  on public.shared_routes for update
+  using (auth.uid() = uploader_user_id)
+  with check (auth.uid() = uploader_user_id);
+
+create policy "shared routes are deletable by their uploader"
+  on public.shared_routes for delete
+  using (auth.uid() = uploader_user_id);
+
+-- Object keys are <uploader_user_id>/<uuid>.<ext>, so a storage policy
+-- can check ownership from the path's first segment — same convention
+-- as the course-segments bucket. Private bucket: any signed-in user can
+-- read (the library is sign-in-gated, not public to the internet), only
+-- the owning folder can write/delete.
+insert into storage.buckets (id, name, public)
+values ('route-library', 'route-library', false)
+on conflict (id) do nothing;
+
+create policy "route library files: read by any signed-in user"
+  on storage.objects for select
+  using (bucket_id = 'route-library' and auth.uid() is not null);
+
+create policy "route library files: insert by their owner"
+  on storage.objects for insert
+  with check (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "route library files: delete by their owner"
+  on storage.objects for delete
+  using (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the
