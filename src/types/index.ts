@@ -82,6 +82,9 @@ export interface SharedRoute {
   locationTag: string;
   gpxRoute: GpxRoute;
   gpxFilePath: string;
+  // An optional link to an official source — a park/land-manager page, a
+  // race organizer's course page, etc.
+  referenceUrl: string | null;
   createdAt: string;
 }
 

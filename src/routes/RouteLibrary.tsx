@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
-import { Field, Input, TextArea } from '../components/ui/Form';
+import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { RoutePreviewMap } from '../components/RoutePreviewMap';
 import { useApp } from '../state/AppContext';
 import { deleteSharedRoute, fetchSharedRoutes, resolveSharedRouteDownloadUrl, uploadSharedRoute } from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
+import { COUNTRIES, US_STATES } from '../data/constants';
 import type { SharedRoute } from '../types';
 import './routelibrary.css';
 
@@ -31,6 +32,8 @@ export function RouteLibrary() {
   const [description, setDescription] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
+  const [stateOrRegion, setStateOrRegion] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -72,6 +75,8 @@ export function RouteLibrary() {
     setDescription('');
     setCity('');
     setCountry('');
+    setStateOrRegion('');
+    setReferenceUrl('');
     setFile(null);
     setShareError(null);
     setShareOpen(true);
@@ -96,11 +101,11 @@ export function RouteLibrary() {
     try {
       const gpxRoute = await parseGpxFile(file, { includeTrackPreview: true });
       const uploaderName = state.auth.name || state.auth.email || 'A runner';
-      const locationTag = [city.trim(), country.trim()].filter(Boolean).join(', ');
+      const locationTag = [city.trim(), stateOrRegion.trim(), country.trim()].filter(Boolean).join(', ');
       const saved = await uploadSharedRoute(
         state.userId,
         uploaderName,
-        { title: title.trim(), description: description.trim(), locationTag },
+        { title: title.trim(), description: description.trim(), locationTag, referenceUrl: referenceUrl.trim() },
         gpxRoute,
         file,
       );
@@ -213,13 +218,49 @@ export function RouteLibrary() {
             />
           </Field>
           <div className="rg-rl-location-fields">
-            <Field label="City / region">
-              <Input type="text" value={city} placeholder="e.g. Annapurna region" onChange={(e) => setCity(e.target.value)} />
+            <Field label="City">
+              <Input type="text" value={city} placeholder="e.g. Moab" onChange={(e) => setCity(e.target.value)} />
             </Field>
             <Field label="Country">
-              <Input type="text" value={country} placeholder="e.g. Nepal" onChange={(e) => setCountry(e.target.value)} />
+              <Select value={country} onChange={(e) => { setCountry(e.target.value); setStateOrRegion(''); }}>
+                <option value="">— Select —</option>
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
             </Field>
+            {country === 'United States' ? (
+              <Field label="State">
+                <Select value={stateOrRegion} onChange={(e) => setStateOrRegion(e.target.value)}>
+                  <option value="">— Select —</option>
+                  {US_STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : (
+              <Field label="State / region" optional>
+                <Input
+                  type="text"
+                  value={stateOrRegion}
+                  placeholder="e.g. Annapurna region"
+                  onChange={(e) => setStateOrRegion(e.target.value)}
+                />
+              </Field>
+            )}
           </div>
+          <Field label="Reference URL" optional style={{ marginBottom: 'var(--space-3)' }}>
+            <Input
+              type="text"
+              value={referenceUrl}
+              placeholder="e.g. a park/land-manager page or the race's course page"
+              onChange={(e) => setReferenceUrl(e.target.value)}
+            />
+          </Field>
           <Field label="Description" optional style={{ marginBottom: 'var(--space-3)' }}>
             <TextArea
               rows={4}
@@ -286,6 +327,13 @@ export function RouteLibrary() {
             {viewRoute.gpxRoute.elevationLossFt.toLocaleString()} ft
           </p>
           {viewRoute.description && <p style={{ marginBottom: 'var(--space-3)' }}>{viewRoute.description}</p>}
+          {viewRoute.referenceUrl && (
+            <p style={{ marginBottom: 'var(--space-3)' }}>
+              <a href={viewRoute.referenceUrl} target="_blank" rel="noreferrer noopener">
+                Official source / more info ↗
+              </a>
+            </p>
+          )}
           {viewRoute.uploaderName && (
             <p className="text-muted" style={{ fontSize: 13 }}>
               Shared by {viewRoute.uploaderName}

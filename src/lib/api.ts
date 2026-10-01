@@ -492,6 +492,7 @@ function mapSharedRouteRow(row: any): SharedRoute {
     locationTag: row.location_tag ?? '',
     gpxRoute: row.gpx_route,
     gpxFilePath: row.gpx_file_path,
+    referenceUrl: row.reference_url ?? null,
     createdAt: row.created_at,
   };
 }
@@ -509,7 +510,7 @@ export async function fetchSharedRoutes(): Promise<SharedRoute[]> {
 export async function uploadSharedRoute(
   userId: string,
   uploaderName: string,
-  details: { title: string; description: string; locationTag: string },
+  details: { title: string; description: string; locationTag: string; referenceUrl?: string },
   gpxRoute: GpxRoute,
   file: File,
 ): Promise<SharedRoute> {
@@ -531,6 +532,7 @@ export async function uploadSharedRoute(
       location_tag: details.locationTag || null,
       gpx_route: gpxRoute,
       gpx_file_path: path,
+      reference_url: details.referenceUrl?.trim() || null,
     })
     .select()
     .single();

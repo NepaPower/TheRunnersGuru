@@ -582,6 +582,10 @@ create policy "course-segment images: delete by owner or chief"
 --     with check (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
 --   create policy "route library files: delete by their owner" on storage.objects for delete
 --     using (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
+--
+--   -- Optional link to an official source (park/land-manager page, race
+--   -- organizer's course page, etc.) for a shared route.
+--   alter table public.shared_routes add column reference_url text;
 
 -- ─── shared_routes (Route Library) ───────────────────────────────────────
 -- "Local Trails, Global Guru." A standalone GPX-sharing library — NOT
@@ -610,6 +614,10 @@ create table public.shared_routes (
   -- file, in the bucket below.
   gpx_route jsonb not null,
   gpx_file_path text not null,
+  -- Optional link to an official source — a park/land-manager page, a
+  -- race organizer's course page, etc. Just a plain text URL, shown as a
+  -- link; not validated beyond what the share form itself checks.
+  reference_url text,
   created_at timestamptz not null default now()
 );
 
