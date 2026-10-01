@@ -4,7 +4,13 @@ import { Dialog } from '../components/ui/Dialog';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { RoutePreviewMap } from '../components/RoutePreviewMap';
 import { useApp } from '../state/AppContext';
-import { deleteSharedRoute, fetchSharedRoutes, resolveSharedRouteDownloadUrl, uploadSharedRoute } from '../lib/api';
+import {
+  deleteSharedRoute,
+  fetchSharedRoutes,
+  resolveSharedRouteDownloadUrl,
+  updateSharedRoute,
+  uploadSharedRoute,
+} from '../lib/api';
 import { parseGpxFile } from '../lib/gpx';
 import { COUNTRIES, US_STATES } from '../data/constants';
 import type { SharedRoute } from '../types';
@@ -56,6 +62,14 @@ export function RouteLibrary() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [viewError, setViewError] = useState<string | null>(null);
+
+  const [editing, setEditing] = useState(false);
+  const [editDescription, setEditDescription] = useState('');
+  const [editReferenceUrl, setEditReferenceUrl] = useState('');
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     load();
@@ -153,8 +167,51 @@ export function RouteLibrary() {
     setViewRoute(route);
     setDownloadUrl(null);
     setViewError(null);
+    setEditing(false);
     const url = await resolveSharedRouteDownloadUrl(route.gpxFilePath);
     setDownloadUrl(url);
+  }
+
+  function openEdit() {
+    if (!viewRoute) return;
+    setEditDescription(viewRoute.description);
+    setEditReferenceUrl(viewRoute.referenceUrl ?? '');
+    setEditFile(null);
+    setEditError(null);
+    setEditing(true);
+  }
+
+  async function handleEditSave() {
+    if (!viewRoute || !state.userId) return;
+    if (editFile && editFile.size > MAX_FILE_BYTES) {
+      setEditError('That file is too large (10 MB max).');
+      return;
+    }
+    setEditError(null);
+    setEditSaving(true);
+    try {
+      const replacement = editFile
+        ? { gpxRoute: await parseGpxFile(editFile, { includeTrackPreview: true }), file: editFile }
+        : undefined;
+      const updated = await updateSharedRoute(
+        viewRoute.id,
+        viewRoute.gpxFilePath,
+        state.userId,
+        { description: editDescription.trim(), referenceUrl: editReferenceUrl.trim() },
+        replacement,
+      );
+      setRoutes((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setViewRoute(updated);
+      if (replacement) {
+        setDownloadUrl(null);
+        setDownloadUrl(await resolveSharedRouteDownloadUrl(updated.gpxFilePath));
+      }
+      setEditing(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Couldn't save changes — check it's a valid GPX file.");
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function handleDelete() {
@@ -328,60 +385,121 @@ export function RouteLibrary() {
 
       {viewRoute && (
         <Dialog
-          title={viewRoute.title}
-          onDismiss={() => !deleting && setViewRoute(null)}
+          title={editing ? `Edit ${viewRoute.title}` : viewRoute.title}
+          onDismiss={() => {
+            if (deleting || editSaving) return;
+            if (editing) setEditing(false);
+            else setViewRoute(null);
+          }}
           actions={
-            <>
-              {viewRoute.uploaderUserId === state.userId && (
-                <Button variant="ghost" disabled={deleting} onClick={handleDelete}>
-                  {deleting ? 'Removing…' : 'Remove'}
+            editing ? (
+              <>
+                <Button variant="secondary" disabled={editSaving} onClick={() => setEditing(false)}>
+                  Cancel
                 </Button>
-              )}
-              <span style={{ flex: 1 }} />
-              {downloadUrl ? (
-                <a
-                  className="btn btn-primary"
-                  href={downloadUrl}
-                  download={viewRoute.gpxRoute.fileName || `${viewRoute.title}.gpx`}
-                >
-                  Download GPX
-                </a>
-              ) : (
-                <Button variant="primary" disabled>
-                  Preparing…
+                <Button variant="primary" disabled={editSaving} onClick={handleEditSave}>
+                  {editSaving ? 'Saving…' : 'Save'}
                 </Button>
-              )}
-            </>
+              </>
+            ) : (
+              <>
+                {viewRoute.uploaderUserId === state.userId && (
+                  <>
+                    <Button variant="ghost" disabled={deleting} onClick={handleDelete}>
+                      {deleting ? 'Removing…' : 'Remove'}
+                    </Button>
+                    <Button variant="secondary" disabled={deleting} onClick={openEdit}>
+                      Edit
+                    </Button>
+                  </>
+                )}
+                <span style={{ flex: 1 }} />
+                {downloadUrl ? (
+                  <a
+                    className="btn btn-primary"
+                    href={downloadUrl}
+                    download={viewRoute.gpxRoute.fileName || `${viewRoute.title}.gpx`}
+                  >
+                    Download GPX
+                  </a>
+                ) : (
+                  <Button variant="primary" disabled>
+                    Preparing…
+                  </Button>
+                )}
+              </>
+            )
           }
         >
-          {viewRoute.gpxRoute.trackPoints && (
-            <div className="rg-rl-detail-map">
-              <RoutePreviewMap trackPoints={viewRoute.gpxRoute.trackPoints} height={220} />
-            </div>
+          {editing ? (
+            <>
+              <Field label="Reference URL" optional style={{ marginBottom: 'var(--space-3)' }}>
+                <Input
+                  type="text"
+                  value={editReferenceUrl}
+                  placeholder="e.g. a park/land-manager page or the race's course page"
+                  onChange={(e) => setEditReferenceUrl(e.target.value)}
+                />
+              </Field>
+              <Field label="Description" optional style={{ marginBottom: 'var(--space-3)' }}>
+                <TextArea
+                  rows={4}
+                  value={editDescription}
+                  placeholder="Terrain, best season, water sources — anything the next runner should know…"
+                  onChange={(e) => setEditDescription(e.target.value)}
+                />
+              </Field>
+              <Field label="GPX file" optional style={{ marginBottom: 'var(--space-3)' }}>
+                <div className="rg-rl-file-picker">
+                  <Button variant="secondary" onClick={() => editFileInputRef.current?.click()}>
+                    {editFile ? 'Change file' : 'Replace file'}
+                  </Button>
+                  <span className="text-muted" style={{ fontSize: 13 }}>
+                    {editFile ? editFile.name : viewRoute.gpxRoute.fileName}
+                  </span>
+                </div>
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept=".gpx"
+                  style={{ display: 'none' }}
+                  onChange={(e) => setEditFile(e.target.files?.[0] ?? null)}
+                />
+              </Field>
+              {editError && <div className="rg-auth-error">{editError}</div>}
+            </>
+          ) : (
+            <>
+              {viewRoute.gpxRoute.trackPoints && (
+                <div className="rg-rl-detail-map">
+                  <RoutePreviewMap trackPoints={viewRoute.gpxRoute.trackPoints} height={220} />
+                </div>
+              )}
+              {viewRoute.locationTag && (
+                <p className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>
+                  {viewRoute.locationTag}
+                </p>
+              )}
+              <p style={{ marginBottom: 'var(--space-3)' }}>
+                {viewRoute.gpxRoute.distanceMiles} mi · +{viewRoute.gpxRoute.elevationGainFt.toLocaleString()} ft / −
+                {viewRoute.gpxRoute.elevationLossFt.toLocaleString()} ft
+              </p>
+              {viewRoute.description && <p style={{ marginBottom: 'var(--space-3)' }}>{viewRoute.description}</p>}
+              {viewRoute.referenceUrl && (
+                <p style={{ marginBottom: 'var(--space-3)' }}>
+                  <a href={viewRoute.referenceUrl} target="_blank" rel="noreferrer noopener">
+                    Official source / more info ↗
+                  </a>
+                </p>
+              )}
+              {viewRoute.uploaderName && (
+                <p className="text-muted" style={{ fontSize: 13 }}>
+                  Shared by {viewRoute.uploaderName}
+                </p>
+              )}
+              {viewError && <div className="rg-auth-error">{viewError}</div>}
+            </>
           )}
-          {viewRoute.locationTag && (
-            <p className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>
-              {viewRoute.locationTag}
-            </p>
-          )}
-          <p style={{ marginBottom: 'var(--space-3)' }}>
-            {viewRoute.gpxRoute.distanceMiles} mi · +{viewRoute.gpxRoute.elevationGainFt.toLocaleString()} ft / −
-            {viewRoute.gpxRoute.elevationLossFt.toLocaleString()} ft
-          </p>
-          {viewRoute.description && <p style={{ marginBottom: 'var(--space-3)' }}>{viewRoute.description}</p>}
-          {viewRoute.referenceUrl && (
-            <p style={{ marginBottom: 'var(--space-3)' }}>
-              <a href={viewRoute.referenceUrl} target="_blank" rel="noreferrer noopener">
-                Official source / more info ↗
-              </a>
-            </p>
-          )}
-          {viewRoute.uploaderName && (
-            <p className="text-muted" style={{ fontSize: 13 }}>
-              Shared by {viewRoute.uploaderName}
-            </p>
-          )}
-          {viewError && <div className="rg-auth-error">{viewError}</div>}
         </Dialog>
       )}
     </>

@@ -555,6 +555,54 @@ export async function resolveSharedRouteDownloadUrl(gpxFilePath: string): Promis
   return data.signedUrl;
 }
 
+/** RLS only lets this succeed for the route's own uploader. Pass
+ * `replacement` when the uploader is also swapping in a new GPX file — the
+ * new file is uploaded and the row is updated before the old storage
+ * object is removed, so a failure never leaves the route without a file. */
+export async function updateSharedRoute(
+  routeId: string,
+  currentGpxFilePath: string,
+  userId: string,
+  details: { description: string; referenceUrl?: string },
+  replacement?: { gpxRoute: GpxRoute; file: File },
+): Promise<SharedRoute> {
+  const update: Record<string, unknown> = {
+    description: details.description || null,
+    reference_url: details.referenceUrl?.trim() || null,
+  };
+
+  let newPath: string | null = null;
+  if (replacement) {
+    const ext = (replacement.file.name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'gpx';
+    newPath = `${userId}/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from(ROUTE_LIBRARY_BUCKET).upload(newPath, replacement.file, {
+      contentType: replacement.file.type || 'application/gpx+xml',
+      upsert: false,
+    });
+    if (uploadErr) throw uploadErr;
+    update.gpx_route = replacement.gpxRoute;
+    update.gpx_file_path = newPath;
+  }
+
+  const { data, error } = await supabase.from('shared_routes').update(update).eq('id', routeId).select().single();
+  if (error) {
+    if (newPath) {
+      await supabase.storage.from(ROUTE_LIBRARY_BUCKET).remove([newPath]).then(
+        () => {},
+        () => {},
+      );
+    }
+    throw error;
+  }
+  if (newPath) {
+    await supabase.storage.from(ROUTE_LIBRARY_BUCKET).remove([currentGpxFilePath]).then(
+      () => {},
+      () => {},
+    );
+  }
+  return mapSharedRouteRow(data);
+}
+
 /** RLS only lets this succeed for the route's own uploader. */
 export async function deleteSharedRoute(routeId: string, gpxFilePath: string): Promise<void> {
   const { error } = await supabase.from('shared_routes').delete().eq('id', routeId);
