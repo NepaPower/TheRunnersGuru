@@ -74,6 +74,18 @@
   margin-bottom: var(--space-2);
 }
 
+.rg-rl-card-desc {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: var(--space-2);
+  /* Clamp to 2 lines so a long description doesn't blow out card height
+     in the grid — the full text is always available in the detail dialog. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .rg-rl-card-uploader {
   font-size: 12px;
 }

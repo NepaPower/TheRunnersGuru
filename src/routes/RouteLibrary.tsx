@@ -296,6 +296,7 @@ export function RouteLibrary() {
                   <div className="rg-rl-card-stats">
                     {r.gpxRoute.distanceMiles} mi · +{r.gpxRoute.elevationGainFt.toLocaleString()} ft
                   </div>
+                  {r.description && <p className="text-muted rg-rl-card-desc">{r.description}</p>}
                   {r.uploaderName && (
                     <div className="text-muted rg-rl-card-uploader">Shared by {r.uploaderName}</div>
                   )}
