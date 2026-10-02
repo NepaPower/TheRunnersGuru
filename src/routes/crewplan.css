@@ -452,6 +452,14 @@
   resize: vertical;
 }
 
+.btn.rg-cp-gear-btn {
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg));
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-divider));
+}
+.btn.rg-cp-gear-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 28%, var(--color-bg));
+}
+
 .rg-cp-save-footer {
   display: flex;
   justify-content: center;

@@ -1461,7 +1461,7 @@ export function CrewPlan() {
             <Button variant="secondary" onClick={() => window.print()}>
               Print
             </Button>
-            <Button variant="secondary" onClick={openMandatoryGear}>
+            <Button variant="secondary" className="rg-cp-gear-btn" onClick={openMandatoryGear}>
               Mandatory Gear
             </Button>
             {!isShared && (
