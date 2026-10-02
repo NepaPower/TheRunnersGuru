@@ -181,39 +181,6 @@ export function Dashboard() {
         </Button>
       </div>
 
-      <div className="rg-dash-stat-grid">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rg-dash-stat-card">
-            <div className="rg-dash-stat-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor">
-                {STAT_ICONS[stat.label]}
-              </svg>
-            </div>
-            <div className="rg-dash-stat-value">{stat.value}</div>
-            <div className="rg-dash-stat-label">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="rg-dash-chart-card">
-        <div className="rg-dash-chart-header">
-          <div className="rg-dash-chart-title">Miles this week</div>
-          {hasAnyRuns && <div className="text-muted" style={{ fontSize: 12 }}>Last 7 days</div>}
-        </div>
-        {hasAnyRuns ? (
-          <WeeklyMileageChart data={week} />
-        ) : (
-          <div className="rg-dash-chart-empty">
-            <p className="text-muted" style={{ marginBottom: 'var(--space-3)' }}>
-              No runs logged yet — your weekly mileage will show up here.
-            </p>
-            <Button variant="secondary" onClick={() => navigate('/log-run')}>
-              Log your first run
-            </Button>
-          </div>
-        )}
-      </div>
-
       {hasPlan && (
         <div className="rg-dash-nav-grid">
           {navCards.map((c) => (
@@ -236,6 +203,39 @@ export function Dashboard() {
           ))}
         </div>
       )}
+
+      <div className="rg-dash-chart-card">
+        <div className="rg-dash-chart-header">
+          <div className="rg-dash-chart-title">Miles this week</div>
+          {hasAnyRuns && <div className="text-muted" style={{ fontSize: 12 }}>Last 7 days</div>}
+        </div>
+        {hasAnyRuns ? (
+          <WeeklyMileageChart data={week} />
+        ) : (
+          <div className="rg-dash-chart-empty">
+            <p className="text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+              No runs logged yet — your weekly mileage will show up here.
+            </p>
+            <Button variant="secondary" onClick={() => navigate('/log-run')}>
+              Log your first run
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="rg-dash-stat-grid">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rg-dash-stat-card">
+            <div className="rg-dash-stat-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor">
+                {STAT_ICONS[stat.label]}
+              </svg>
+            </div>
+            <div className="rg-dash-stat-value">{stat.value}</div>
+            <div className="rg-dash-stat-label">{stat.label}</div>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
