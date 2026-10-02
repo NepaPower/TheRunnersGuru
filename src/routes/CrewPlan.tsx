@@ -1081,7 +1081,7 @@ export function CrewPlan() {
 
   function updateNoteField(
     key: string,
-    field: 'nutrition' | 'hydration' | 'gear' | 'cutoff' | 'mileOverride' | 'restHours' | 'restMinutes' | 'avgPaceMin' | 'avgPaceSec',
+    field: 'nutrition' | 'hydration' | 'gear' | 'withCrew' | 'cutoff' | 'mileOverride' | 'restHours' | 'restMinutes' | 'avgPaceMin' | 'avgPaceSec',
     value: string,
   ) {
     setNotes((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyNote), [field]: value } }));
@@ -2123,6 +2123,9 @@ export function CrewPlan() {
                     </Field>
                     <Field label="Gear">
                       <TextArea rows={2} value={note.gear ?? ''} onChange={(e) => updateNoteField(key, 'gear', e.target.value)} />
+                    </Field>
+                    <Field label="With Crew">
+                      <TextArea rows={2} value={note.withCrew ?? ''} onChange={(e) => updateNoteField(key, 'withCrew', e.target.value)} />
                     </Field>
                   </div>
                 </div>

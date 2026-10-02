@@ -180,6 +180,9 @@ export interface CrewNoteEntry {
   nutrition: string;
   hydration: string;
   gear: string;
+  // What the runner wants the crew to bring/have ready at this station.
+  // Optional: absent on records saved before this field existed.
+  withCrew?: string;
   // Whether crew can meet the runner at this station. Independent of
   // sleepStop below — a sleep stop can be crew-accessible or not, and a
   // crew-accessible station isn't necessarily a sleep stop. (Old records

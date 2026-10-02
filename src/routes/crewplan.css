@@ -440,8 +440,13 @@
 }
 .rg-cp-station-notes {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
+}
+@media (max-width: 960px) {
+  .rg-cp-station-notes {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .rg-cp-station-notes textarea {
   resize: vertical;
