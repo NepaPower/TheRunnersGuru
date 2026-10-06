@@ -10,12 +10,18 @@ import { LeaderboardTab } from './LeaderboardTab';
 import { ChallengesTab } from './ChallengesTab';
 import { SettingsTab } from './SettingsTab';
 
-const TABS: { id: ProfileTab; label: string }[] = [
+// `hidden: true` tabs stay fully built but aren't shown or reachable —
+// Leaderboard and Challenges still run on hardcoded placeholder data
+// (src/data/constants.ts), not real users. Flip the flag to bring one back.
+const TABS: { id: ProfileTab; label: string; hidden?: boolean }[] = [
   { id: 'stats', label: 'Stats' },
-  { id: 'leaderboard', label: 'Leaderboard' },
-  { id: 'challenges', label: 'Challenges' },
+  { id: 'leaderboard', label: 'Leaderboard', hidden: true },
+  { id: 'challenges', label: 'Challenges', hidden: true },
   { id: 'settings', label: 'Settings' },
 ];
+
+const VISIBLE_TABS = TABS.filter((t) => !t.hidden);
+const isVisibleTab = (id: ProfileTab) => VISIBLE_TABS.some((t) => t.id === id);
 
 export function Profile() {
   const { state, dispatch } = useApp();
@@ -26,7 +32,7 @@ export function Profile() {
   // (used by the Dashboard's "Runner profile" button).
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && TABS.some((t) => t.id === tab)) {
+    if (tab && isVisibleTab(tab as ProfileTab)) {
       dispatch({ type: 'PROFILE_SET_TAB', tab: tab as ProfileTab });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,7 +64,7 @@ export function Profile() {
       </div>
 
       <div className="seg" style={{ marginBottom: 'var(--space-6)', display: 'inline-flex' }}>
-        {TABS.map((t) => (
+        {VISIBLE_TABS.map((t) => (
           <button
             key={t.id}
             className="seg-opt"
@@ -76,9 +82,9 @@ export function Profile() {
         ))}
       </div>
 
-      {state.profileTab === 'stats' && <StatsTab />}
-      {state.profileTab === 'leaderboard' && <LeaderboardTab />}
-      {state.profileTab === 'challenges' && <ChallengesTab />}
+      {(state.profileTab === 'stats' || !isVisibleTab(state.profileTab)) && <StatsTab />}
+      {state.profileTab === 'leaderboard' && isVisibleTab('leaderboard') && <LeaderboardTab />}
+      {state.profileTab === 'challenges' && isVisibleTab('challenges') && <ChallengesTab />}
       {state.profileTab === 'settings' && <SettingsTab />}
     </>
   );
