@@ -504,8 +504,12 @@ export function monthsLeftLabel(raceDateStr: string): string {
   const race = new Date(raceDateStr + 'T00:00:00');
   const totalDays = Math.round((race.getTime() - start.getTime()) / 86400000);
   if (totalDays <= 0) return 'less than a week';
+  // Whole weeks (floored) so it never claims more runway than the
+  // "recommended N+ weeks" comparison in isTrainingTimeShort allows.
+  const weeks = Math.floor(totalDays / 7);
+  const weeksSuffix = weeks >= 1 ? ` (${weeks} week${weeks === 1 ? '' : 's'})` : '';
   const months = totalDays / 30.44;
-  if (months < 1) return `${totalDays} day${totalDays === 1 ? '' : 's'}`;
+  if (months < 1) return `${totalDays} day${totalDays === 1 ? '' : 's'}${weeksSuffix}`;
   const rounded = Math.round(months * 10) / 10;
-  return `${rounded} month${rounded === 1 ? '' : 's'}`;
+  return `${rounded} month${rounded === 1 ? '' : 's'}${weeksSuffix}`;
 }
