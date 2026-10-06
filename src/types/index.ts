@@ -137,6 +137,7 @@ export interface OnboardingState {
   raceDate: string; // ISO yyyy-mm-dd
   goalHours: string;
   goalMinutes: string;
+  goalSeconds: string; // only asked for non-ultra distances
 }
 
 /** One row of the generated week-by-week training plan. */

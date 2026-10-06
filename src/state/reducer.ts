@@ -51,6 +51,7 @@ export function buildInitialState(): AppState {
       raceDate: '',
       goalHours: '',
       goalMinutes: '',
+      goalSeconds: '',
     },
     trainingPlan: null,
     ownPlans: [],
@@ -194,6 +195,9 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'ONBOARDING_SET_GOAL_MINUTES':
       return { ...state, onboarding: { ...state.onboarding, goalMinutes: action.value } };
+
+    case 'ONBOARDING_SET_GOAL_SECONDS':
+      return { ...state, onboarding: { ...state.onboarding, goalSeconds: action.value } };
 
     case 'ONBOARDING_NEXT': {
       // The final step (Race date & goal — index varies: 3 normally, 4 for

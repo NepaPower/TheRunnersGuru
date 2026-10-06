@@ -89,7 +89,8 @@ create table public.training_plans (
   race_start_time text,
   -- Total goal finish time in minutes, from onboarding's goal-time step —
   -- used by the Crew Plan screen's aid-station ETA predictions.
-  goal_finish_minutes int,
+  -- numeric, not int: fractional when the goal has seconds (24:30 -> 24.5).
+  goal_finish_minutes numeric,
   -- Free-text nutrition/hydration/gear notes per aid station, keyed by
   -- waypoint index (as a string) into gpx_route's waypoints array.
   crew_notes jsonb not null default '{}'::jsonb,
@@ -603,6 +604,11 @@ create policy "course-segment images: delete by owner or chief"
 --   alter table public.feedback enable row level security;
 --   create policy "feedback is insertable by the signed-in sender"
 --     on public.feedback for insert with check (auth.uid() = user_id);
+--
+--   -- Goal finish time can now include seconds (stored as fractional
+--   -- minutes), so the column can no longer be a whole-number int.
+--   -- Existing values convert unchanged.
+--   alter table public.training_plans alter column goal_finish_minutes type numeric;
 
 -- ─── shared_routes (Route Library) ───────────────────────────────────────
 -- "Local Trails, Global Guru." A standalone GPX-sharing library — NOT

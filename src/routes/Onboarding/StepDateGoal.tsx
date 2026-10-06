@@ -6,7 +6,8 @@ import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { DISTANCE_LABELS } from '../../data/constants';
 
 const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
-const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+const SECOND_OPTIONS = MINUTE_OPTIONS;
 
 export function StepDateGoal() {
   const { state, dispatch } = useApp();
@@ -51,7 +52,13 @@ export function StepDateGoal() {
       <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>
         Target goal to finish race
       </label>
-      <div className="rg-grid-2" style={{ marginBottom: isUltra ? 'var(--space-2)' : 'var(--space-6)' }}>
+      <div
+        className={isUltra ? 'rg-grid-2' : undefined}
+        style={{
+          marginBottom: isUltra ? 'var(--space-2)' : 'var(--space-6)',
+          ...(isUltra ? {} : { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }),
+        }}
+      >
         {isUltra ? (
           <Field label="Total hours">
             <Input
@@ -84,6 +91,18 @@ export function StepDateGoal() {
             ))}
           </Select>
         </Field>
+        {!isUltra && (
+          <Field label="Seconds">
+            <Select value={onboarding.goalSeconds} onChange={(e) => dispatch({ type: 'ONBOARDING_SET_GOAL_SECONDS', value: e.target.value })}>
+              <option value="">—</option>
+              {SECOND_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s} s
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </div>
 
       {isUltra && (

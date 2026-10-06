@@ -5,6 +5,7 @@ import { Field, Input, Select } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateRaceDetails } from '../lib/api';
 import { buildTrainingPlan } from '../lib/planGenerator';
+import { goalMinutesToParts, goalPartsToMinutes } from '../lib/format';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
 import type { DistanceGoal, FirstTimeAnswer, HillAccessAnswer, TrainingPlan, UltraDistanceId } from '../types';
 import './races.css';
@@ -31,6 +32,7 @@ export function EditRace() {
   const [raceDate, setRaceDate] = useState('');
   const [goalHours, setGoalHours] = useState('');
   const [goalMinutes, setGoalMinutes] = useState('');
+  const [goalSeconds, setGoalSeconds] = useState('');
   const [firstTime, setFirstTime] = useState<FirstTimeAnswer>('no');
   const [hillAccess, setHillAccess] = useState<HillAccessAnswer>('');
   const [saving, setSaving] = useState(false);
@@ -50,8 +52,10 @@ export function EditRace() {
     setUltraId(u.id);
     setUltraCustom(u.custom);
     setRaceDate(plan.raceDate ?? '');
-    setGoalHours(plan.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
-    setGoalMinutes(plan.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
+    const goal = goalMinutesToParts(plan.goalFinishMinutes);
+    setGoalHours(goal.hours);
+    setGoalMinutes(goal.minutes);
+    setGoalSeconds(goal.seconds === '0' ? '' : goal.seconds);
     setFirstTime(plan.firstTime || 'no');
     setHillAccess(plan.hillAccess || '');
   }, [plan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,8 +100,7 @@ export function EditRace() {
         : (ULTRA_DISTANCES.find((d) => d.id === ultraId)?.miles ?? null);
   const nextDistanceGoal: DistanceGoal = category === 'ultra' ? 'ultra' : stdDistance;
   const nextHillAccess: HillAccessAnswer = category === 'ultra' ? hillAccess : '';
-  const goalFinishMinutes =
-    goalHours || goalMinutes ? (Number(goalHours) || 0) * 60 + (Number(goalMinutes) || 0) : null;
+  const goalFinishMinutes = goalPartsToMinutes(goalHours, goalMinutes, goalSeconds);
 
   // Fields that change the weekly schedule. Goal time, race name and GPX
   // don't — they save without a rebuild.
@@ -293,7 +296,10 @@ export function EditRace() {
           </>
         )}
 
-        <div className="rg-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+        <div
+          className="rg-grid-2"
+          style={{ display: 'grid', gridTemplateColumns: category === 'ultra' ? '1fr 1fr' : '1fr 1fr 1fr', gap: 'var(--space-3)' }}
+        >
           <Field label="Goal finish — hours">
             <Input
               type="text"
@@ -312,6 +318,17 @@ export function EditRace() {
               onChange={(e) => setGoalMinutes(e.target.value.replace(/[^\d]/g, ''))}
             />
           </Field>
+          {category !== 'ultra' && (
+            <Field label="Goal finish — seconds">
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                value={goalSeconds}
+                onChange={(e) => setGoalSeconds(e.target.value.replace(/[^\d]/g, ''))}
+              />
+            </Field>
+          )}
         </div>
 
         <Field label="First time at this distance?">

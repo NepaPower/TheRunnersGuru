@@ -502,8 +502,8 @@ export function CrewPlan() {
 
   const [raceDate, setRaceDate] = useState(plan?.raceDate ?? '');
   const [raceStartTime, setRaceStartTime] = useState(plan?.raceStartTime ?? '');
-  const [goalHours, setGoalHours] = useState(plan?.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
-  const [goalMinutes, setGoalMinutes] = useState(plan?.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
+  const [goalHours, setGoalHours] = useState(plan?.goalFinishMinutes != null ? String(Math.floor(Math.round(plan.goalFinishMinutes) / 60)) : '');
+  const [goalMinutes, setGoalMinutes] = useState(plan?.goalFinishMinutes != null ? String(Math.round(plan.goalFinishMinutes) % 60) : '');
   const [notes, setNotes] = useState<Record<string, CrewNoteEntry>>(() =>
     buildNotesWithDetectedCutoffs(plan?.gpxRoute?.waypoints ?? [], plan?.crewNotes ?? {}),
   );
@@ -559,8 +559,8 @@ export function CrewPlan() {
     if (!plan) return;
     setRaceDate(plan.raceDate ?? '');
     setRaceStartTime(plan.raceStartTime ?? '');
-    setGoalHours(plan.goalFinishMinutes != null ? String(Math.floor(plan.goalFinishMinutes / 60)) : '');
-    setGoalMinutes(plan.goalFinishMinutes != null ? String(plan.goalFinishMinutes % 60) : '');
+    setGoalHours(plan.goalFinishMinutes != null ? String(Math.floor(Math.round(plan.goalFinishMinutes) / 60)) : '');
+    setGoalMinutes(plan.goalFinishMinutes != null ? String(Math.round(plan.goalFinishMinutes) % 60) : '');
     setNotes(buildNotesWithDetectedCutoffs(plan.gpxRoute?.waypoints ?? [], plan.crewNotes ?? {}));
     // This is the plan loading in, not a person editing anything — the
     // autosave effect below shouldn't treat it as a change to save.

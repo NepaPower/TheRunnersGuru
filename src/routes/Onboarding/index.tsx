@@ -7,6 +7,7 @@ import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
 import { saveTrainingPlan, getCurrentUserId } from '../../lib/api';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
+import { goalPartsToMinutes } from '../../lib/format';
 import { StepRaceCategory } from './StepRaceCategory';
 import { StepDistance } from './StepDistance';
 import { StepHillAccess } from './StepHillAccess';
@@ -72,12 +73,11 @@ export function Onboarding() {
       if (!liveUserId) {
         throw new Error("Your session isn't active — please sign in again before finishing setup.");
       }
-      const goalHours = Number(state.onboarding.goalHours);
-      const goalMinutes = Number(state.onboarding.goalMinutes);
-      const goalFinishMinutes =
-        state.onboarding.goalHours || state.onboarding.goalMinutes
-          ? (Number.isNaN(goalHours) ? 0 : goalHours) * 60 + (Number.isNaN(goalMinutes) ? 0 : goalMinutes)
-          : null;
+      const goalFinishMinutes = goalPartsToMinutes(
+        state.onboarding.goalHours,
+        state.onboarding.goalMinutes,
+        isUltra ? '' : state.onboarding.goalSeconds,
+      );
       const plan = buildTrainingPlan(
         state.onboarding.raceDate,
         state.onboarding.distanceGoal || '5k',

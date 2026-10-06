@@ -4,6 +4,27 @@ export function formatRaceDateReadout(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+/** Combines goal-time parts (as the form strings) into the stored value:
+ * total minutes, fractional when seconds are present (24:30 -> 24.5).
+ * Returns null when every part is blank. */
+export function goalPartsToMinutes(hours: string, minutes: string, seconds: string): number | null {
+  if (!hours && !minutes && !seconds) return null;
+  return (Number(hours) || 0) * 60 + (Number(minutes) || 0) + (Number(seconds) || 0) / 60;
+}
+
+/** Inverse of goalPartsToMinutes — splits stored total minutes back into
+ * form strings. Rounds to whole seconds first so a fractional value like
+ * 24.166666... doesn't come back as 24:09. */
+export function goalMinutesToParts(totalMinutes: number | null): { hours: string; minutes: string; seconds: string } {
+  if (totalMinutes == null) return { hours: '', minutes: '', seconds: '' };
+  const totalSeconds = Math.round(totalMinutes * 60);
+  return {
+    hours: String(Math.floor(totalSeconds / 3600)),
+    minutes: String(Math.floor((totalSeconds % 3600) / 60)),
+    seconds: String(totalSeconds % 60),
+  };
+}
+
 /** Turns a total-hours + minutes goal finish time into a "1 day, 4 hours,
  * 30 minutes" readout — used on the ultra Race date & goal step, where
  * people think in total hours (e.g. "38 hours") but want to see what that

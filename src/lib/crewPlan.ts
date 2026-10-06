@@ -219,7 +219,8 @@ export function formatPaceMinPerMile(minPerMile: number): string {
 /** "6h 42m" style label for a minutes duration — used for the elapsed-time
  * column alongside the clock-time ETA. */
 export function formatElapsedLabel(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
+  const rounded = Math.round(totalMinutes);
+  const h = Math.floor(rounded / 60);
+  const m = rounded % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
