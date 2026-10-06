@@ -3,6 +3,7 @@ import type { Action } from './actions';
 import { SEED_MATCHES } from '../data/constants';
 import { MAX_ULTRA_MILES } from '../data/constants';
 import { onboardingStepLabels } from '../lib/onboardingSteps';
+import { convertPaceText } from '../lib/format';
 
 export const emptyLogForm = {
   date: '',
@@ -178,8 +179,21 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'ONBOARDING_SELECT_FIRST_TIME':
       return { ...state, onboarding: { ...state.onboarding, firstTime: action.id } };
 
-    case 'ONBOARDING_SELECT_PACE_UNIT':
-      return { ...state, onboarding: { ...state.onboarding, paceUnit: action.unit, pace: '' } };
+    case 'ONBOARDING_SELECT_PACE_UNIT': {
+      // A typed custom pace is converted to the new unit and stays selected;
+      // the Easy/Steady/Fast bands differ per unit, so those just deselect.
+      const { pace, customPace, paceUnit } = state.onboarding;
+      const converted = pace === 'custom' ? convertPaceText(customPace, paceUnit, action.unit) : null;
+      return {
+        ...state,
+        onboarding: {
+          ...state.onboarding,
+          paceUnit: action.unit,
+          pace: converted != null ? 'custom' : '',
+          customPace: converted ?? customPace,
+        },
+      };
+    }
 
     case 'ONBOARDING_SELECT_PACE':
       return { ...state, onboarding: { ...state.onboarding, pace: action.id } };

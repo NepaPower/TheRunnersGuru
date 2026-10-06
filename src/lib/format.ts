@@ -26,6 +26,16 @@ export function parsePaceMinutes(text: string): number | null {
   return Number.isFinite(minutes) && minutes >= 2 && minutes <= 20 ? minutes : null;
 }
 
+/** Converts a typed pace between per-mile and per-km, returning "m:ss"
+ * (7 min/mile -> "4:21" per km). Null if the text isn't a valid pace. */
+export function convertPaceText(text: string, from: 'mi' | 'km', to: 'mi' | 'km'): string | null {
+  const minutes = parsePaceMinutes(text);
+  if (minutes == null) return null;
+  const converted = from === to ? minutes : from === 'mi' ? minutes / MILE_KM : minutes * MILE_KM;
+  const totalSeconds = Math.round(converted * 60);
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+}
+
 /** m:ss, or h:mm:ss from an hour up, from total seconds. */
 export function formatClockTime(totalSeconds: number): string {
   const s = Math.round(totalSeconds);
