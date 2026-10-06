@@ -4,6 +4,7 @@ import type {
   CourseSegment,
   CrewAccessEntry,
   CrewNoteEntry,
+  FeedbackCategory,
   GpxRoute,
   LoggedRun,
   SharedPlanEntry,
@@ -611,6 +612,26 @@ export async function deleteSharedRoute(routeId: string, gpxFilePath: string): P
     () => {},
     () => {},
   );
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────
+// Write-only from the app — the table has an insert policy and nothing else
+// (supabase/schema.sql); the developer reads rows in the Supabase dashboard.
+
+export async function submitFeedback(
+  userId: string,
+  fb: { category: FeedbackCategory; message: string; page: string; email: string | null; name: string | null },
+): Promise<void> {
+  const { error } = await supabase.from('feedback').insert({
+    user_id: userId,
+    user_email: fb.email,
+    user_name: fb.name,
+    category: fb.category,
+    message: fb.message,
+    page: fb.page,
+    user_agent: navigator.userAgent.slice(0, 300),
+  });
+  if (error) throw error;
 }
 
 // ─── Crew Plan collaboration ─────────────────────────────────────────────

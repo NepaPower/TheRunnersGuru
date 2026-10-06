@@ -586,6 +586,23 @@ create policy "course-segment images: delete by owner or chief"
 --   -- Optional link to an official source (park/land-manager page, race
 --   -- organizer's course page, etc.) for a shared route.
 --   alter table public.shared_routes add column reference_url text;
+--
+--   -- In-app "Send feedback" — write-only from the app (no select policy);
+--   -- read it in the dashboard's Table Editor.
+--   create table public.feedback (
+--     id uuid primary key default gen_random_uuid(),
+--     user_id uuid references auth.users(id) on delete set null,
+--     user_email text,
+--     user_name text,
+--     category text not null check (category in ('idea', 'bug', 'question', 'other')),
+--     message text not null check (char_length(message) between 1 and 4000),
+--     page text,
+--     user_agent text,
+--     created_at timestamptz not null default now()
+--   );
+--   alter table public.feedback enable row level security;
+--   create policy "feedback is insertable by the signed-in sender"
+--     on public.feedback for insert with check (auth.uid() = user_id);
 
 -- ─── shared_routes (Route Library) ───────────────────────────────────────
 -- "Local Trails, Global Guru." A standalone GPX-sharing library — NOT
@@ -660,6 +677,32 @@ create policy "route library files: insert by their owner"
 create policy "route library files: delete by their owner"
   on storage.objects for delete
   using (bucket_id = 'route-library' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ─── feedback (in-app "Send feedback") ───────────────────────────────────
+-- Write-only from the app: any signed-in user can submit feedback as
+-- themselves, but there is deliberately NO select/update/delete policy —
+-- nobody can read other people's feedback (or their own back) through the
+-- API. The developer reads it in the Supabase dashboard (Table Editor),
+-- which bypasses RLS. user_email / user_name are captured at send time so
+-- the row is still useful if the account is later deleted (user_id then
+-- goes null rather than taking the feedback with it).
+create table public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  user_email text,
+  user_name text,
+  category text not null check (category in ('idea', 'bug', 'question', 'other')),
+  message text not null check (char_length(message) between 1 and 4000),
+  page text,
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.feedback enable row level security;
+
+create policy "feedback is insertable by the signed-in sender"
+  on public.feedback for insert
+  with check (auth.uid() = user_id);
 
 -- ─── training_plan_weeks ─────────────────────────────────────────────────
 -- One row per week per plan — the week-by-week table shown on the

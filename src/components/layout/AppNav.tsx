@@ -77,7 +77,7 @@ const NAV_ITEMS = [
 
 const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) => !item.hidden);
 
-export function AppNav() {
+export function AppNav({ onFeedback }: { onFeedback: () => void }) {
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -103,6 +103,12 @@ export function AppNav() {
               {item.label}
             </NavLink>
           ))}
+          <button type="button" className="nav-link nav-link-btn" onClick={onFeedback}>
+            <svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <path d="M4 5h16v11H8l-4 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Feedback
+          </button>
           <Button variant="ghost" className="nav-cta" onClick={handleLogout}>
             Log out
           </Button>

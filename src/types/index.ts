@@ -88,6 +88,8 @@ export interface SharedRoute {
   createdAt: string;
 }
 
+export type FeedbackCategory = 'idea' | 'bug' | 'question' | 'other';
+
 export type FirstTimeAnswer = 'yes' | 'no' | '';
 
 /** Only asked when distanceGoal === 'ultra' — determines whether the plan's
