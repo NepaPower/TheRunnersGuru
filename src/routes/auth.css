@@ -93,3 +93,17 @@
   margin-top: var(--space-2);
   text-align: center;
 }
+
+/* Step 1's two big choices (Ultra vs 5K to Marathon) — larger than the
+   default radio so the primary decision of the whole app reads clearly. */
+.rg-ob-category .radio {
+  font-size: 20px;
+  gap: 12px;
+}
+.rg-ob-category .radio .dot {
+  width: 22px;
+  height: 22px;
+}
+.rg-ob-category .radio input:checked + .dot {
+  box-shadow: inset 0 0 0 5px var(--color-bg);
+}

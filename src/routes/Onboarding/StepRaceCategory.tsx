@@ -10,7 +10,7 @@ export function StepRaceCategory() {
       <p className="text-muted" style={{ marginBottom: 'var(--space-6)' }}>
         This app is built for ultras first — pick Ultra and we'll ask a couple of extra questions to tailor the plan.
       </p>
-      <div className="stack-3" style={{ marginBottom: 'var(--space-8)' }}>
+      <div className="stack-3 rg-ob-category" style={{ marginBottom: 'var(--space-8)' }}>
         <RadioOption
           name="racecategory"
           checked={state.onboarding.raceCategory === 'ultra'}
