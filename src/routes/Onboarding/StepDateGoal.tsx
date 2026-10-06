@@ -1,6 +1,6 @@
 import { Field, Input, Select } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
-import { formatRaceDateReadout, goalTimeBreakdownLabel } from '../../lib/format';
+import { formatClockTime, formatRaceDateReadout, goalTimeBreakdownLabel, parsePaceMinutes, raceSecondsAtPace } from '../../lib/format';
 import { monthsLeftLabel, isTrainingTimeShort, recommendedWeeksFor } from '../../lib/planGenerator';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { DISTANCE_LABELS } from '../../data/constants';
@@ -29,6 +29,18 @@ export function StepDateGoal() {
       ? `a ${DISTANCE_LABELS[onboarding.distanceGoal]}`
       : '';
 
+  // "At your pace, this distance takes about X" — only when they typed their
+  // own pace (the Easy/Steady/Fast bands are ranges, not a single number).
+  const customPace = onboarding.pace === 'custom' ? parsePaceMinutes(onboarding.customPace) : null;
+  const paceRaceSeconds =
+    !isUltra && customPace != null && onboarding.distanceGoal
+      ? raceSecondsAtPace(onboarding.distanceGoal, customPace, onboarding.paceUnit)
+      : null;
+  const paceLabel = onboarding.customPace.includes(':')
+    ? onboarding.customPace.trim()
+    : formatClockTime((customPace ?? 0) * 60);
+  const isLongRace = onboarding.distanceGoal === 'half' || onboarding.distanceGoal === 'full';
+
   return (
     <>
       <h2 style={{ marginBottom: 'var(--space-1)' }}>When is your race, and what's your goal finish time?</h2>
@@ -48,6 +60,25 @@ export function StepDateGoal() {
           </div>
         )}
       </Field>
+
+      {paceRaceSeconds != null && (
+        <div className="rg-ob-pace-hint">
+          {isLongRace ? (
+            <>
+              Holding your <strong>{paceLabel} / {onboarding.paceUnit === 'km' ? 'km' : 'mile'}</strong> pace the whole way, a{' '}
+              {DISTANCE_LABELS[onboarding.distanceGoal as 'half' | 'full'].toLowerCase()} would take about{' '}
+              <strong>{formatClockTime(paceRaceSeconds)}</strong>. Most runners slow down over longer distances, so expect a
+              bit more — and set a goal that feels realistic.
+            </>
+          ) : (
+            <>
+              At your <strong>{paceLabel} / {onboarding.paceUnit === 'km' ? 'km' : 'mile'}</strong> pace, a{' '}
+              {DISTANCE_LABELS[onboarding.distanceGoal as '5k' | '10k']} takes about{' '}
+              <strong>{formatClockTime(paceRaceSeconds)}</strong>. Use that to set a goal that's realistic for your training.
+            </>
+          )}
+        </div>
+      )}
 
       <label style={{ display: 'block', marginBottom: 'var(--space-2)', fontSize: 14, fontWeight: 600 }}>
         Target goal to finish race

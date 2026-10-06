@@ -4,6 +4,48 @@ export function formatRaceDateReadout(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+const MILE_KM = 1.609344;
+const STANDARD_RACE_MILES: Record<string, number> = { '5k': 5 / MILE_KM, '10k': 10 / MILE_KM, half: 13.1094, full: 26.2188 };
+
+/** Parses a typed pace — "7:30" (min:sec) or a plain number of minutes
+ * ("7", "7.5") — into minutes per unit. Returns null for anything that
+ * isn't a plausible running pace (outside 2-20 min per mile/km). */
+export function parsePaceMinutes(text: string): number | null {
+  const t = text.trim();
+  if (!t) return null;
+  let minutes: number;
+  if (t.includes(':')) {
+    const [m, s] = t.split(':');
+    const mm = Number(m);
+    const ss = Number(s);
+    if (!Number.isFinite(mm) || !Number.isFinite(ss) || ss < 0 || ss >= 60) return null;
+    minutes = mm + ss / 60;
+  } else {
+    minutes = Number(t);
+  }
+  return Number.isFinite(minutes) && minutes >= 2 && minutes <= 20 ? minutes : null;
+}
+
+/** m:ss, or h:mm:ss from an hour up, from total seconds. */
+export function formatClockTime(totalSeconds: number): string {
+  const s = Math.round(totalSeconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const ss = String(sec).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
+/** Time to cover a standard race distance (5k/10k/half/full) at a steady
+ * pace given per mile or per km, as total seconds. Null for any other
+ * distance id. */
+export function raceSecondsAtPace(distanceId: string, paceMinutes: number, unit: 'mi' | 'km'): number | null {
+  const miles = STANDARD_RACE_MILES[distanceId];
+  if (miles == null) return null;
+  const units = unit === 'km' ? miles * MILE_KM : miles;
+  return paceMinutes * units * 60;
+}
+
 /** Combines goal-time parts (as the form strings) into the stored value:
  * total minutes, fractional when seconds are present (24:30 -> 24.5).
  * Returns null when every part is blank. */
