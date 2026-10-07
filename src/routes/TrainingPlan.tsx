@@ -4,6 +4,16 @@ import { Button } from '../components/ui/Button';
 import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { getTrainingTimeWarning } from '../lib/planGenerator';
+import { formatClockTime } from '../lib/format';
+import {
+  displayWorkoutText,
+  formatEasyRange,
+  formatPace,
+  goalAheadOfCurrentPace,
+  trainingPacesFor,
+  workoutDetail,
+  workoutKind,
+} from '../lib/trainingPaces';
 import { regeneratePlanWeeks } from '../lib/api';
 import { DISTANCE_LABELS } from '../data/constants';
 import './trainingplan.css';
@@ -16,7 +26,7 @@ const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
  * card view can color-code it consistently — same idea as Runna's
  * always-means-the-same-thing colored dots, learned once and holding
  * across every screen. */
-function classifyWorkout(text: string): 'rest' | 'easy' | 'quality' | 'long' | 'cross' | 'strength' | 'race' | 'plain' {
+function classifyWorkout(text: string): 'rest' | 'easy' | 'steady' | 'quality' | 'long' | 'cross' | 'strength' | 'race' | 'plain' {
   const t = text.toLowerCase();
   if (t.includes('race day')) return 'race';
   if (t === 'rest') return 'rest';
@@ -24,6 +34,7 @@ function classifyWorkout(text: string): 'rest' | 'easy' | 'quality' | 'long' | '
   if (t.includes('strength')) return 'strength';
   if (t.includes('bike') || t.includes('swim') || t.includes('cross')) return 'cross';
   if (t.includes('interval') || t.includes('tempo') || t.includes('hill') || t.includes('hiit') || t.includes('stairmaster')) return 'quality';
+  if (t.includes('steady')) return 'steady';
   if (t.includes('easy') || t.includes('shakeout')) return 'easy';
   return 'plain';
 }
@@ -102,9 +113,26 @@ export function TrainingPlan() {
       ? `${plan.ultraMiles}-Mile Ultra`
       : DISTANCE_LABELS.ultra
     : DISTANCE_LABELS[plan.distanceGoal];
+  // Training paces for standard-distance plans, from the goal finish time.
+  // Computed here at render time (not stored) so changing the goal on Edit
+  // Race updates every workout's pace immediately, with no plan rebuild.
+  const paceUnit = plan.paceUnit === 'km' ? 'km' : 'mi';
+  const paces = isUltra ? null : trainingPacesFor(plan.distanceGoal, plan.goalFinishMinutes);
+  const goalAhead = isUltra ? null : goalAheadOfCurrentPace(plan);
+  const goalLabel = plan.goalFinishMinutes ? formatClockTime(plan.goalFinishMinutes * 60) : '';
+  const editGoal = () => plan.id && navigate(`/races/${plan.id}/edit`);
+  /** A day's shown text + its pace guidance (null for ultras / no goal). */
+  const dayInfo = (row: (typeof plan.rows)[number], dayIndex: number, raw: string) => {
+    if (isUltra) return { text: raw, detail: null as string | null };
+    const kind = workoutKind(dayIndex, raw, row.isRaceWeek);
+    return {
+      text: displayWorkoutText(dayIndex, raw, kind),
+      detail: paces ? workoutDetail(kind, raw, { distanceGoal: plan.distanceGoal, phase: row.phase, paces, unit: paceUnit }) : null,
+    };
+  };
   const tableHeaders = isUltra
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
-    : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
+    : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
 
   return (
     <>
@@ -218,6 +246,43 @@ export function TrainingPlan() {
         </div>
       </div>
 
+      {!isUltra && (
+        <div className="rg-tp-pace-card">
+          {paces ? (
+            <>
+              <div className="rg-tp-info-heading">Your training paces</div>
+              <div className="rg-tp-pace-grid">
+                <div><span>Easy</span><strong>{formatEasyRange(paces, paceUnit)}</strong></div>
+                <div><span>Steady</span><strong>{formatPace(paces.steady, paceUnit)}</strong></div>
+                <div><span>Tempo</span><strong>{formatPace(paces.tempo, paceUnit)}</strong></div>
+                <div><span>Intervals</span><strong>{formatPace(paces.interval, paceUnit)}</strong></div>
+                <div><span>Race pace</span><strong>{formatPace(paces.race, paceUnit)}</strong></div>
+              </div>
+              <p className="rg-tp-pace-note">
+                Based on your <strong>{goalLabel}</strong> {DISTANCE_LABELS[plan.distanceGoal]} goal.{' '}
+                <button type="button" className="rg-tp-link" onClick={editGoal}>Change goal</button>
+              </p>
+              {goalAhead && (
+                <p className="rg-tp-pace-warning">
+                  Your goal is well ahead of your current pace — at {plan.customPace}/{paceUnit} you would run a{' '}
+                  {DISTANCE_LABELS[plan.distanceGoal]} in about {formatClockTime(goalAhead.currentSeconds)}. Many runners
+                  train a little slower at first and move toward goal pace as fitness builds. You can change your goal any
+                  time.
+                </p>
+              )}
+              <p className="rg-tp-pace-note">
+                Estimates only — adjust for heat, hills and fatigue. Easy runs should feel conversational.
+              </p>
+            </>
+          ) : (
+            <p className="rg-tp-pace-note" style={{ margin: 0 }}>
+              Add a goal finish time to see training paces for every workout.{' '}
+              <button type="button" className="rg-tp-link" onClick={editGoal}>Add goal time</button>
+            </p>
+          )}
+        </div>
+      )}
+
       {view === 'cards' ? (
         <div className="rg-tp-week-list">
           {plan.rows.map((row) => {
@@ -234,12 +299,16 @@ export function TrainingPlan() {
                   </span>
                 </div>
                 <div className="rg-tp-week-days">
-                  {days.map((text, i) => (
-                    <div key={DAY_LABELS[i]} className="rg-tp-day-cell">
-                      <div className="rg-tp-day-label">{DAY_LABELS[i]}</div>
-                      <div className={`rg-tp-day-chip rg-tp-chip-${classifyWorkout(text)}`}>{text}</div>
-                    </div>
-                  ))}
+                  {days.map((raw, i) => {
+                    const { text, detail } = dayInfo(row, i, raw);
+                    return (
+                      <div key={DAY_LABELS[i]} className="rg-tp-day-cell">
+                        <div className="rg-tp-day-label">{DAY_LABELS[i]}</div>
+                        <div className={`rg-tp-day-chip rg-tp-chip-${classifyWorkout(text)}`}>{text}</div>
+                        {detail && <div className="rg-tp-day-detail">{detail}</div>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -261,7 +330,16 @@ export function TrainingPlan() {
                   const rowClass = row.isRaceWeek ? 'rg-tp-race' : row.phase === 'Recovery Week' ? 'rg-tp-recovery' : '';
                   const bg = !row.isRaceWeek && row.phase !== 'Recovery Week' ? MONTH_BG[i % 2] : undefined;
                   const phaseClass = `rg-tp-phase-tag rg-tp-phase-${row.phase.replace(/\s+/g, '-').toLowerCase()}`;
-                  const dayCell = (value: string) => <td className={value === 'Rest' ? 'rg-tp-rest' : ''}>{value}</td>;
+                  const dayCell = (value: string, dayIndex: number) => {
+                    const { text, detail } = dayInfo(row, dayIndex, value);
+                    return (
+                      <td className={value === 'Rest' ? 'rg-tp-rest' : ''}>
+                        {text}
+                        {detail && <div className="rg-tp-day-detail">{detail}</div>}
+                      </td>
+                    );
+                  };
+                  const satInfo = dayInfo(row, 5, row.sat);
                   return (
                     <tr key={row.week} className={rowClass} style={bg ? { background: bg } : undefined}>
                       <td className="rg-tp-week-cell">
@@ -270,13 +348,16 @@ export function TrainingPlan() {
                       <td>
                         <span className={phaseClass}>{row.phase}</span>
                       </td>
-                      {dayCell(row.mon)}
-                      {dayCell(row.tue)}
-                      {dayCell(row.wed)}
-                      {dayCell(row.thu)}
-                      {dayCell(row.fri)}
-                      <td style={{ fontWeight: 600 }}>{row.sat}</td>
-                      {dayCell(row.sun)}
+                      {dayCell(row.mon, 0)}
+                      {dayCell(row.tue, 1)}
+                      {dayCell(row.wed, 2)}
+                      {dayCell(row.thu, 3)}
+                      {dayCell(row.fri, 4)}
+                      <td style={{ fontWeight: 600 }}>
+                        {satInfo.text}
+                        {satInfo.detail && <div className="rg-tp-day-detail">{satInfo.detail}</div>}
+                      </td>
+                      {dayCell(row.sun, 6)}
                       <td className="rg-tp-total-cell">
                         {isUltra && row.totalHours != null ? `${row.totalHours.toFixed(1)} hrs` : `${row.totalMiles.toFixed(1)} mi`}
                       </td>

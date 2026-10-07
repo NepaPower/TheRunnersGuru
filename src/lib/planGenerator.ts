@@ -141,7 +141,7 @@ function generateDynamicPlan(
     if (phase === 'Race Week') {
       mon = 'Rest';
       tue = '4 mi (Easy)';
-      wed = '3 mi';
+      wed = '3 mi (Steady)';
       thu = 'Rest';
       fri = '2 mi (Shake)';
       sat = raceMiles.toFixed(1) + ' mi';
@@ -154,7 +154,7 @@ function generateDynamicPlan(
       const tueStyle = week % 2 === 0 ? 'Intervals' : phase === 'Base Building' ? 'Easy' : 'Tempo';
       mon = 'Rest';
       tue = tueMiles + ' mi (' + tueStyle + ')';
-      wed = wedMiles + ' mi';
+      wed = wedMiles + ' mi (Steady)';
       thu = thuMiles + ' mi (Easy)';
       fri = 'Rest';
       sat = Math.round(longRun) + ' mi';

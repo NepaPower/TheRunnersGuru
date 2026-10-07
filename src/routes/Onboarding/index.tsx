@@ -78,7 +78,7 @@ export function Onboarding() {
         state.onboarding.goalMinutes,
         isUltra ? '' : state.onboarding.goalSeconds,
       );
-      const plan = buildTrainingPlan(
+      const built = buildTrainingPlan(
         state.onboarding.raceDate,
         state.onboarding.distanceGoal || '5k',
         state.onboarding.firstTime,
@@ -88,7 +88,13 @@ export function Onboarding() {
         isUltra ? state.onboarding.gpxRoute : null,
         goalFinishMinutes,
       );
-      if (!plan) throw new Error('Missing race date or distance — go back and fill those in.');
+      if (!built) throw new Error('Missing race date or distance — go back and fill those in.');
+      const plan = {
+        ...built,
+        pace: state.onboarding.pace || null,
+        paceUnit: state.onboarding.paceUnit,
+        customPace: state.onboarding.pace === 'custom' ? state.onboarding.customPace || null : null,
+      };
       const savedRow = await saveTrainingPlan(liveUserId, plan);
       dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan: { ...plan, id: savedRow.id } });
       navigate('/home');

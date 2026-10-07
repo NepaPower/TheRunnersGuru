@@ -278,6 +278,12 @@ export interface TrainingPlan {
   // Total goal finish time in minutes, from onboarding's goal-time step.
   // Used by the Crew Plan screen to predict aid-station arrival times.
   goalFinishMinutes: number | null;
+  // The pace picked/typed during onboarding step 4. Only used to sanity-check
+  // the goal time against current fitness; absent on older plans and on
+  // crew-only races.
+  pace?: string | null;
+  paceUnit?: 'mi' | 'km' | null;
+  customPace?: string | null;
   crewNotes: Record<string, CrewNoteEntry>;
   // Per-leg course detail (description, ascent/descent, elevation image),
   // one entry per real aid-station segment, matched by order. `null` when
