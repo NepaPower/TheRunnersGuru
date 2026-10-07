@@ -685,6 +685,16 @@ export async function promoteToChief(planId: string, accessId: string) {
   if (promoteErr) throw promoteErr;
 }
 
+/** Steps a Chief Crew member back down to regular (view-only) crew. Only the
+ * plan owner can do this (RLS: "owners manage their plan's crew access").
+ * Checks a row actually changed, since RLS filters a disallowed update to
+ * zero rows without raising an error. */
+export async function demoteToCrew(accessId: string) {
+  const { data, error } = await supabase.from('crew_plan_access').update({ role: 'crew' }).eq('id', accessId).select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("Couldn't change that crew member's role.");
+}
+
 export async function fetchCrewAccessList(planId: string): Promise<CrewAccessEntry[]> {
   const { data, error } = await supabase
     .from('crew_plan_access')

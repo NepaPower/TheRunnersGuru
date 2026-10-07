@@ -10,6 +10,7 @@ import {
   fetchCrewAccessList,
   removeCrewAccess,
   promoteToChief,
+  demoteToCrew,
   fetchMyCrewRole,
   claimCrewPlanLock,
   releaseCrewPlanLock,
@@ -1380,6 +1381,19 @@ export function CrewPlan() {
     }
   }
 
+  async function handleDemote(accessId: string) {
+    if (!plan?.id) return;
+    setPromotingId(accessId);
+    try {
+      await demoteToCrew(accessId);
+      setCrewAccessList(await fetchCrewAccessList(plan.id));
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Could not update Chief Crew.');
+    } finally {
+      setPromotingId(null);
+    }
+  }
+
   async function handleRemoveAccess(accessId: string) {
     if (!plan?.id) return;
     await removeCrewAccess(accessId);
@@ -1715,9 +1729,13 @@ export function CrewPlan() {
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      {c.role !== 'chief' && (
+                      {c.role !== 'chief' ? (
                         <Button variant="ghost" disabled={promotingId === c.id} onClick={() => handlePromote(c.id)}>
                           {promotingId === c.id ? 'Making chief…' : 'Make Chief'}
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" disabled={promotingId === c.id} onClick={() => handleDemote(c.id)}>
+                          {promotingId === c.id ? 'Updating…' : 'Make regular crew'}
                         </Button>
                       )}
                       <Button variant="ghost" onClick={() => handleRemoveAccess(c.id)}>
