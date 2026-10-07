@@ -340,6 +340,27 @@ export function CrewPlan() {
     }
   }, [isShared, sharedPlan, sharedPlanStaleAt]);
 
+  // Shared mode only — this crew member's own role. Only the plan's owner
+  // and its one Chief Crew may edit the Crew Plan; every other accepted
+  // crew member is view-only. The database enforces this (the "crew
+  // members can edit shared plans" RLS policy requires role = 'chief',
+  // see schema.sql) — this is what keeps the UI from offering edits that
+  // would be rejected. While the role is still loading (null) a shared
+  // viewer is treated as view-only, so a chief sees edit controls appear
+  // a moment later rather than a regular crew member seeing them flash.
+  const [myCrewRole, setMyCrewRole] = useState<'crew' | 'chief' | null>(null);
+  useEffect(() => {
+    if (!isShared || !sharedPlanId || !state.userId) return;
+    let cancelled = false;
+    fetchMyCrewRole(sharedPlanId, state.userId).then((role) => {
+      if (!cancelled) setMyCrewRole(role);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isShared, sharedPlanId, state.userId]);
+  const viewOnlyCrew = isShared && myCrewRole !== 'chief';
+
   // Check-in/check-out — a soft lock so two people editing this plan at
   // once (owner + crew, or two crew members) don't silently overwrite
   // each other. See the crew-plan-lock functions in lib/api.ts for the
@@ -357,10 +378,12 @@ export function CrewPlan() {
   const planFromCache = isShared ? sharedPlanStaleAt != null : state.dataStale;
   const offlineReadOnly = !online || planFromCache;
   const staleCachedAt = isShared ? sharedPlanStaleAt : state.dataCachedAt;
-  const readOnlyMode = lockReadOnly || offlineReadOnly;
+  const readOnlyMode = lockReadOnly || offlineReadOnly || viewOnlyCrew;
 
   useEffect(() => {
-    if (!plan?.id || !state.userId) return;
+    // View-only crew never take the edit lock — they can't edit, and
+    // holding it would block the runner / Chief Crew from editing.
+    if (!plan?.id || !state.userId || viewOnlyCrew) return;
     let cancelled = false;
     let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -411,7 +434,7 @@ export function CrewPlan() {
       if (plan?.id && state.userId) releaseCrewPlanLock(plan.id, state.userId).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan?.id, state.userId]);
+  }, [plan?.id, state.userId, viewOnlyCrew]);
 
   // No beforeunload release handler here on purpose — a real browser tab
   // close can't reliably complete an authenticated API call in that
@@ -466,23 +489,6 @@ export function CrewPlan() {
   const [mandatoryGearUploading, setMandatoryGearUploading] = useState(false);
   const [mandatoryGearError, setMandatoryGearError] = useState<string | null>(null);
   const mandatoryGearFileInputRef = useRef<HTMLInputElement>(null);
-
-  // Shared mode only — this crew member's own role, used to decide
-  // whether to show the Upload/Replace GPX control at all. The real
-  // restriction is enforced server-side regardless (see schema.sql's
-  // enforce_gpx_route_chief_only trigger); this is just so a regular
-  // crew member doesn't see a button that would fail if they clicked it.
-  const [myCrewRole, setMyCrewRole] = useState<'crew' | 'chief' | null>(null);
-  useEffect(() => {
-    if (!isShared || !sharedPlanId || !state.userId) return;
-    let cancelled = false;
-    fetchMyCrewRole(sharedPlanId, state.userId).then((role) => {
-      if (!cancelled) setMyCrewRole(role);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isShared, sharedPlanId, state.userId]);
 
   useEffect(() => {
     if (isShared || !plan?.id) return;
@@ -1391,6 +1397,19 @@ export function CrewPlan() {
         ← Back to {isShared ? 'shared plans' : 'summary'}
       </Button>
 
+      {isShared && myCrewRole === 'crew' && (
+        <div className="rg-cp-lock-banner rg-print-hide">
+          <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" strokeWidth="2" strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="3" strokeWidth="2" />
+          </svg>
+          <span>
+            You have <strong>view-only</strong> access to this plan. Only the runner and the Chief Crew can make
+            changes — you can see everything below.
+          </span>
+        </div>
+      )}
+
       {lockReadOnly && lockState && (
         <div className="rg-cp-lock-banner rg-print-hide">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
@@ -1634,8 +1653,9 @@ export function CrewPlan() {
               <div>
                 <h3 style={{ margin: 0 }}>Crew members</h3>
                 <p className="rg-cp-muted" style={{ fontSize: 13, margin: '2px 0 0' }}>
-                  Invite people to view and edit this Crew Plan. They'll get access automatically the next time they
-                  sign in with this email — there's no email sent by the app, so let them know directly.
+                  Invite people to view this Crew Plan — crew members are view-only; make one of them Chief Crew to let them
+                  edit it with you. They'll get access automatically the next time they sign in with this email —
+                  there's no email sent by the app, so let them know directly.
                 </p>
               </div>
               <button type="button" className="rg-cp-crew-modal-close" aria-label="Close" onClick={() => setCrewModalOpen(false)}>
@@ -1660,7 +1680,7 @@ export function CrewPlan() {
             </div>
             <label className="rg-cp-flag">
               <input type="checkbox" checked={inviteAsChief} onChange={(e) => setInviteAsChief(e.target.checked)} />
-              Make Chief Crew — only they can upload/replace the course GPX file
+              Make Chief Crew — can edit the plan and replace the course GPX file (like you)
             </label>
             {inviteAsChief && crewAccessList.some((c) => c.role === 'chief') && (
               <p className="rg-cp-muted" style={{ fontSize: 12, margin: '4px 0 0' }}>
@@ -2136,7 +2156,9 @@ export function CrewPlan() {
           <div className="rg-cp-save-footer rg-print-hide" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             {readOnlyMode ? (
               <span className="rg-cp-muted" style={{ fontSize: 13 }}>
-                Viewing in read-only mode while {lockState?.name || 'someone else'} is editing.
+                {viewOnlyCrew
+                  ? 'View-only — only the runner and the Chief Crew can edit this plan.'
+                  : `Viewing in read-only mode while ${lockState?.name || 'someone else'} is editing.`}
               </span>
             ) : (
               <>

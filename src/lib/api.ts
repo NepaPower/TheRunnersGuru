@@ -396,9 +396,9 @@ export async function updateCrewPlan(
 }
 
 /** Same as updateCrewPlan, but scoped by plan id instead of owner user id
- * — for an accepted crew member editing a plan that isn't their own. RLS
- * ("crew members can edit shared plans") is what actually enforces they
- * only succeed on plans they've been granted access to. */
+ * — for the Chief Crew editing a plan that isn't their own. RLS ("chief
+ * crew can edit shared plans") is what actually enforces they only succeed
+ * on plans where they hold the chief role. */
 export async function updateCrewPlanById(
   planId: string,
   updates: {
@@ -422,8 +422,14 @@ export async function updateCrewPlanById(
   if ('mandatoryGearImage' in updates) patch.mandatory_gear_image = updates.mandatoryGearImage ?? null;
   if ('mandatoryGearNotes' in updates) patch.mandatory_gear_notes = updates.mandatoryGearNotes || null;
 
-  const { error } = await supabase.from('training_plans').update(patch).eq('id', planId);
+  // RLS doesn't error when it filters an update down to zero rows — it just
+  // updates nothing — so without checking, a view-only crew member's save
+  // would look like it succeeded. Only the owner and Chief Crew can edit.
+  const { data, error } = await supabase.from('training_plans').update(patch).eq('id', planId).select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("You don't have permission to edit this plan — only the runner and Chief Crew can.");
+  }
 }
 
 // ─── Crew Plan — course segment images ───────────────────────────────────

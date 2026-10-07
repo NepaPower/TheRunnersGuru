@@ -154,9 +154,10 @@ create table public.crew_plan_access (
   invited_email text not null,
   crew_user_id uuid references auth.users(id) on delete cascade,
   status text not null default 'pending' check (status in ('pending', 'accepted')),
-  -- 'chief' is the only role allowed to replace the course GPX file (see
-  -- the trigger below) — everything else a crew member can do (notes,
-  -- pace, rest times, race timing) is unrestricted by role.
+  -- 'chief' (with the plan owner) is the only role that can EDIT the plan —
+  -- notes, pace, rest times, race timing, and the course GPX / segments /
+  -- mandatory gear. A plain 'crew' member is view-only: the update policy
+  -- below requires role = 'chief'.
   role text not null default 'crew' check (role in ('crew', 'chief')),
   created_at timestamptz not null default now(),
   unique (plan_id, invited_email)
@@ -186,10 +187,11 @@ create policy "crew can claim their own pending invite"
 
 -- Separate SELECT/UPDATE policies (in addition to "training plans are
 -- owner-only" above — Postgres combines multiple permissive policies for
--- the same command with OR) let an accepted crew member view and edit the
--- plan's Crew Plan fields (race timing, GPX, crew_notes). They get no
--- access to training_plan_weeks — that policy isn't touched, so the
--- weekly training schedule stays owner-only regardless.
+-- the same command with OR). Any accepted crew member can VIEW the plan;
+-- only the plan's one Chief Crew can UPDATE it (the owner already can via
+-- the owner-only policy). A regular crew member is view-only. Nobody but
+-- the owner gets any access to training_plan_weeks — that policy isn't
+-- touched, so the weekly training schedule stays owner-only regardless.
 create policy "crew members can view shared plans"
   on public.training_plans for select
   using (
@@ -199,21 +201,21 @@ create policy "crew members can view shared plans"
     )
   );
 
-create policy "crew members can edit shared plans"
+create policy "chief crew can edit shared plans"
   on public.training_plans for update
   using (
     exists (
       select 1 from public.crew_plan_access ca
-      where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid() and ca.status = 'accepted'
+      where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid()
+        and ca.status = 'accepted' and ca.role = 'chief'
     )
   );
 
 -- Column-level restriction RLS alone can't express (a USING/WITH CHECK
--- clause applies to the whole row, not one column) — a crew member can
--- freely edit race timing and every station's notes via "crew members
--- can edit shared plans" above, but the course-defining columns
--- (gpx_route and course_segments) may only be changed by the plan owner
--- or the plan's one Chief Crew. Enforced by a before-update trigger.
+-- clause applies to the whole row, not one column) — the course-defining
+-- columns (gpx_route, course_segments, mandatory gear) stay locked to the
+-- plan owner or the plan's one Chief Crew even if the update policy above
+-- is ever loosened again. Enforced by a before-update trigger.
 
 -- Owner or the plan's Chief Crew. security definer so it can read
 -- crew_plan_access from inside a trigger or a storage policy regardless
@@ -609,6 +611,20 @@ create policy "course-segment images: delete by owner or chief"
 --   -- minutes), so the column can no longer be a whole-number int.
 --   -- Existing values convert unchanged.
 --   alter table public.training_plans alter column goal_finish_minutes type numeric;
+--
+--   -- Regular crew are now view-only: only the plan owner and its Chief
+--   -- Crew may edit a shared plan. (Replaces "crew members can edit
+--   -- shared plans", which let ANY accepted crew member update the row.)
+--   drop policy if exists "crew members can edit shared plans" on public.training_plans;
+--   create policy "chief crew can edit shared plans"
+--     on public.training_plans for update
+--     using (
+--       exists (
+--         select 1 from public.crew_plan_access ca
+--         where ca.plan_id = training_plans.id and ca.crew_user_id = auth.uid()
+--           and ca.status = 'accepted' and ca.role = 'chief'
+--       )
+--     );
 
 -- ─── shared_routes (Route Library) ───────────────────────────────────────
 -- "Local Trails, Global Guru." A standalone GPX-sharing library — NOT
