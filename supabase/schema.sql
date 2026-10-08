@@ -17,6 +17,10 @@
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   name text,
+  -- Copied from auth.users at signup (see handle_new_user) so a database
+  -- webhook on new profiles can include it — the email otherwise lives only
+  -- in the auth schema. Not used by the app itself.
+  email text,
   street text,
   unit text,
   city text,
@@ -46,8 +50,8 @@ create policy "profiles are insertable by owner"
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'name', ''));
+  insert into public.profiles (id, name, email)
+  values (new.id, coalesce(new.raw_user_meta_data->>'name', ''), new.email);
   return new;
 end;
 $$ language plpgsql security definer;
@@ -606,6 +610,19 @@ create policy "course-segment images: delete by owner or chief"
 --   alter table public.feedback enable row level security;
 --   create policy "feedback is insertable by the signed-in sender"
 --     on public.feedback for insert with check (auth.uid() = user_id);
+--
+--   -- Store each user's email on their profile so a "new signup" database
+--   -- webhook payload can include it (auth.users isn't exposed to webhooks).
+--   alter table public.profiles add column email text;
+--   create or replace function public.handle_new_user()
+--   returns trigger as $$
+--   begin
+--     insert into public.profiles (id, name, email)
+--     values (new.id, coalesce(new.raw_user_meta_data->>'name', ''), new.email);
+--     return new;
+--   end;
+--   $$ language plpgsql security definer;
+--   update public.profiles p set email = u.email from auth.users u where u.id = p.id and p.email is null;
 --
 --   -- Goal finish time can now include seconds (stored as fractional
 --   -- minutes), so the column can no longer be a whole-number int.
