@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { PageHeader } from '../components/PageHeader';
+import { PageHeader, SectionHeader } from '../components/PageHeader';
 import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { getTrainingTimeWarning } from '../lib/planGenerator';
@@ -245,13 +245,6 @@ export function TrainingPlan() {
             )}
           </div>
         </div>
-
-        <div className="rg-tp-expand-footer">
-          <div className="seg">
-            <SegOption name="tp-view" checked={view === 'cards'} onChange={() => setView('cards')} label="Card view" />
-            <SegOption name="tp-view" checked={view === 'table'} onChange={() => setView('table')} label="Table view" />
-          </div>
-        </div>
       </div>
 
       {!isUltra && (
@@ -290,6 +283,17 @@ export function TrainingPlan() {
           )}
         </div>
       )}
+
+      <SectionHeader
+        title="Week by week"
+        status={`${plan.totalWeeks} weeks`}
+        action={
+          <div className="seg">
+            <SegOption name="tp-view" checked={view === 'cards'} onChange={() => setView('cards')} label="Card view" />
+            <SegOption name="tp-view" checked={view === 'table'} onChange={() => setView('table')} label="Table view" />
+          </div>
+        }
+      />
 
       {view === 'cards' ? (
         <div className="rg-tp-week-list">

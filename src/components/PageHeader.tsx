@@ -55,3 +55,25 @@ export function EmptyState({
     </div>
   );
 }
+
+/** A section heading inside a page: bold title, a thin rule running out to a
+ * tiny right-aligned status ("LAST 7 DAYS", "3 ROUTES"), and an optional
+ * action (a toggle or button) at the far end. */
+export function SectionHeader({
+  title,
+  status,
+  action,
+}: {
+  title: string;
+  status?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="rg-sh">
+      <h3 className="rg-sh-title">{title}</h3>
+      <span className="rg-sh-rule" aria-hidden="true" />
+      {status && <span className="rg-sh-status">{status}</span>}
+      {action && <div className="rg-sh-action">{action}</div>}
+    </div>
+  );
+}

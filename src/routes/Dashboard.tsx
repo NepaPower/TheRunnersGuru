@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { PageHeader } from '../components/PageHeader';
+import { PageHeader, SectionHeader } from '../components/PageHeader';
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart';
 import { useApp } from '../state/AppContext';
 import { homeStats, weeklyMileageSeries } from '../state/selectors';
@@ -205,11 +205,8 @@ export function Dashboard() {
         </div>
       )}
 
+      <SectionHeader title="Miles this week" status={hasAnyRuns ? 'Last 7 days' : undefined} />
       <div className="rg-dash-chart-card">
-        <div className="rg-dash-chart-header">
-          <div className="rg-dash-chart-title">Miles this week</div>
-          {hasAnyRuns && <div className="text-muted" style={{ fontSize: 12 }}>Last 7 days</div>}
-        </div>
         {hasAnyRuns ? (
           <WeeklyMileageChart data={week} />
         ) : (
@@ -224,6 +221,7 @@ export function Dashboard() {
         )}
       </div>
 
+      <SectionHeader title="Your numbers" />
       <div className="rg-dash-stat-grid">
         {stats.map((stat) => (
           <div key={stat.label} className="rg-dash-stat-card">

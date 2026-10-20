@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { EmptyState, PageHeader } from '../components/PageHeader';
+import { EmptyState, PageHeader, SectionHeader } from '../components/PageHeader';
 import { useApp } from '../state/AppContext';
 import { deleteTrainingPlan, fetchCrewAccessList, regeneratePlanWeeks, setPrimaryRace } from '../lib/api';
 import type { CrewAccessEntry, DistanceGoal } from '../types';
@@ -104,6 +104,9 @@ export function Races() {
     }
   }
 
+  const upcomingDays = plans.map((p) => daysUntil(p.raceDate)).filter((d): d is number => d != null && d >= 0);
+  const nextRaceStatus = upcomingDays.length > 0 ? `Next race ${countdownLabel(Math.min(...upcomingDays))}` : undefined;
+
   return (
     <>
       <PageHeader
@@ -128,6 +131,8 @@ export function Races() {
           {error}
         </div>
       )}
+
+      {plans.length > 0 && <SectionHeader title="Your races" status={nextRaceStatus} />}
 
       {plans.length === 0 ? (
         <EmptyState

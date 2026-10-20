@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
-import { EmptyState, PageHeader } from '../components/PageHeader';
+import { EmptyState, PageHeader, SectionHeader } from '../components/PageHeader';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { RoutePreviewMap } from '../components/RoutePreviewMap';
 import { useApp } from '../state/AppContext';
@@ -294,7 +294,7 @@ export function RouteLibrary() {
       ) : (
         groupedByCountry.map(([country, countryRoutes]) => (
           <div key={country} className="rg-rl-country-group">
-            <h3 className="rg-rl-country-heading">{country}</h3>
+            <SectionHeader title={country} status={`${countryRoutes.length} route${countryRoutes.length === 1 ? '' : 's'}`} />
             <div className="rg-rl-grid">
               {countryRoutes.map((r) => (
                 <button key={r.id} type="button" className="rg-rl-card" onClick={() => openRoute(r)}>

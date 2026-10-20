@@ -68,17 +68,6 @@
   padding: var(--space-4) var(--space-4) var(--space-2);
   margin-bottom: var(--space-6);
 }
-.rg-dash-chart-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-}
-.rg-dash-chart-title {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 16px;
-}
 .rg-dash-chart-empty {
   padding: var(--space-6) 0;
   text-align: center;
