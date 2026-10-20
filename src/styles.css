@@ -1,5 +1,5 @@
 /* Industry — design-system tokens and component classes. This file is the source of truth for the system's look; retune it here and see readme.md. */
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600;700&display=swap');
 
 :root {
   --color-bg: #f7f7f1;
@@ -7,8 +7,10 @@
   --color-text: #1d1f20;
   --color-accent: #5fa055;
   --color-ink: #16241f; /* dark band behind page titles */
+  --color-page: #e6e8dc; /* signed-in app background, a shade deeper than cards */
   --color-accent-2: #4a9ac0;
   --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
+  --color-divider-strong: color-mix(in srgb, #1d1f20 26%, transparent); /* card edges on the deeper app background */
 
   /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
      same step of any role matches the others in visual value. */
@@ -248,6 +250,7 @@ textarea.input { min-height: 90px; resize: vertical; }
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   font-size: 18px; margin-right: auto;
 }
+.app-shell .nav { background: var(--color-bg); }
 .nav-links { display: flex; align-items: center; gap: var(--space-4); }
 .nav-link {
   display: inline-flex;
@@ -383,7 +386,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 /* — Page header band (PageHeader.tsx) — */
 .rg-ph {
   background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--color-divider-strong);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -440,15 +443,15 @@ textarea.input { min-height: 90px; resize: vertical; }
 .rg-ph-body { padding: var(--space-4) var(--space-6) var(--space-6); }
 .rg-ph-insight {
   font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: clamp(22px, 3.6vw, 30px);
+  font-weight: 700;
+  font-size: clamp(24px, 3.8vw, 32px);
   line-height: 1.1;
 }
 .rg-ph-subtitle {
   margin: var(--space-2) 0 0;
   max-width: 64ch;
   font-size: 14px;
-  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+  color: color-mix(in srgb, var(--color-text) 78%, transparent);
 }
 .rg-ph-empty {
   border: 1px dashed var(--color-divider);

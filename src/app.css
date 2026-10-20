@@ -17,7 +17,9 @@ body {
 
 .app-shell {
   min-height: 100vh;
-  background: var(--color-bg);
+  /* A shade deeper than the cards, so the (lighter) cards and top bar lift
+     off it and the dark page-header band reads as part of the same surface. */
+  background: var(--color-page);
   color: var(--color-text);
   display: flex;
   flex-direction: column;
