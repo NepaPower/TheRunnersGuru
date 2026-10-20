@@ -250,7 +250,18 @@ textarea.input { min-height: 90px; resize: vertical; }
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
   font-size: 18px; margin-right: auto;
 }
-.app-shell .nav { background: var(--color-bg); }
+/* Signed-in top bar: the same dark ink as the page-header band, so the
+   bar and the band read as one surface. */
+.app-shell .nav {
+  background: var(--color-ink);
+  color: var(--color-bg);
+  box-shadow: 0 2px 10px color-mix(in srgb, #16241f 28%, transparent);
+}
+.app-shell .nav .nav-link { color: color-mix(in srgb, var(--color-bg) 82%, transparent); font-size: 15px; font-weight: 600; }
+.app-shell .nav .nav-link:hover { color: var(--color-bg); }
+.app-shell .nav .nav-link.active { color: var(--color-accent-300); box-shadow: inset 0 -2px 0 var(--color-accent-300); }
+.app-shell .nav .btn-ghost { color: var(--color-accent-300); font-size: 15px; }
+.app-shell .nav .btn-ghost:hover { background: color-mix(in srgb, var(--color-bg) 12%, transparent); }
 .nav-links { display: flex; align-items: center; gap: var(--space-4); }
 .nav-link {
   display: inline-flex;
@@ -297,9 +308,8 @@ textarea.input { min-height: 90px; resize: vertical; }
     left: 0;
     right: 0;
     z-index: 50;
-    background: var(--color-bg);
-    border-top: 1px solid var(--color-divider);
-    box-shadow: 0 -2px 10px color-mix(in srgb, #2b2b2d 8%, transparent);
+    background: var(--color-ink);
+    box-shadow: 0 -2px 10px color-mix(in srgb, #16241f 28%, transparent);
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
   .bottom-tab {
@@ -310,7 +320,7 @@ textarea.input { min-height: 90px; resize: vertical; }
     justify-content: center;
     gap: 3px;
     padding: 8px 4px 6px;
-    color: color-mix(in srgb, var(--color-text) 55%, transparent);
+    color: color-mix(in srgb, var(--color-bg) 70%, transparent);
     text-decoration: none;
     font-size: 11px;
     font-weight: 600;
@@ -319,7 +329,7 @@ textarea.input { min-height: 90px; resize: vertical; }
     font-family: inherit;
     cursor: pointer;
   }
-  .bottom-tab.active { color: var(--color-accent); }
+  .bottom-tab.active { color: var(--color-accent-300); }
   .bottom-tab svg { flex: none; }
 
   /* Keeps page content (and the Crew Plan "Save" footer, etc.) from

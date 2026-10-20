@@ -89,7 +89,7 @@ export function AppNav({ onFeedback }: { onFeedback: () => void }) {
 
   return (
     <>
-      <nav className="nav" style={{ borderBottom: '1px solid var(--color-divider)' }}>
+      <nav className="nav">
         <div className="nav-brand">
           <Wordmark fontSize={32} />
         </div>
