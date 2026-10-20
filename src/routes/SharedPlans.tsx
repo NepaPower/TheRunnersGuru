@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { EmptyState, PageHeader } from '../components/PageHeader';
 import { useApp } from '../state/AppContext';
 
 export function SharedPlans() {
@@ -8,17 +9,23 @@ export function SharedPlans() {
 
   return (
     <>
-      <h2 style={{ marginBottom: 'var(--space-1)' }}>Crew Plans shared with you</h2>
-      <p className="text-muted" style={{ marginBottom: 'var(--space-6)' }}>
-        You've been granted crew access to the plans below. Open one to see aid stations, pacing, and add your own
-        notes.
-      </p>
+      <PageHeader
+        eyebrow="Crew"
+        title="Crew Plans shared with you"
+        insight={
+          state.sharedPlans.length > 0
+            ? `${state.sharedPlans.length} plan${state.sharedPlans.length === 1 ? '' : 's'} you're crewing`
+            : undefined
+        }
+        subtitle="Open a plan to see aid stations, pacing, and weather. Only the runner and Chief Crew can make changes."
+      />
 
       {state.sharedPlans.length === 0 ? (
-        <p className="text-muted" style={{ marginBottom: 'var(--space-6)' }}>
-          No plans shared with you yet — ask the runner to invite you from their Crew Plan screen using this
-          account's email address.
-        </p>
+        <div style={{ marginBottom: 'var(--space-6)' }}>
+          <EmptyState title="No plans shared with you yet.">
+            Ask the runner to invite you from their Crew Plan screen using this account's email address.
+          </EmptyState>
+        </div>
       ) : (
         <div className="stack-3" style={{ marginBottom: 'var(--space-6)' }}>
           {state.sharedPlans.map((s) => (

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
+import { PageHeader } from '../../components/PageHeader';
 import { useApp } from '../../state/AppContext';
 import { distanceGoalLabel, paceLabel } from '../../state/selectors';
 import { signOut } from '../../lib/api';
@@ -45,23 +46,19 @@ export function Profile() {
 
   return (
     <>
-      <div className="row-3" style={{ marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-        <div className="avatar-initials avatar-initials--md" style={{ width: 56, height: 56, fontSize: 14 }}>
-          YOU
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ marginBottom: 2 }}>Your profile</h2>
-          <div className="text-muted" style={{ fontSize: 13 }}>
-            {distanceGoalLabel(state)} · {paceLabel(state)}
-          </div>
-        </div>
-        {/* Only reachable path to logging out on mobile now that the
-            bottom tab bar replaced the hamburger's "Log out" button —
-            desktop still also has the one in the top nav. */}
-        <Button variant="ghost" onClick={handleLogout}>
-          Log out
-        </Button>
-      </div>
+      {/* The Log out action is the only reachable path to logging out on
+          mobile now that the bottom tab bar replaced the hamburger's "Log
+          out" button — desktop still also has the one in the top nav. */}
+      <PageHeader
+        eyebrow="Profile"
+        title="Your profile"
+        subtitle={`${distanceGoalLabel(state)} · ${paceLabel(state)}`}
+        action={
+          <Button variant="ghost" onClick={handleLogout}>
+            Log out
+          </Button>
+        }
+      />
 
       <div className="seg" style={{ marginBottom: 'var(--space-6)', display: 'inline-flex' }}>
         {VISIBLE_TABS.map((t) => (

@@ -3,15 +3,6 @@
    app's light, functional Industry palette rather than the landing page's
    dark hero treatment — this is a screen people scan quickly every day. */
 
-.rg-dash-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: 4px;
-  flex-wrap: wrap;
-}
-
 .rg-dash-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

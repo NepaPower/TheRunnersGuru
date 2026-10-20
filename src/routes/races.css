@@ -1,23 +1,5 @@
 /* My Races — list of the user's own races (add / open / delete). */
 
-.rg-races-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-}
-
-.rg-races-empty {
-  border: 1px solid var(--color-divider);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  background: var(--color-bg);
-  padding: var(--space-8) var(--space-6);
-  text-align: center;
-}
-
 .rg-races-list {
   display: flex;
   flex-direction: column;

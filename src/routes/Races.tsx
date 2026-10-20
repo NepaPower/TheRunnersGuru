@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { EmptyState, PageHeader } from '../components/PageHeader';
 import { useApp } from '../state/AppContext';
 import { deleteTrainingPlan, fetchCrewAccessList, regeneratePlanWeeks, setPrimaryRace } from '../lib/api';
 import type { CrewAccessEntry, DistanceGoal } from '../types';
@@ -105,18 +106,22 @@ export function Races() {
 
   return (
     <>
-      <div className="rg-races-header">
-        <div>
-          <h2 style={{ marginBottom: 0 }}>My Races</h2>
-          <p className="text-muted" style={{ marginTop: 4 }}>
-            Every race you're planning for. Only your <strong>primary</strong> race gets a weekly training plan — make
-            a race primary to generate one. The rest are crew logistics only.
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => navigate('/races/add')}>
-          + Add a race
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Races"
+        title="My Races"
+        insight={plans.length > 0 ? `${plans.length} race${plans.length === 1 ? '' : 's'} on your calendar` : undefined}
+        subtitle={
+          <>
+            Every race you're planning for. Only your <strong>primary</strong> race gets a weekly training plan — make a
+            race primary to generate one. The rest are crew logistics only.
+          </>
+        }
+        action={
+          <Button variant="primary" onClick={() => navigate('/races/add')}>
+            + Add a race
+          </Button>
+        }
+      />
 
       {error && (
         <div className="rg-auth-error" style={{ marginBottom: 'var(--space-4)' }}>
@@ -125,14 +130,16 @@ export function Races() {
       )}
 
       {plans.length === 0 ? (
-        <div className="rg-races-empty">
-          <p className="text-muted" style={{ marginBottom: 'var(--space-4)' }}>
-            No races yet. Add one to start building its crew plan.
-          </p>
-          <Button variant="primary" onClick={() => navigate('/races/add')}>
-            + Add a race
-          </Button>
-        </div>
+        <EmptyState
+          title="No races on the calendar yet."
+          action={
+            <Button variant="primary" onClick={() => navigate('/races/add')}>
+              + Add a race
+            </Button>
+          }
+        >
+          Add one to start building its crew plan.
+        </EmptyState>
       ) : (
         <div className="rg-races-list">
           {plans.map((p) => {

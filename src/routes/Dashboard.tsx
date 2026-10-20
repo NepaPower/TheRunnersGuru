@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { PageHeader } from '../components/PageHeader';
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart';
 import { useApp } from '../state/AppContext';
 import { homeStats, weeklyMileageSeries } from '../state/selectors';
@@ -169,17 +170,17 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="rg-dash-header">
-        <div>
-          <h2 style={{ marginBottom: 0 }}>Welcome back{state.auth.firstName ? `, ${state.auth.firstName}` : ''}.</h2>
-          <p className="text-muted" style={{ marginTop: 4 }}>
-            Here's where things stand this week.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={() => navigate('/profile?tab=settings')}>
-          Runner profile
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Home"
+        title={`Welcome back${state.auth.firstName ? `, ${state.auth.firstName}` : ''}.`}
+        insight={`${stats.find((s) => s.label === 'This week')?.value ?? '0 mi'} this week`}
+        subtitle="Here's where things stand."
+        action={
+          <Button variant="secondary" onClick={() => navigate('/profile?tab=settings')}>
+            Runner profile
+          </Button>
+        }
+      />
 
       {hasPlan && (
         <div className="rg-dash-nav-grid">

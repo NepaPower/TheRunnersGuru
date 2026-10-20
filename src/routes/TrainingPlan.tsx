@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { PageHeader } from '../components/PageHeader';
 import { SegOption } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { getTrainingTimeWarning } from '../lib/planGenerator';
-import { formatClockTime } from '../lib/format';
+import { formatClockTime, formatRaceDateReadout } from '../lib/format';
 import {
   displayWorkoutText,
   formatEasyRange,
@@ -139,6 +140,13 @@ export function TrainingPlan() {
       <Button variant="ghost" onClick={() => navigate('/home')} style={{ marginBottom: 'var(--space-4)' }}>
         ← Back to summary
       </Button>
+
+      <PageHeader
+        eyebrow="Training plan"
+        title={plan.raceName}
+        insight={`${plan.totalWeeks}-week plan`}
+        subtitle={`${distanceLabel}${plan.raceDate ? ` · Race day: ${formatRaceDateReadout(plan.raceDate)}` : ''}`}
+      />
 
       {timeWarning && (
         <div

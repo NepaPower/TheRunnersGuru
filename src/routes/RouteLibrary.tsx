@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
+import { EmptyState, PageHeader } from '../components/PageHeader';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { RoutePreviewMap } from '../components/RoutePreviewMap';
 import { useApp } from '../state/AppContext';
@@ -248,15 +249,17 @@ export function RouteLibrary() {
 
   return (
     <>
-      <div className="rg-rl-header">
-        <div>
-          <h2 style={{ marginBottom: 0 }}>Route Library</h2>
-          <p className="text-muted rg-rl-tagline">Local Trails, Global Guru.</p>
-        </div>
-        <Button variant="primary" onClick={openShare}>
-          + Share a route
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Explore"
+        title="Route Library"
+        insight={!loading && routes.length > 0 ? `${routes.length} route${routes.length === 1 ? '' : 's'} shared` : undefined}
+        subtitle="Local Trails, Global Guru."
+        action={
+          <Button variant="primary" onClick={openShare}>
+            + Share a route
+          </Button>
+        }
+      />
 
       <Field label="Search by title, description, or location" style={{ marginBottom: 'var(--space-6)' }}>
         <Input
@@ -275,10 +278,19 @@ export function RouteLibrary() {
 
       {loading ? (
         <p className="text-muted">Loading…</p>
+      ) : routes.length === 0 ? (
+        <EmptyState
+          title="No routes shared yet."
+          action={
+            <Button variant="primary" onClick={openShare}>
+              + Share a route
+            </Button>
+          }
+        >
+          Be the first to share a trail you've run.
+        </EmptyState>
       ) : filtered.length === 0 ? (
-        <p className="text-muted">
-          {routes.length === 0 ? 'No routes shared yet — be the first.' : 'No routes match that search.'}
-        </p>
+        <p className="text-muted">No routes match that search.</p>
       ) : (
         groupedByCountry.map(([country, countryRoutes]) => (
           <div key={country} className="rg-rl-country-group">

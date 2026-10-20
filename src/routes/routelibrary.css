@@ -1,19 +1,5 @@
 /* Route Library — "Local Trails, Global Guru." Standalone GPX sharing. */
 
-.rg-rl-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-}
-
-.rg-rl-tagline {
-  font-style: italic;
-  margin-top: 2px;
-}
-
 .rg-rl-grid {
   display: grid;
   /* auto-fill (not auto-fit) + a capped max width — with auto-fit and an

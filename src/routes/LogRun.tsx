@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { PageHeader } from '../components/PageHeader';
 import { Dialog } from '../components/ui/Dialog';
 import { Field, Input, Select, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
@@ -345,24 +346,13 @@ export function LogRun() {
         ← Back to summary
       </Button>
 
+      <PageHeader
+        eyebrow="Training"
+        title={editingRunId ? 'Edit run' : 'Log a run'}
+        subtitle={editingRunId ? 'Update the details below, then save.' : 'Add a run you tracked elsewhere.'}
+      />
+
       <div className="rg-logrun-card" ref={formCardRef}>
-        <div className="rg-logrun-title-row">
-          <div className="rg-logrun-title-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-              <circle cx="12" cy="12" r="9" strokeWidth="2" />
-              <path d="M12 8v8M8 12h8" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div>
-            <h3 style={{ margin: 0 }}>{editingRunId ? 'Edit run' : 'Log a run'}</h3>
-            <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-              {editingRunId ? 'Update the details below, then save.' : 'Add a run you tracked elsewhere.'}
-            </p>
-          </div>
-        </div>
-
-        <div style={{ height: 'var(--space-4)' }} />
-
         <div
           style={{
             border: '1px solid var(--color-accent-300)',
