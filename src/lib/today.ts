@@ -64,3 +64,22 @@ export function todayInPlan(
   const dayIndex = weekdayIndex(today);
   return { status: 'during', row, dayIndex, text: row[DAY_KEYS[dayIndex]], daysToRace: raceDay - today };
 }
+
+export function daysUntil(isoDate: string): number | null {
+  if (!isoDate) return null;
+  const race = new Date(isoDate + 'T00:00:00');
+  if (Number.isNaN(race.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((race.getTime() - today.getTime()) / 86_400_000);
+}
+
+export function countdownLabel(days: number | null): string {
+  if (days == null) return '';
+  if (days < 0) return 'past';
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  if (days < 21) return `in ${days} days`;
+  if (days < 90) return `in ${Math.round(days / 7)} weeks`;
+  return `in ${Math.round(days / 30)} months`;
+}

@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PageHeader, SectionHeader } from '../components/PageHeader';
 import { TodayCard } from '../components/TodayCard';
-import { localISODate } from '../lib/today';
+import { countdownLabel, daysUntil, localISODate } from '../lib/today';
+import { formatRaceDateReadout } from '../lib/format';
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart';
 import { useApp } from '../state/AppContext';
 import { homeStats, weeklyMileageSeries } from '../state/selectors';
@@ -112,6 +113,12 @@ export function Dashboard() {
   const hasAnyRuns = state.loggedRuns.length > 0;
   const isUltra = state.trainingPlan?.distanceGoal === 'ultra';
 
+  const nextRace = state.ownPlans
+    .filter((p) => p.id !== state.trainingPlan?.id)
+    .map((p) => ({ plan: p, days: daysUntil(p.raceDate) }))
+    .filter((x): x is { plan: (typeof state.ownPlans)[number]; days: number } => x.days != null && x.days >= 0)
+    .sort((a, b) => a.days - b.days)[0];
+
   const raceCount = state.ownPlans.length;
   const myRacesCard = {
     key: 'races',
@@ -188,8 +195,18 @@ export function Dashboard() {
         <TodayCard
           plan={state.trainingPlan}
           loggedToday={state.loggedRuns.some((r) => r.date === localISODate())}
+          nextRace={
+            nextRace
+              ? {
+                  name: nextRace.plan.raceName,
+                  dateLabel: formatRaceDateReadout(nextRace.plan.raceDate),
+                  countdown: countdownLabel(nextRace.days),
+                }
+              : null
+          }
           onViewPlan={() => navigate('/training-plan')}
           onAddRace={() => navigate('/races/add')}
+          onOpenRaces={() => navigate('/races')}
         />
       )}
 

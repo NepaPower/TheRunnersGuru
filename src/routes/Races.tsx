@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState, PageHeader, SectionHeader } from '../components/PageHeader';
 import { useApp } from '../state/AppContext';
 import { deleteTrainingPlan, fetchCrewAccessList, regeneratePlanWeeks, setPrimaryRace } from '../lib/api';
+import { countdownLabel, daysUntil } from '../lib/today';
 import type { CrewAccessEntry, DistanceGoal } from '../types';
 import './races.css';
 
@@ -14,25 +15,6 @@ const DISTANCE_LABEL: Record<DistanceGoal, string> = {
   full: 'Marathon',
   ultra: 'Ultra',
 };
-
-function daysUntil(isoDate: string): number | null {
-  if (!isoDate) return null;
-  const race = new Date(isoDate + 'T00:00:00');
-  if (Number.isNaN(race.getTime())) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((race.getTime() - today.getTime()) / 86_400_000);
-}
-
-function countdownLabel(days: number | null): string {
-  if (days == null) return '';
-  if (days < 0) return 'past';
-  if (days === 0) return 'today';
-  if (days === 1) return 'tomorrow';
-  if (days < 21) return `in ${days} days`;
-  if (days < 90) return `in ${Math.round(days / 7)} weeks`;
-  return `in ${Math.round(days / 30)} months`;
-}
 
 export function Races() {
   const { state, dispatch } = useApp();

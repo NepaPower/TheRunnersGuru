@@ -21,13 +21,18 @@ function workoutTitle(text: string): string {
 export function TodayCard({
   plan,
   loggedToday,
+  nextRace,
   onViewPlan,
   onAddRace,
+  onOpenRaces,
 }: {
   plan: TrainingPlan;
   loggedToday: boolean;
+  /** The soonest upcoming race other than this plan's own, if any. */
+  nextRace: { name: string; dateLabel: string; countdown: string } | null;
   onViewPlan: () => void;
   onAddRace: () => void;
+  onOpenRaces: () => void;
 }) {
   const now = new Date();
   const position = todayInPlan(plan, now);
@@ -67,12 +72,19 @@ export function TodayCard({
     detail = position.startsInDays === 1 ? 'Week 1 begins tomorrow.' : `Week 1 begins in ${position.startsInDays} days.`;
   } else {
     headline = `${plan.raceName} is behind you.`;
-    detail =
+    const since =
       position.daysSinceRace === 0
-        ? 'Nice work. Add your next race to keep going.'
-        : `That was ${position.daysSinceRace} day${position.daysSinceRace === 1 ? '' : 's'} ago. Add your next race to keep going.`;
-    actionLabel = 'Add a race';
-    onAction = onAddRace;
+        ? 'Nice work.'
+        : `That was ${position.daysSinceRace} day${position.daysSinceRace === 1 ? '' : 's'} ago.`;
+    if (nextRace) {
+      detail = `${since} Up next: ${nextRace.name} — ${nextRace.dateLabel} (${nextRace.countdown}).`;
+      actionLabel = 'My Races';
+      onAction = onOpenRaces;
+    } else {
+      detail = `${since} Add your next race to keep going.`;
+      actionLabel = 'Add a race';
+      onAction = onAddRace;
+    }
   }
 
   return (
