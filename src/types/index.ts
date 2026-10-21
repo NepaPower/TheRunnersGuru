@@ -25,7 +25,7 @@ export type DistanceGoal = '5k' | '10k' | 'half' | 'full' | 'ultra';
 /** Step 1 of onboarding now asks this before any specific distance — it
  * determines whether Step 2 shows the standard 5K-Marathon picker or the
  * Ultra-specific one. */
-export type RaceCategory = 'standard' | 'ultra' | '';
+export type RaceCategory = 'standard' | 'ultra' | 'crew' | '';
 
 /** Only used when raceCategory === 'ultra'. 'custom' pairs with
  * OnboardingState.ultraCustomMiles (capped at MAX_ULTRA_MILES, see

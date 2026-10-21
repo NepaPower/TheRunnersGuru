@@ -8,7 +8,8 @@ export function StepRaceCategory() {
     <>
       <h2 style={{ marginBottom: 'var(--space-1)' }}>What are you training for?</h2>
       <p className="text-muted" style={{ marginBottom: 'var(--space-6)' }}>
-        This app is built for ultras first — pick Ultra and we'll ask a couple of extra questions to tailor the plan.
+        This app is built for ultras first — pick Ultra and we'll ask a couple of extra questions to tailor the plan. Only
+        here to crew or pace someone? Pick the last option and skip the questions.
       </p>
       <div className="stack-3 rg-ob-category" style={{ marginBottom: 'var(--space-8)' }}>
         <RadioOption
@@ -22,6 +23,12 @@ export function StepRaceCategory() {
           checked={state.onboarding.raceCategory === 'standard'}
           onChange={() => dispatch({ type: 'ONBOARDING_SELECT_RACE_CATEGORY', category: 'standard' })}
           label="5K to Marathon"
+        />
+        <RadioOption
+          name="racecategory"
+          checked={state.onboarding.raceCategory === 'crew'}
+          onChange={() => dispatch({ type: 'ONBOARDING_SELECT_RACE_CATEGORY', category: 'crew' })}
+          label="I'm not training — I'm crewing or pacing someone"
         />
       </div>
     </>

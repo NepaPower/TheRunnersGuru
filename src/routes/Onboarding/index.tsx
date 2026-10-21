@@ -5,7 +5,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { BrandHeader } from '../../components/Logo';
 import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
-import { saveTrainingPlan, getCurrentUserId, signOut } from '../../lib/api';
+import { saveTrainingPlan, getCurrentUserId } from '../../lib/api';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { goalPartsToMinutes } from '../../lib/format';
 import { isPastDate } from '../../lib/today';
@@ -24,6 +24,9 @@ export function Onboarding() {
   const navigate = useNavigate();
   const step = state.onboarding.step;
   const isUltra = state.onboarding.raceCategory === 'ultra';
+  // "I'm here to crew or pace someone": no plan to build, so the single step
+  // just leads on to Shared Plans.
+  const isCrew = state.onboarding.raceCategory === 'crew';
   const STEP_LABELS = onboardingStepLabels(state.onboarding.raceCategory);
   const lastStep = STEP_LABELS.length - 1;
   // Step 0 (Race type) and Step 1 (Distance & race) are always the same
@@ -45,17 +48,25 @@ export function Onboarding() {
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
 
   // Step 1 has no earlier step to go back to, so its left button is the way
-  // out instead: Cancel when there's somewhere to return to (an existing race,
-  // or a plan shared with them), otherwise Sign out. A brand-new account with
-  // no race is sent back here from every other screen, so without this the
-  // only way out of the wizard was closing the tab.
-  const exitTarget = state.trainingPlan ? '/home' : state.sharedPlans.length > 0 ? '/shared-plans' : null;
-  async function handleSignOut() {
-    await signOut();
-    navigate('/');
+  // out instead: Cancel, to Home if they already have a race, otherwise to
+  // Shared Plans (reachable without a race, and it offers "Start my training
+  // plan" to come back here). A brand-new account with no race is sent back
+  // to this wizard from every other screen, so without this the only way out
+  // was closing the tab.
+  const exitTarget = state.trainingPlan ? '/home' : '/shared-plans';
+
+  /** Leaves the wizard. Puts the race-type choice back to its default first, so
+   * a later "Start my training plan" doesn't reopen with "crewing" still picked. */
+  function leaveOnboarding() {
+    if (isCrew) dispatch({ type: 'ONBOARDING_SELECT_RACE_CATEGORY', category: 'ultra' });
+    navigate(exitTarget);
   }
 
   function handleNext() {
+    if (isCrew) {
+      leaveOnboarding();
+      return;
+    }
     if (step < lastStep) {
       dispatch({ type: 'ONBOARDING_NEXT' });
       return;
@@ -139,19 +150,23 @@ export function Onboarding() {
     <div className="rg-auth-page">
       <BrandHeader />
       <div className="rg-auth-card" style={{ width: 'min(480px, 100%)' }}>
-        <div className="row-2" style={{ marginBottom: 'var(--space-6)' }}>
-          {STEP_LABELS.map((label, i) => (
-            <div
-              key={label}
-              title={label}
-              style={{ width: 22, height: 4, borderRadius: 2, background: i <= step ? 'var(--color-accent)' : 'var(--color-divider)' }}
-            />
-          ))}
-        </div>
+        {!isCrew && (
+          <>
+            <div className="row-2" style={{ marginBottom: 'var(--space-6)' }}>
+              {STEP_LABELS.map((label, i) => (
+                <div
+                  key={label}
+                  title={label}
+                  style={{ width: 22, height: 4, borderRadius: 2, background: i <= step ? 'var(--color-accent)' : 'var(--color-divider)' }}
+                />
+              ))}
+            </div>
 
-        <h6 style={{ marginBottom: 'var(--space-2)', color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
-          Step {step + 1} of {STEP_LABELS.length}
-        </h6>
+            <h6 style={{ marginBottom: 'var(--space-2)', color: 'color-mix(in srgb, var(--color-text) 70%, transparent)' }}>
+              Step {step + 1} of {STEP_LABELS.length}
+            </h6>
+          </>
+        )}
 
         {error && <div className="rg-auth-error">{error}</div>}
 
@@ -167,17 +182,13 @@ export function Onboarding() {
             <Button variant="secondary" disabled={saving} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
               Back
             </Button>
-          ) : exitTarget ? (
-            <Button variant="secondary" onClick={() => navigate(exitTarget)}>
-              Cancel
-            </Button>
           ) : (
-            <Button variant="secondary" onClick={handleSignOut}>
-              Sign out
+            <Button variant="secondary" onClick={leaveOnboarding}>
+              Cancel
             </Button>
           )}
           <Button variant="primary" disabled={saving} onClick={handleNext}>
-            {saving ? 'Saving…' : step === lastStep ? 'Get started' : 'Next'}
+            {saving ? 'Saving…' : isCrew ? 'Continue' : step === lastStep ? 'Get started' : 'Next'}
           </Button>
         </div>
       </div>

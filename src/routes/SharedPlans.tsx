@@ -23,7 +23,13 @@ export function SharedPlans() {
       {state.sharedPlans.length === 0 ? (
         <div style={{ marginBottom: 'var(--space-6)' }}>
           <EmptyState title="No plans shared with you yet.">
-            Ask the runner to invite you from their Crew Plan screen using this account's email address.
+            Ask the runner to invite you from their Crew Plan screen. They need to use this account's email address
+            {state.auth.email ? (
+              <>
+                : <strong>{state.auth.email}</strong>
+              </>
+            ) : null}
+            . Their plan shows up here as soon as you sign in with it.
           </EmptyState>
         </div>
       ) : (

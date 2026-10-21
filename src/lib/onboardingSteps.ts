@@ -13,6 +13,11 @@ const ONBOARDING_STEPS_ULTRA = [
   'Race date & goal',
 ] as const;
 
+/** 'crew' = "I'm here to crew or pace someone": no plan questions, the one
+ * step just leads on to Shared Plans. */
+const ONBOARDING_STEPS_CREW = ['Race type'] as const;
+
 export function onboardingStepLabels(raceCategory: RaceCategory): readonly string[] {
+  if (raceCategory === 'crew') return ONBOARDING_STEPS_CREW;
   return raceCategory === 'ultra' ? ONBOARDING_STEPS_ULTRA : ONBOARDING_STEPS_STANDARD;
 }
