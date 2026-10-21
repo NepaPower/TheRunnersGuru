@@ -14,7 +14,7 @@ export function PastDateDialog({ onClose }: { onClose: () => void }) {
         </Button>
       }
     >
-      <p>That date has already passed. Enter your race date — today or later.</p>
+      <p>That date has already passed. Enter the correct race date.</p>
     </Dialog>
   );
 }
