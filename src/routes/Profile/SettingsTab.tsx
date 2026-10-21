@@ -3,7 +3,8 @@ import { Button } from '../../components/ui/Button';
 import { Field, Input } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import { GARMIN_SAMPLE_ACTIVITIES } from '../../data/constants';
-import { saveProfileAddress, setGarminConnected } from '../../lib/api';
+import { saveProfileAddress, setGarminConnected, requestPasswordReset } from '../../lib/api';
+import { describeError } from '../../lib/useOnlineStatus';
 
 export function SettingsTab() {
   const { state, dispatch } = useApp();
@@ -11,6 +12,8 @@ export function SettingsTab() {
   const zipMissing = address.zip.trim() === '';
   const [savingAddress, setSavingAddress] = useState(false);
   const [garminBusy, setGarminBusy] = useState(false);
+  const [passwordMail, setPasswordMail] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const setField = (field: keyof typeof address) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -27,6 +30,21 @@ export function SettingsTab() {
       setError(e instanceof Error ? e.message : 'Could not save your profile.');
     } finally {
       setSavingAddress(false);
+    }
+  }
+
+  /** "Change my password" = the forgot-password flow for the signed-in email:
+   * a reset link goes to their inbox and opens the choose-a-new-password page. */
+  async function handleChangePassword() {
+    if (!state.auth.email) return;
+    setPasswordError(null);
+    setPasswordMail('sending');
+    try {
+      await requestPasswordReset(state.auth.email);
+      setPasswordMail('sent');
+    } catch (e) {
+      setPasswordError(describeError(e, 'Could not send the email. Please try again in a minute.'));
+      setPasswordMail('idle');
     }
   }
 
@@ -73,9 +91,26 @@ export function SettingsTab() {
         <Field label="Email">
           <Input type="email" value={state.auth.email} disabled />
         </Field>
-        <p className="text-muted" style={{ margin: 0, fontSize: 12.5 }}>
-          Password changes aren't available yet — coming in a future update.
-        </p>
+        {passwordError && (
+          <div style={{ border: '1px solid var(--color-accent-2-600)', background: 'var(--color-accent-2-100)', padding: 'var(--space-3)', borderRadius: 10, fontSize: 13.5 }}>
+            {passwordError}
+          </div>
+        )}
+        {passwordMail === 'sent' ? (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
+            We've emailed a link to <strong>{state.auth.email}</strong>. Open it to choose a new password. It expires in
+            about an hour.
+          </p>
+        ) : (
+          <div>
+            <Button variant="secondary" disabled={passwordMail === 'sending' || !state.auth.email} onClick={handleChangePassword}>
+              {passwordMail === 'sending' ? 'Sending…' : 'Change my password'}
+            </Button>
+            <p className="text-muted" style={{ margin: 'var(--space-2) 0 0', fontSize: 12.5 }}>
+              We'll email you a link to choose a new one.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="rg-card">
