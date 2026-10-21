@@ -179,7 +179,12 @@ export function Races() {
                       <Button variant="primary" onClick={() => navigate(`/crew-plan/${p.id}`)}>
                         Open
                       </Button>
-                      <Button variant="ghost" onClick={() => navigate(`/races/${p.id}/edit`)}>
+                      <Button
+                        variant="ghost"
+                        disabled={isPast}
+                        title={isPast ? "Completed races can't be edited" : undefined}
+                        onClick={() => navigate(`/races/${p.id}/edit`)}
+                      >
                         Edit
                       </Button>
                       {p.isPrimary && p.rows.length === 0 && !isPast && (
@@ -201,7 +206,12 @@ export function Races() {
                         </Button>
                       )}
                       {canDelete ? (
-                        <Button variant="ghost" onClick={() => p.id && openDeleteConfirm(p.id)}>
+                        <Button
+                          variant="ghost"
+                          disabled={isPast}
+                          title={isPast ? "Completed races can't be deleted" : undefined}
+                          onClick={() => p.id && openDeleteConfirm(p.id)}
+                        >
                           Delete
                         </Button>
                       ) : (

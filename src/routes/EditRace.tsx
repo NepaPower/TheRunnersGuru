@@ -6,6 +6,7 @@ import { useApp } from '../state/AppContext';
 import { updateRaceDetails } from '../lib/api';
 import { buildTrainingPlan } from '../lib/planGenerator';
 import { goalMinutesToParts, goalPartsToMinutes } from '../lib/format';
+import { daysUntil } from '../lib/today';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
 import type { DistanceGoal, FirstTimeAnswer, HillAccessAnswer, TrainingPlan, UltraDistanceId } from '../types';
 import './races.css';
@@ -67,6 +68,21 @@ export function EditRace() {
           ← My Races
         </Button>
         <p className="text-muted">This race isn't loaded. Go back to My Races and open it from there.</p>
+      </>
+    );
+  }
+
+  // Completed races are locked (My Races disables Edit/Delete too) — this
+  // covers a direct link or bookmark to the edit screen.
+  const raceDays = daysUntil(plan.raceDate);
+  if (raceDays != null && raceDays < 0) {
+    return (
+      <>
+        <Button variant="ghost" onClick={() => navigate('/races')} style={{ marginBottom: 'var(--space-4)' }}>
+          ← My Races
+        </Button>
+        <h2 style={{ marginBottom: 'var(--space-2)' }}>{plan.raceName}</h2>
+        <p className="text-muted">This race is completed, so its details are locked.</p>
       </>
     );
   }
