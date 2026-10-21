@@ -5,7 +5,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { BrandHeader } from '../../components/Logo';
 import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
-import { saveTrainingPlan, getCurrentUserId } from '../../lib/api';
+import { saveTrainingPlan, getCurrentUserId, signOut } from '../../lib/api';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { goalPartsToMinutes } from '../../lib/format';
 import { isPastDate } from '../../lib/today';
@@ -43,6 +43,17 @@ export function Onboarding() {
   // wizard is only reachable for the primary race, so that's the one at
   // risk; confirm before it's too late to back out.
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+
+  // Step 1 has no earlier step to go back to, so its left button is the way
+  // out instead: Cancel when there's somewhere to return to (an existing race,
+  // or a plan shared with them), otherwise Sign out. A brand-new account with
+  // no race is sent back here from every other screen, so without this the
+  // only way out of the wizard was closing the tab.
+  const exitTarget = state.trainingPlan ? '/home' : state.sharedPlans.length > 0 ? '/shared-plans' : null;
+  async function handleSignOut() {
+    await signOut();
+    navigate('/');
+  }
 
   function handleNext() {
     if (step < lastStep) {
@@ -152,9 +163,19 @@ export function Onboarding() {
         {step === lastStep && <StepDateGoal dateRef={dateRef} onPastDate={() => setPastDateOpen(true)} />}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-          <Button variant="secondary" disabled={step === 0 || saving} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
-            Back
-          </Button>
+          {step > 0 ? (
+            <Button variant="secondary" disabled={saving} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
+              Back
+            </Button>
+          ) : exitTarget ? (
+            <Button variant="secondary" onClick={() => navigate(exitTarget)}>
+              Cancel
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={handleSignOut}>
+              Sign out
+            </Button>
+          )}
           <Button variant="primary" disabled={saving} onClick={handleNext}>
             {saving ? 'Saving…' : step === lastStep ? 'Get started' : 'Next'}
           </Button>
