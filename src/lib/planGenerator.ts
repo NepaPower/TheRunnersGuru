@@ -114,6 +114,19 @@ export function standardRamp(
 
 const ULTRA_PEAK_LONG_H = 6;
 
+/** The peak Saturday long run for an ultra, in hours, by race distance: longer
+ * races need longer long runs (6-9 hrs is normal for the build phase of a 100K
+ * and up). Unknown distance keeps the old 6 hrs. */
+export function ultraPeakLongHours(miles: number | null | undefined): number {
+  if (miles == null) return ULTRA_PEAK_LONG_H;
+  if (miles < 40) return 4; //  50K
+  if (miles <= 55) return 5; //  50 miles
+  if (miles <= 70) return 6; //  100K
+  if (miles <= 110) return 7; // 100 miles
+  if (miles <= 150) return 8; // 135 miles
+  return 9; //                    200 miles and up
+}
+
 /** Ultra mid-week runs (Tue / Wed / Thu) climb to this many hours at the peak of
  * the build (about 10-13 miles at ultra pace); they start at about half the
  * runner's long run. Wednesday's run is as long as the other two; strength follows it. */
@@ -125,7 +138,9 @@ const B2B_RATIO = 0.38;
 interface UltraRamp {
   tier: RunwayTier;
   startH: number;
-  /** How much of the full build (start -> 6 h) is reachable, 0..1. */
+  /** The race's peak long run in hours (see ultraPeakLongHours). */
+  peakH: number;
+  /** How much of the full build (start -> peak) is reachable, 0..1. */
   scale: number;
   /** The long run a short-runway plan holds, in hours. */
   holdH: number;
@@ -133,15 +148,18 @@ interface UltraRamp {
 }
 
 /** Base-aware ramp for ultras (long runs in hours); null without a longest run. */
-export function ultraRamp(totalWeeks: number, base?: RunnerBase | null): UltraRamp | null {
+export function ultraRamp(totalWeeks: number, base?: RunnerBase | null, ultraMiles?: number | null): UltraRamp | null {
   if (!base || base.longestRunMiles == null) return null;
-  const startH = clamp(base.longestRunMiles / LONG_RUN_MILES_PER_HOUR, 1, ULTRA_PEAK_LONG_H);
+  const peakH = ultraPeakLongHours(ultraMiles);
+  // A runner already past this race's peak just holds at the peak.
+  const startH = clamp(base.longestRunMiles / LONG_RUN_MILES_PER_HOUR, 1, peakH);
   const taper = totalWeeks >= 10 ? 3 : totalWeeks >= 5 ? 2 : 1;
-  const reachH = Math.min(ULTRA_PEAK_LONG_H, startH * Math.pow(MAX_WEEKLY_GROWTH, rampSteps(totalWeeks - taper)));
-  const span = ULTRA_PEAK_LONG_H - startH;
+  const reachH = Math.min(peakH, startH * Math.pow(MAX_WEEKLY_GROWTH, rampSteps(totalWeeks - taper)));
+  const span = peakH - startH;
   const progress = span <= 0.01 ? 1 : (reachH - startH) / span;
   return {
     tier: rampTier(progress),
+    peakH,
     startH,
     scale: clamp(progress, 0, 1),
     holdH: clamp(startH, 1, 4.5),
@@ -428,7 +446,7 @@ function generateUltraPlan(
   const factor = firstTime === 'yes' ? 0.85 : 1;
   // A known longest run decides the tier (can this runner reach a long enough
   // long run in the time?); otherwise it falls back to the weeks-only tier.
-  const ramp = ultraRamp(totalWeeks, base);
+  const ramp = ultraRamp(totalWeeks, base, ultraMiles);
   const tier: RunwayTier = ramp ? ramp.tier : weeksTier;
   const holdH = ramp ? ramp.holdH : SHORT_RUNWAY_HOLD_H;
   const outdoor = hillAccess !== 'no'; // default to outdoor unless the person explicitly said no hill access
@@ -447,7 +465,8 @@ function generateUltraPlan(
       ? Math.pow(totalWeeks / recommendedUltraWeeks(ultraMiles ?? PLAN_TARGETS.ultra.raceMiles), 2)
       : 1;
   const START_LONG_H = ramp ? ramp.startH : 2;
-  const PEAK_LONG_H = START_LONG_H + (ULTRA_PEAK_LONG_H - START_LONG_H) * buildScale;
+  const FULL_PEAK_H = ultraPeakLongHours(ultraMiles);
+  const PEAK_LONG_H = START_LONG_H + (FULL_PEAK_H - START_LONG_H) * buildScale;
   // Mid-week runs: start at about half the long run, climb to 2 hours (less if the
   // build is scaled down), same shape as the long run's ramp.
   const MID_START_H = clamp(START_LONG_H * 0.5, 0.75, ULTRA_PEAK_MID_H);
@@ -628,7 +647,7 @@ export function buildTrainingPlan(
   const raceKey = dayKeyByDow[race.getDay()];
   const tier: RunwayTier =
     distanceGoal === 'ultra'
-      ? ultraRamp(totalWeeks, base)?.tier ?? ultraRunwayTier(totalWeeks, ultraMiles)
+      ? ultraRamp(totalWeeks, base, ultraMiles)?.tier ?? ultraRunwayTier(totalWeeks, ultraMiles)
       : standardRamp(distanceGoal, totalWeeks, firstTime, base)?.tier ?? 'full';
   const planRows =
     distanceGoal === 'ultra'
@@ -725,15 +744,15 @@ export function getTrainingTimeWarning(
   // With the runner's real numbers the question is "can they get there from
   // here in the time?", not just how many weeks there are.
   if (distanceGoal === 'ultra') {
-    const r = ultraRamp(totalWeeks, opts?.base);
+    const r = ultraRamp(totalWeeks, opts?.base, ultraMiles);
     if (r && opts?.base?.longestRunMiles != null) {
       if (r.tier === 'full') return null;
       const label = ultraMiles ? `${ultraMiles}-mile ultra` : 'ultra';
       const now = `Your longest recent run is about ${hrs(r.startH)} and your race is ${weeks} out.`;
       if (r.tier === 'tight') {
-        return `${now} Adding about 10% a week, a long run can safely reach about ${hrs(r.reachH)} by race week, short of the ${hrs(ULTRA_PEAK_LONG_H)} a full ${label} plan builds to. So the plan below builds more gently and peaks at about ${hrs(r.reachH)}, with the usual taper. Protect your recovery, rehearse your fuelling on long runs, and put the rest of your prep into race-day execution: conservative early pacing, hiking the climbs, and a foot / blister / chafe plan.`;
+        return `${now} Adding about 10% a week, a long run can safely reach about ${hrs(r.reachH)} by race week, short of the ${hrs(r.peakH)} a full ${label} plan builds to. So the plan below builds more gently and peaks at about ${hrs(r.reachH)}, with the usual taper. Protect your recovery, rehearse your fuelling on long runs, and put the rest of your prep into race-day execution: conservative early pacing, hiking the climbs, and a foot / blister / chafe plan.`;
       }
-      return `${now} Adding about 10% a week, you could safely reach about ${hrs(r.reachH)}, which is less than halfway to the ${hrs(ULTRA_PEAK_LONG_H)} a full ${label} plan builds to. That's too little gain to be worth the injury risk this close to race day, so the plan below doesn't try to build: it holds your long run at about ${hrs(r.holdH)}, swaps the hill and cross-training days for gear-test and fuel-rehearsal runs, and tapers into race week. Guard recovery and sleep, and put the rest of your prep into race-day execution: rehearsed fuelling, conservative early pacing, deliberate hiking, and a foot / blister / chafe plan. If your longest run is well short of race demands, seriously consider a longer-runway race or a more conservative goal.`;
+      return `${now} Adding about 10% a week, you could safely reach about ${hrs(r.reachH)}, which is less than halfway to the ${hrs(r.peakH)} a full ${label} plan builds to. That's too little gain to be worth the injury risk this close to race day, so the plan below doesn't try to build: it holds your long run at about ${hrs(r.holdH)}, swaps the hill and cross-training days for gear-test and fuel-rehearsal runs, and tapers into race week. Guard recovery and sleep, and put the rest of your prep into race-day execution: rehearsed fuelling, conservative early pacing, deliberate hiking, and a foot / blister / chafe plan. If your longest run is well short of race demands, seriously consider a longer-runway race or a more conservative goal.`;
     }
   } else {
     const r = standardRamp(distanceGoal, totalWeeks, opts?.firstTime ?? '', opts?.base);
@@ -788,7 +807,7 @@ export function isTrainingTimeShort(
     const planWeeks = Math.floor(totalDays / 7) + 1;
     const tier =
       distanceGoal === 'ultra'
-        ? ultraRamp(planWeeks, opts.base)?.tier
+        ? ultraRamp(planWeeks, opts.base, ultraMiles)?.tier
         : standardRamp(distanceGoal, planWeeks, opts.firstTime ?? '', opts.base)?.tier;
     if (tier) return tier !== 'full';
   }
