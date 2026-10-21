@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { AuthShell } from '../components/AuthShell';
-import { requestPasswordReset } from '../lib/api';
+import { requestPasswordReset, getCurrentUserId, hydrateUserData } from '../lib/api';
+import { useApp } from '../state/AppContext';
+import { supabase } from '../lib/supabaseClient';
 import { useOnlineStatus, describeError } from '../lib/useOnlineStatus';
 import './auth.css';
 
@@ -14,10 +16,36 @@ export function ForgotPassword() {
   const navigate = useNavigate();
   const location = useLocation();
   const online = useOnlineStatus();
+  const { dispatch } = useApp();
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The emailed link opens in a NEW tab. Supabase tells this (original) tab
+  // when that happens, so it can say where to carry on instead of staying put.
+  const [elsewhere, setElsewhere] = useState<'idle' | 'opened' | 'updated'>('idle');
+
+  useEffect(() => {
+    if (!sent) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'USER_UPDATED') setElsewhere('updated');
+      else if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') setElsewhere((cur) => (cur === 'updated' ? cur : 'opened'));
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [sent]);
+
+  /** The password was set in the other tab, which also signed the person in:
+   * load their data here and carry on, as signing in would. */
+  async function continueHere() {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      navigate('/signin', { state: { email } });
+      return;
+    }
+    const hydrated = await hydrateUserData(userId);
+    dispatch({ type: 'AUTH_HYDRATE', userId, ...hydrated });
+    navigate(hydrated.trainingPlan ? '/home' : hydrated.sharedPlans.length > 0 ? '/shared-plans' : '/onboarding');
+  }
 
   async function handleSubmit() {
     setError(null);
@@ -50,7 +78,21 @@ export function ForgotPassword() {
           </svg>
         </div>
 
-        {sent ? (
+        {sent && elsewhere !== 'idle' ? (
+          <>
+            <h2>{elsewhere === 'updated' ? 'Password updated' : 'Link opened'}</h2>
+            <p className="rg-auth-subtitle">
+              {elsewhere === 'updated'
+                ? "Your new password is set and you're signed in. You can close this tab, or carry on here."
+                : 'Your reset link opened in another tab. Choose your new password there, then you can close this tab.'}
+            </p>
+            {elsewhere === 'updated' && (
+              <Button variant="primary" block onClick={continueHere}>
+                Continue →
+              </Button>
+            )}
+          </>
+        ) : sent ? (
           <>
             <h2>Check your email</h2>
             <p className="rg-auth-subtitle">

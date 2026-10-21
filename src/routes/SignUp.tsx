@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { AuthShell } from '../components/AuthShell';
-import { signUp, saveProfileAddress, hydrateUserData, resendConfirmation } from '../lib/api';
+import { signUp, saveProfileAddress, hydrateUserData, resendConfirmation, getCurrentUserId } from '../lib/api';
+import { supabase } from '../lib/supabaseClient';
 import { describeError } from '../lib/useOnlineStatus';
 import { useApp } from '../state/AppContext';
 import type { Address } from '../types';
@@ -24,6 +25,18 @@ export function SignUp() {
   // first (no session yet): the form is replaced by a "check your email" panel.
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [resend, setResend] = useState<{ state: 'idle' | 'sending' | 'sent'; error?: string }>({ state: 'idle' });
+  // The confirmation link opens in a NEW tab, which signs the person in there.
+  // Supabase tells this (original) tab too, so it can say so instead of
+  // sitting on "Confirm your email" forever.
+  const [confirmedElsewhere, setConfirmedElsewhere] = useState(false);
+
+  useEffect(() => {
+    if (!awaitingConfirmation) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) setConfirmedElsewhere(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [awaitingConfirmation]);
 
   const zipMissing = address.zip.trim() === '';
 
@@ -65,6 +78,41 @@ export function SignUp() {
     } catch (e) {
       setResend({ state: 'idle', error: describeError(e, 'Could not resend the email. Please try again in a minute.') });
     }
+  }
+
+  /** Carry on in THIS tab once the email was confirmed in another one. */
+  async function continueHere() {
+    const userId = await getCurrentUserId();
+    if (!userId) return;
+    const hydrated = await hydrateUserData(userId);
+    dispatch({ type: 'AUTH_HYDRATE', userId, ...hydrated });
+    navigate(hydrated.trainingPlan ? '/home' : hydrated.sharedPlans.length > 0 ? '/shared-plans' : '/onboarding');
+  }
+
+  if (awaitingConfirmation && confirmedElsewhere) {
+    return (
+      <AuthShell
+        eyebrow="You're in"
+        headline="Email confirmed."
+        blurb="Pick up in the tab that just opened, or carry on right here."
+      >
+        <div className="rg-auth-card">
+          <div className="rg-auth-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <path d="M5 13l4 4L19 7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2>You're confirmed</h2>
+          <p className="rg-auth-subtitle">
+            Your email is confirmed and you're signed in. Carry on in the tab that opened from the email link, or continue
+            here and close that one.
+          </p>
+          <Button variant="primary" block onClick={continueHere}>
+            Continue here →
+          </Button>
+        </div>
+      </AuthShell>
+    );
   }
 
   if (awaitingConfirmation) {
