@@ -26,27 +26,33 @@
   left: 0;
   right: 0;
   z-index: 20;
+  --scene-h: 56px; /* height of the mountain strip under the logo and buttons */
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 20px clamp(16px, 4vw, 48px);
+  padding: 20px clamp(16px, 4vw, 48px) var(--scene-h);
   background: var(--color-ink);
   transition: padding 0.2s ease, box-shadow 0.2s ease;
 }
 .rg-landing-nav.is-scrolled {
-  padding-block: 10px;
+  --scene-h: 38px;
+  padding-top: 10px;
   box-shadow: 0 2px 14px color-mix(in srgb, #000 35%, transparent);
 }
 .rg-landing-nav-brand svg { transition: width 0.2s ease, height 0.2s ease; }
-/* A low mountain skyline along the bar's bottom edge, behind its content. */
+/* A mountain skyline in its own strip along the bar's bottom, under the
+   logo and buttons, so the ridges read cleanly instead of sitting behind text. */
 .rg-landing-nav { overflow: hidden; }
 .rg-landing-nav-scene {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  height: 100%;
+  height: var(--scene-h);
   color: var(--color-accent-300);
   pointer-events: none;
+  transition: height 0.2s ease;
 }
 .rg-landing-nav > :not(.rg-landing-nav-scene) { position: relative; z-index: 1; }
 .rg-landing-nav.is-scrolled .rg-landing-nav-brand { font-size: 24px; }
@@ -78,7 +84,7 @@
   position: relative;
   background: var(--color-ink);
   overflow: hidden;
-  padding-top: 86px; /* room for the fixed top bar */
+  padding-top: 116px; /* room for the fixed top bar */
   padding-bottom: clamp(150px, 24vw, 280px);
 }
 .rg-landing-hero-inner {
@@ -365,7 +371,9 @@
 .rg-landing-footer-links { display: flex; gap: 20px; }
 
 @media (max-width: 640px) {
-  .rg-landing-nav { gap: 12px; padding-inline: 16px; }
+  .rg-landing-nav { --scene-h: 30px; gap: 12px; padding: 14px 16px var(--scene-h); }
+  .rg-landing-nav.is-scrolled { --scene-h: 22px; padding-top: 8px; }
+  .rg-landing-hero { padding-top: 86px; }
   .rg-landing-nav-brand { font-size: 21px; gap: 6px; }
   .rg-landing-nav-brand svg { width: 28px; height: 28px; }
   .rg-landing-nav a { font-size: 14px; }

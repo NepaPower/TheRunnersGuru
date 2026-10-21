@@ -98,16 +98,16 @@ export function Landing() {
         <Button variant="primary" onClick={() => navigate('/signup')}>
           Join free
         </Button>
-        <svg className="rg-landing-nav-scene" viewBox="0 0 1200 60" preserveAspectRatio="xMidYMax slice" fill="none" aria-hidden="true">
+        <svg className="rg-landing-nav-scene" viewBox="0 0 1200 60" preserveAspectRatio="none" fill="none" aria-hidden="true">
           <polygon
-            points="0,60 0,40 80,22 150,40 240,14 330,38 420,20 520,42 620,12 720,38 820,18 920,40 1020,16 1120,38 1200,24 1200,60"
+            points="0,60 0,34 70,14 140,36 230,6 320,34 410,12 510,38 610,4 710,32 810,10 910,36 1010,8 1110,34 1200,16 1200,60"
             fill="currentColor"
-            opacity="0.1"
+            opacity="0.14"
           />
           <polygon
-            points="0,60 0,48 100,34 190,48 300,30 400,48 520,36 640,50 760,32 880,48 1000,34 1100,50 1200,40 1200,60"
+            points="0,60 0,46 90,26 180,48 290,22 390,48 510,30 630,52 750,24 870,50 990,28 1100,52 1200,34 1200,60"
             fill="currentColor"
-            opacity="0.17"
+            opacity="0.24"
           />
         </svg>
       </nav>
