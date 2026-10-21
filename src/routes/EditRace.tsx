@@ -6,6 +6,7 @@ import { useApp } from '../state/AppContext';
 import { updateRaceDetails } from '../lib/api';
 import { buildTrainingPlan } from '../lib/planGenerator';
 import { goalMinutesToParts, goalPartsToMinutes, parseMilesInput } from '../lib/format';
+import { recentRunning } from '../lib/recentRunning';
 import { PastDateDialog } from '../components/PastDateDialog';
 import { isPastDate, isRaceLocked, raceDateReadout } from '../lib/today';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
@@ -40,6 +41,8 @@ export function EditRace() {
   // "Current running": typed miles, blank = not given (plans then use fixed starting points).
   const [weeklyMiles, setWeeklyMiles] = useState('');
   const [longestRun, setLongestRun] = useState('');
+  // Shown after "Fill from my logged runs": what was filled in, or why nothing was.
+  const [fillNote, setFillNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pastDateOpen, setPastDateOpen] = useState(false);
@@ -142,6 +145,20 @@ export function EditRace() {
     nextWeekly !== (plan.currentWeeklyMiles ?? null) ||
     nextLongest !== (plan.longestRunMiles ?? null);
   const willRegenerate = plan.isPrimary && scheduleChanged;
+
+  /** Fills the two fields from the last 4 weeks of logged runs. */
+  function fillFromLoggedRuns() {
+    const r = recentRunning(state.loggedRuns);
+    if (!r) {
+      setFillNote('No runs logged in the last 4 weeks yet, so there is nothing to fill in.');
+      return;
+    }
+    setWeeklyMiles(String(r.weeklyMiles));
+    setLongestRun(String(r.longestRunMiles));
+    setFillNote(
+      `Filled in from ${r.runs} run${r.runs === 1 ? '' : 's'} in the last 4 weeks: about ${r.weeklyMiles} mi a week, longest ${r.longestRunMiles} mi. Check them, then save.`,
+    );
+  }
 
   async function handleSave() {
     setError(null);
@@ -421,6 +438,16 @@ export function EditRace() {
                 onChange={(e) => setLongestRun(e.target.value.replace(/[^0-9.]/g, '').slice(0, 5))}
               />
             </Field>
+            <div>
+              <Button variant="secondary" onClick={fillFromLoggedRuns}>
+                Fill from my logged runs
+              </Button>
+              {fillNote && (
+                <p className="text-muted" style={{ fontSize: 13, margin: 'var(--space-2) 0 0' }}>
+                  {fillNote}
+                </p>
+              )}
+            </div>
           </>
         )}
 
