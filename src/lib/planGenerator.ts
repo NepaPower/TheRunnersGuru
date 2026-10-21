@@ -363,6 +363,15 @@ function ultraClimbMinutes(phase: TrainingPlanRow['phase'], linearRatio: number)
   return linearRatio > 0.7 ? 40 : 35; // Build Phase: moderate -> race-specific as the plan progresses
 }
 
+/** A long run as a range in hours: the planned time is the top, and the bottom is two thirds of it
+ * (both to the nearest half hour), so a 9-hour long run reads "6–9 hrs". The range is guidance
+ * (go by feel and time on feet; aim for the top when you are strong); weekly totals use the top. */
+function longRunRange(hours: number): string {
+  const max = Math.round(hours * 2) / 2;
+  const min = Math.max(1, Math.round(((hours * 2) / 3) * 2) / 2);
+  return min >= max ? `${max} hrs` : `${min}–${max} hrs`;
+}
+
 /** "45 min", "1 hr 30 min", "2 hrs" (to the nearest 5 minutes by the caller). */
 function fmtDur(min: number): string {
   if (min < 60) return `${min} min`;
@@ -579,8 +588,8 @@ function generateUltraPlan(
             : readiness
               ? `${satLabel} — up to ${longHours} hrs, easy (never longer than your current longest run)`
               : hasB2B
-                ? `${satLabel} — ${longHours} hrs, fueling: 60–90g carb/hr`
-                : `${satLabel} — ${longHours} hrs, rolling terrain`;
+                ? `${satLabel} — ${longRunRange(longHours)}, fueling: 60–90g carb/hr`
+                : `${satLabel} — ${longRunRange(longHours)}, rolling terrain`;
       sun = hasB2B ? `Long run 2 — ${b2bHours} hrs, easy, run tired (back-to-back)` : 'Rest';
     }
 
