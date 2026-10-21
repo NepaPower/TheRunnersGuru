@@ -38,17 +38,6 @@
   box-shadow: 0 2px 14px color-mix(in srgb, #000 35%, transparent);
 }
 .rg-landing-nav-brand svg { transition: width 0.2s ease, height 0.2s ease; }
-/* A low mountain skyline along the bar's bottom edge, behind its content. */
-.rg-landing-nav { overflow: hidden; }
-.rg-landing-nav-scene {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--color-accent-300);
-  pointer-events: none;
-}
-.rg-landing-nav > :not(.rg-landing-nav-scene) { position: relative; z-index: 1; }
 .rg-landing-nav.is-scrolled .rg-landing-nav-brand { font-size: 24px; }
 .rg-landing-nav.is-scrolled .rg-landing-nav-brand svg { width: 30px; height: 30px; }
 .rg-landing-nav.is-scrolled .btn-primary { padding-block: 7px; }
