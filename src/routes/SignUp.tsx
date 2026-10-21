@@ -136,6 +136,32 @@ export function SignUp() {
           <p className="rg-auth-hint" style={{ textAlign: 'left', marginTop: 0 }}>
             Can't find it? Check your spam or promotions folder. The email comes from The Runners Guru.
           </p>
+          {/* Worded the same for everyone on purpose: if this address already has an account, Supabase sends
+              nothing and this screen looks identical, and saying so outright would let anyone check whether
+              an email is registered. So point the way out without confirming either case. */}
+          <p className="rg-auth-hint" style={{ textAlign: 'left', marginTop: 0 }}>
+            Already signed up with this address? We won't send a second confirmation.{' '}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/signin', { state: { email } });
+              }}
+            >
+              Sign in
+            </a>{' '}
+            or{' '}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/forgot-password', { state: { email } });
+              }}
+            >
+              reset your password
+            </a>{' '}
+            instead.
+          </p>
 
           {resend.error && <div className="rg-auth-error">{resend.error}</div>}
           <Button variant="secondary" block disabled={resend.state !== 'idle'} onClick={handleResend}>
