@@ -175,7 +175,8 @@ export function Onboarding() {
         {isUltra && step === hillAccessStep && <StepHillAccess />}
         {step === firstTimeStep && <StepFirstTime />}
         {step === paceStep && <StepPace />}
-        {step === lastStep && <StepDateGoal dateRef={dateRef} onPastDate={() => setPastDateOpen(true)} />}
+        {/* The crew/pace path has one step, which is both first and last: don't also draw the plan's date form. */}
+        {!isCrew && step === lastStep && <StepDateGoal dateRef={dateRef} onPastDate={() => setPastDateOpen(true)} />}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
           {step > 0 ? (
