@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PageHeader, SectionHeader } from '../components/PageHeader';
+import { TodayCard } from '../components/TodayCard';
+import { localISODate } from '../lib/today';
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart';
 import { useApp } from '../state/AppContext';
 import { homeStats, weeklyMileageSeries } from '../state/selectors';
@@ -181,6 +183,15 @@ export function Dashboard() {
           </Button>
         }
       />
+
+      {state.trainingPlan && (
+        <TodayCard
+          plan={state.trainingPlan}
+          loggedToday={state.loggedRuns.some((r) => r.date === localISODate())}
+          onViewPlan={() => navigate('/training-plan')}
+          onAddRace={() => navigate('/races/add')}
+        />
+      )}
 
       {hasPlan && (
         <div className="rg-dash-nav-grid">
