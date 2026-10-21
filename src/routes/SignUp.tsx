@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { AuthShell } from '../components/AuthShell';
-import { signUp, saveProfileAddress, hydrateUserData } from '../lib/api';
+import { signUp, saveProfileAddress, hydrateUserData, resendConfirmation } from '../lib/api';
+import { describeError } from '../lib/useOnlineStatus';
 import { useApp } from '../state/AppContext';
 import type { Address } from '../types';
 import './auth.css';
@@ -19,6 +20,10 @@ export function SignUp() {
   const [address, setAddress] = useState<Address>({ street: '', unit: '', city: '', state: '', zip: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once the account is created but Supabase wants the email confirmed
+  // first (no session yet): the form is replaced by a "check your email" panel.
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [resend, setResend] = useState<{ state: 'idle' | 'sending' | 'sent'; error?: string }>({ state: 'idle' });
 
   const zipMissing = address.zip.trim() === '';
 
@@ -26,11 +31,11 @@ export function SignUp() {
     setError(null);
     setSubmitting(true);
     try {
-      const { user, session } = await signUp(email, password, name);
+      const { user, session } = await signUp(email, password, name, address);
       if (!user) throw new Error('Sign up did not return a user.');
 
       if (!session) {
-        setError('Check your email to confirm your account, then sign in.');
+        setAwaitingConfirmation(true);
         setSubmitting(false);
         return;
       }
@@ -50,6 +55,71 @@ export function SignUp() {
       setError(e instanceof Error ? e.message : 'Something went wrong signing up.');
       setSubmitting(false);
     }
+  }
+
+  async function handleResend() {
+    setResend({ state: 'sending' });
+    try {
+      await resendConfirmation(email);
+      setResend({ state: 'sent' });
+    } catch (e) {
+      setResend({ state: 'idle', error: describeError(e, 'Could not resend the email. Please try again in a minute.') });
+    }
+  }
+
+  if (awaitingConfirmation) {
+    return (
+      <AuthShell
+        eyebrow="Almost there"
+        headline="Check your email."
+        blurb="One tap on the link we sent, and your plan is ready to build."
+      >
+        <div className="rg-auth-card">
+          <div className="rg-auth-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <rect x="3" y="5" width="18" height="14" rx="2" strokeWidth="2" />
+              <path d="M3 7l9 6 9-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2>Confirm your email</h2>
+          <p className="rg-auth-subtitle">
+            We sent a confirmation link to <strong>{email}</strong>. Open it to finish setting up your account.
+          </p>
+          <p className="rg-auth-hint" style={{ textAlign: 'left', marginTop: 0 }}>
+            Can't find it? Check your spam or promotions folder. The email comes from The Runners Guru.
+          </p>
+
+          {resend.error && <div className="rg-auth-error">{resend.error}</div>}
+          <Button variant="secondary" block disabled={resend.state !== 'idle'} onClick={handleResend}>
+            {resend.state === 'sending' ? 'Sending…' : resend.state === 'sent' ? 'Sent again. Check your inbox.' : 'Resend the email'}
+          </Button>
+
+          <div className="rg-auth-footer-line">
+            Wrong address?{' '}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setAwaitingConfirmation(false);
+                setResend({ state: 'idle' });
+              }}
+            >
+              Go back
+            </a>
+            {' · '}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/signin', { state: { email } });
+              }}
+            >
+              Sign in
+            </a>
+          </div>
+        </div>
+      </AuthShell>
+    );
   }
 
   return (

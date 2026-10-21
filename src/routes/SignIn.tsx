@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { AuthShell } from '../components/AuthShell';
-import { signIn, hydrateUserData } from '../lib/api';
+import { signIn, hydrateUserData, resendConfirmation } from '../lib/api';
 import { useApp } from '../state/AppContext';
 import { useOnlineStatus, describeError } from '../lib/useOnlineStatus';
 import './auth.css';
@@ -17,9 +17,24 @@ export function SignIn() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Supabase refuses sign-in until the signup email was confirmed.
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resend, setResend] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  async function handleResend() {
+    setResend('sending');
+    try {
+      await resendConfirmation(email);
+      setResend('sent');
+    } catch (e) {
+      setError(describeError(e, 'Could not resend the email. Please try again in a minute.'));
+      setResend('idle');
+    }
+  }
 
   async function handleSubmit() {
     setError(null);
+    setUnconfirmed(false);
     if (!online) {
       setError("You're offline. Signing in needs an internet connection — reconnect and try again.");
       return;
@@ -41,7 +56,12 @@ export function SignIn() {
               : '/onboarding',
       );
     } catch (e) {
-      setError(describeError(e, 'Could not sign in. Check your email and password.'));
+      if (e instanceof Error && /not confirmed/i.test(e.message)) {
+        setUnconfirmed(true);
+        setError('Please confirm your email first. We sent you a link when you signed up. Check your inbox and spam folder.');
+      } else {
+        setError(describeError(e, 'Could not sign in. Check your email and password.'));
+      }
       setSubmitting(false);
     }
   }
@@ -63,6 +83,17 @@ export function SignIn() {
         <p className="rg-auth-subtitle">Sign in to pick up your training where you left off.</p>
 
         {error && <div className="rg-auth-error">{error}</div>}
+        {unconfirmed && (
+          <Button
+            variant="secondary"
+            block
+            disabled={resend !== 'idle' || !email}
+            onClick={handleResend}
+            style={{ marginBottom: 'var(--space-4)' }}
+          >
+            {resend === 'sending' ? 'Sending…' : resend === 'sent' ? 'Sent again. Check your inbox.' : 'Resend the confirmation email'}
+          </Button>
+        )}
 
         <Field label="Email" style={{ marginBottom: 'var(--space-4)' }}>
           <Input type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />

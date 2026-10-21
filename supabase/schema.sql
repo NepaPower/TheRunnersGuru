@@ -47,14 +47,30 @@ create policy "profiles are insertable by owner"
   with check (auth.uid() = id);
 
 -- Auto-create a profile row whenever a new auth user signs up.
+-- Also copies the sign-up address (sent as user metadata) into the profile —
+-- see supabase/signup_address_metadata.sql, the hand-run version of this.
 create function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
-  insert into public.profiles (id, name, email)
-  values (new.id, coalesce(new.raw_user_meta_data->>'name', ''), new.email);
+  insert into public.profiles (id, name, email, street, unit, city, state, zip, phone)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'name', ''),
+    new.email,
+    nullif(new.raw_user_meta_data->>'street', ''),
+    nullif(new.raw_user_meta_data->>'unit', ''),
+    nullif(new.raw_user_meta_data->>'city', ''),
+    nullif(new.raw_user_meta_data->>'state', ''),
+    nullif(new.raw_user_meta_data->>'zip', ''),
+    nullif(new.raw_user_meta_data->>'phone', '')
+  );
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create trigger on_auth_user_created
   after insert on auth.users

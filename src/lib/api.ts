@@ -16,22 +16,41 @@ import { buildPhaseSummary, buildTrainingPlan } from './planGenerator';
 
 // ─── Auth ───────────────────────────────────────────────────────────────
 
-export async function signUp(email: string, password: string, name: string) {
+/** Where the confirmation-email link sends people. Explicit (not Supabase's
+ * default of the bare site URL) so a freshly confirmed user lands inside the
+ * app: RequireAuth waits for the session in the URL, then RequirePlan sends a
+ * new account on to onboarding (or Shared Plans for a crew-only invitee).
+ * Must match an allowed Redirect URL in Supabase Auth settings. */
+function confirmationRedirect() {
+  return `${window.location.origin}${import.meta.env.BASE_URL}home`;
+}
+
+export async function signUp(email: string, password: string, name: string, address?: Address) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { name },
-      // Without this, Supabase falls back to window.location.origin for
-      // the confirmation-email link — which is just the bare domain
-      // (e.g. https://nepapower.github.io) and excludes the "/TheRunnersGuru/"
-      // subfolder this app is actually served from on GitHub Pages,
-      // landing confirmed users on a 404 instead of the app.
-      emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+      // The address rides along as user metadata and the handle_new_user
+      // trigger copies it into `profiles` when the account is created. When
+      // email confirmation is on there is no session yet at this point (so
+      // the client can't save the profile itself), and the person may well
+      // confirm on a different device than the one they signed up on.
+      data: { name, ...(address ?? {}) },
+      emailRedirectTo: confirmationRedirect(),
     },
   });
   if (error) throw error;
   return data;
+}
+
+/** Sends the signup confirmation email again (for "I can't find it"). */
+export async function resendConfirmation(email: string) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: confirmationRedirect() },
+  });
+  if (error) throw error;
 }
 
 export async function signIn(email: string, password: string) {
