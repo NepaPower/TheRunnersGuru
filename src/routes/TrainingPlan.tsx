@@ -201,7 +201,49 @@ export function TrainingPlan() {
               </svg>
               Key execution guidelines
             </div>
-            {isUltra ? (
+            {isReadiness ? (
+              // Hold-and-taper plan: the standard guidance (back-to-backs, hill repeats, the 10% rule's
+              // build, intervals and tempo) describes a build this plan deliberately doesn't do.
+              <ul>
+                <li>
+                  <strong>Hold, don't build:</strong> your long run stays at or below your current longest run. With
+                  this much time, adding distance or intensity costs more in injury risk than it gains. The goal now is
+                  to arrive healthy and rehearsed.
+                </li>
+                {isUltra ? (
+                  <>
+                    <li>
+                      <strong>Gear test runs:</strong> run in the exact shoes, pack and clothing you'll race in, on
+                      race-like terrain. Find the blister, chafe and fit problems now, not at mile 40. Nothing new in
+                      the last two weeks.
+                    </li>
+                    <li>
+                      <strong>Fuel rehearsal:</strong> eat and drink on your race-day schedule (60–90g carbs an hour)
+                      on the Friday session and your long run, so your gut is trained alongside your legs.
+                    </li>
+                    <li>
+                      <strong>Use your Crew Plan:</strong> cutoff pace, drop bags and crew logistics are where the time
+                      you have left pays off most.
+                    </li>
+                  </>
+                ) : (
+                  <>
+                    <li>
+                      <strong>Easy running only:</strong> every run stays easy or steady. Intervals and tempo add
+                      injury risk without the weeks needed to adapt to them.
+                    </li>
+                    <li>
+                      <strong>Rehearse race day:</strong> practise your fuelling, a conservative first miles pace, and
+                      your race shoes and kit on the long run. Nothing new on race day.
+                    </li>
+                  </>
+                )}
+                <li>
+                  <strong>Taper and sleep:</strong> the last weeks step down on purpose. Protect your sleep, and treat
+                  rest days as part of the plan.
+                </li>
+              </ul>
+            ) : isUltra ? (
               <ul>
                 <li>
                   <strong>Back-to-back long runs:</strong> once Build Phase begins, Saturday and Sunday both carry a
