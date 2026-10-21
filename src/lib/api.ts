@@ -43,6 +43,22 @@ export async function signUp(email: string, password: string, name: string, addr
   return data;
 }
 
+/** Emails a password-reset link. The link lands on /reset-password, which
+ * must match an allowed Redirect URL in Supabase Auth settings. Supabase
+ * answers the same whether or not the address has an account. */
+export async function requestPasswordReset(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}reset-password`,
+  });
+  if (error) throw error;
+}
+
+/** Sets a new password for the signed-in (recovery-link) session. */
+export async function updatePassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
 /** Sends the signup confirmation email again (for "I can't find it"). */
 export async function resendConfirmation(email: string) {
   const { error } = await supabase.auth.resend({

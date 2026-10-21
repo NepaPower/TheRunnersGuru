@@ -6,6 +6,8 @@ import { RequirePlan } from './components/layout/RequirePlan';
 import { Landing } from './routes/Landing';
 import { SignUp } from './routes/SignUp';
 import { SignIn } from './routes/SignIn';
+import { ForgotPassword } from './routes/ForgotPassword';
+import { ResetPassword } from './routes/ResetPassword';
 import { Privacy } from './routes/Privacy';
 import { Terms } from './routes/Terms';
 import { Onboarding } from './routes/Onboarding';
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
 

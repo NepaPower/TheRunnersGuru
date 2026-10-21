@@ -98,9 +98,14 @@ export function SignIn() {
         <Field label="Email" style={{ marginBottom: 'var(--space-4)' }}>
           <Input type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
-        <Field label="Password" style={{ marginBottom: 'var(--space-6)' }}>
+        <Field label="Password" style={{ marginBottom: 'var(--space-2)' }}>
           <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
+        <div style={{ textAlign: 'right', marginBottom: 'var(--space-6)', fontSize: 13.5 }}>
+          <Link to="/forgot-password" state={{ email }} style={{ fontWeight: 600 }}>
+            Forgot password?
+          </Link>
+        </div>
 
         <Button variant="primary" block disabled={!email || !password || submitting} onClick={handleSubmit}>
           {submitting ? 'Signing in…' : 'Sign in →'}
