@@ -513,3 +513,13 @@ textarea.input { min-height: 90px; resize: vertical; }
   color: color-mix(in srgb, var(--color-text) 62%, transparent);
 }
 .rg-sh-action { margin-left: auto; }
+
+/* Print: backgrounds are dropped on paper, so the band's cream text would
+   vanish — print the page header as plain dark-on-white. */
+@media print {
+  .rg-ph { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+  .rg-ph-band { background: #fff !important; color: #000 !important; border-bottom: 1px solid #999; }
+  .rg-ph-title { color: #000 !important; }
+  .rg-ph-eyebrow { color: #333 !important; }
+  .rg-ph-action { display: none !important; }
+}

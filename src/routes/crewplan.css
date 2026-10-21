@@ -8,16 +8,15 @@
   overflow: hidden;
   margin-bottom: var(--space-6);
 }
-.rg-cp-header-top {
-  padding: var(--space-6) var(--space-6) var(--space-4);
+/* The page header band is shared (PageHeader); these keep Crew Plan's own
+   pieces working inside it and inside the card that follows. */
+.rg-ph-action .btn.rg-cp-gear-btn {
+  background: var(--color-accent-600);
+  color: #fff;
+  border-color: transparent;
 }
-.rg-cp-race-name {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 22px;
-  color: var(--color-text);
-  margin-bottom: var(--space-1);
-}
+.rg-ph-action .btn.rg-cp-gear-btn:hover { background: var(--color-accent-700); }
+.rg-cp-header-card > .rg-cp-gpx-row:first-child { border-top: none; }
 .rg-cp-gpx-row {
   display: flex;
   flex-wrap: wrap;

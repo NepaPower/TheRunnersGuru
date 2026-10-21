@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { PageHeader } from '../components/PageHeader';
 import { Field, Input, SegOption, TextArea } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import {
@@ -1457,39 +1458,91 @@ export function CrewPlan() {
         </div>
       )}
 
-      <div className="rg-cp-header-card">
-        <div className="rg-cp-header-top" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <div className="rg-cp-race-name">Crew Plan for {plan.raceName}</div>
-            {plan.gpxRoute && (
-              <>
-                <div className="rg-cp-muted">
-                  {plan.gpxRoute.distanceMiles} mi course (from GPX) · {plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain ·{' '}
-                  {plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss
-                </div>
-                {(() => {
-                  // Only the LAST waypoint's own correction shifts the
-                  // total — a correction to an earlier station just
-                  // reshapes the segments on either side of it (their
-                  // neighbors' absolute positions haven't moved), so it
-                  // doesn't change how far the course runs overall. The
-                  // last waypoint is the one closest to the actual
-                  // finish line, so its correction is what the total
-                  // should track.
-                  if (waypoints.length === 0) return null;
-                  const lastIdx = waypoints.length - 1;
-                  const shift = effectiveMile(lastIdx) - waypoints[lastIdx].mile;
-                  if (Math.abs(shift) <= 0.05) return null;
-                  const correctedTotal = Math.round((totalMiles + shift) * 10) / 10;
-                  return (
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 2 }}>
-                      Updated total: {correctedTotal} mi (based on your mile corrections)
-                    </div>
-                  );
-                })()}
-              </>
+      <PageHeader
+        eyebrow="Crew Plan"
+        title={`Crew Plan for ${plan.raceName}`}
+        insight={
+          plan.gpxRoute
+            ? `${plan.gpxRoute.distanceMiles} mi course · ${waypoints.length} aid station${waypoints.length === 1 ? '' : 's'}`
+            : undefined
+        }
+        subtitle={
+          <>
+            {plan.gpxRoute &&
+              `${plan.gpxRoute.elevationGainFt.toLocaleString()} ft gain · ${plan.gpxRoute.elevationLossFt.toLocaleString()} ft loss`}
+            {(() => {
+              // Only the LAST waypoint's own correction shifts the total —
+              // a correction to an earlier station just reshapes the
+              // segments on either side of it (their neighbors' absolute
+              // positions haven't moved), so it doesn't change how far the
+              // course runs overall. The last waypoint is the one closest
+              // to the actual finish line, so its correction is what the
+              // total should track.
+              if (!plan.gpxRoute || waypoints.length === 0) return null;
+              const lastIdx = waypoints.length - 1;
+              const shift = effectiveMile(lastIdx) - waypoints[lastIdx].mile;
+              if (Math.abs(shift) <= 0.05) return null;
+              const correctedTotal = Math.round((totalMiles + shift) * 10) / 10;
+              return (
+                <span style={{ display: 'block', fontWeight: 700, color: 'var(--color-accent-800)', marginTop: 2 }}>
+                  Updated total: {correctedTotal} mi (based on your mile corrections)
+                </span>
+              );
+            })()}
+            {(offlineSaving || offlineMeta) && (
+              <span
+                className="rg-print-hide"
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', marginTop: 6, fontSize: 13 }}
+              >
+                {offlineSaving ? (
+                  <span className="rg-cp-muted">
+                    Saving for offline… {offlineSaving.done}/{offlineSaving.total || '—'}
+                  </span>
+                ) : offlineMeta ? (
+                  <>
+                    <span
+                      style={{
+                        color: 'var(--color-accent-800)',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                      Available offline
+                    </span>
+                    <span className="rg-cp-muted">
+                      saved {relativeTime(offlineMeta.savedAt)}
+                      {offlineMeta.imagesSkipped > 0
+                        ? ` · ${offlineMeta.imagesSkipped} image${offlineMeta.imagesSkipped === 1 ? '' : 's'} skipped`
+                        : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => runOfflineSave({ silent: false, skipImages: offlineSkipImages })}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: 'var(--color-accent)',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                      }}
+                    >
+                      Update saved copy
+                    </button>
+                  </>
+                ) : null}
+              </span>
             )}
-          </div>
+          </>
+        }
+        action={
           <div className="rg-print-hide" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
             <Button variant="secondary" onClick={() => window.print()}>
               Print
@@ -1503,79 +1556,36 @@ export function CrewPlan() {
               </Button>
             )}
           </div>
-        </div>
+        }
+      />
 
-        <div
-          className="rg-print-hide"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-3)',
-            flexWrap: 'wrap',
-            fontSize: 13,
-            padding: '0 var(--space-6) var(--space-4)',
-          }}
-        >
-          {offlineSaving ? (
-            <span className="rg-cp-muted">
-              Saving for offline… {offlineSaving.done}/{offlineSaving.total || '—'}
-            </span>
-          ) : offlineMeta ? (
-            <>
-              <span
-                style={{
-                  color: 'var(--color-accent-800)',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
-                Available offline
-              </span>
-              <span className="rg-cp-muted">
-                saved {relativeTime(offlineMeta.savedAt)}
-                {offlineMeta.imagesSkipped > 0
-                  ? ` · ${offlineMeta.imagesSkipped} image${offlineMeta.imagesSkipped === 1 ? '' : 's'} skipped`
-                  : ''}
-              </span>
-              <button
-                type="button"
-                onClick={() => runOfflineSave({ silent: false, skipImages: offlineSkipImages })}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  color: 'var(--color-accent)',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: 3,
-                  cursor: 'pointer',
-                  fontSize: 13,
-                }}
-              >
-                Update saved copy
-              </button>
-            </>
-          ) : (
-            <>
-              <Button variant="secondary" onClick={() => runOfflineSave({ silent: false, skipImages: offlineSkipImages })}>
-                Save for offline
-              </Button>
-              <label className="rg-cp-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={offlineSkipImages}
-                  onChange={(e) => setOfflineSkipImages(e.target.checked)}
-                />
-                skip images
-              </label>
-              <span className="rg-cp-muted">Save this before you lose signal — the plan stays readable offline.</span>
-            </>
-          )}
-        </div>
+      <div className="rg-cp-header-card">
+        {!offlineSaving && !offlineMeta && (
+          <div
+            className="rg-print-hide"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-3)',
+              flexWrap: 'wrap',
+              fontSize: 13,
+              padding: 'var(--space-4) var(--space-6)',
+            }}
+          >
+            <Button variant="secondary" onClick={() => runOfflineSave({ silent: false, skipImages: offlineSkipImages })}>
+              Save for offline
+            </Button>
+            <label className="rg-cp-muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={offlineSkipImages}
+                onChange={(e) => setOfflineSkipImages(e.target.checked)}
+              />
+              skip images
+            </label>
+            <span className="rg-cp-muted">Save this before you lose signal — the plan stays readable offline.</span>
+          </div>
+        )}
 
         <div className={`rg-cp-gpx-row${readOnlyMode ? ' rg-cp-readonly' : ''}`}>
           <div>
