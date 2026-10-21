@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
@@ -36,6 +36,7 @@ export function Onboarding() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pastDateOpen, setPastDateOpen] = useState(false);
+  const dateRef = useRef<HTMLInputElement>(null);
   // Finishing onboarding again while a primary race already exists
   // OVERWRITES that race's row in place — same id, every column replaced
   // (weekly schedule, crew notes, GPX, course segments, all of it). This
@@ -148,7 +149,7 @@ export function Onboarding() {
         {isUltra && step === hillAccessStep && <StepHillAccess />}
         {step === firstTimeStep && <StepFirstTime />}
         {step === paceStep && <StepPace />}
-        {step === lastStep && <StepDateGoal />}
+        {step === lastStep && <StepDateGoal dateRef={dateRef} onPastDate={() => setPastDateOpen(true)} />}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
           <Button variant="secondary" disabled={step === 0 || saving} onClick={() => dispatch({ type: 'ONBOARDING_PREV' })}>
@@ -160,7 +161,14 @@ export function Onboarding() {
         </div>
       </div>
 
-      {pastDateOpen && <PastDateDialog onClose={() => setPastDateOpen(false)} />}
+      {pastDateOpen && (
+        <PastDateDialog
+          onClose={() => {
+            setPastDateOpen(false);
+            dateRef.current?.focus();
+          }}
+        />
+      )}
 
       {confirmOverwrite && state.trainingPlan && (
         <Dialog

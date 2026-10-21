@@ -31,6 +31,7 @@ export function AddRace() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pastDateOpen, setPastDateOpen] = useState(false);
+  const dateRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleGpx(e: React.ChangeEvent<HTMLInputElement>) {
@@ -137,7 +138,15 @@ export function AddRace() {
         </Field>
 
         <Field label="Race date" required>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input
+            ref={dateRef}
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            onBlur={() => {
+              if (date && isPastDate(date)) setPastDateOpen(true);
+            }}
+          />
         </Field>
 
         <Field label="Race type">
@@ -221,7 +230,14 @@ export function AddRace() {
         </div>
       </div>
 
-      {pastDateOpen && <PastDateDialog onClose={() => setPastDateOpen(false)} />}
+      {pastDateOpen && (
+        <PastDateDialog
+          onClose={() => {
+            setPastDateOpen(false);
+            dateRef.current?.focus();
+          }}
+        />
+      )}
     </>
   );
 }

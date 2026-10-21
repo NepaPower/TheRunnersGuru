@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Field, Input, Select } from '../components/ui/Form';
@@ -40,6 +40,7 @@ export function EditRace() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pastDateOpen, setPastDateOpen] = useState(false);
+  const dateRef = useRef<HTMLInputElement>(null);
   // Set after a save that rebuilt the weekly plan — shows a "view the
   // plan" step instead of dropping straight back to My Races.
   const [rebuiltPlan, setRebuiltPlan] = useState(false);
@@ -258,7 +259,15 @@ export function EditRace() {
         </Field>
 
         <Field label="Race date" required>
-          <Input type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} />
+          <Input
+            ref={dateRef}
+            type="date"
+            value={raceDate}
+            onChange={(e) => setRaceDate(e.target.value)}
+            onBlur={() => {
+              if (raceDateChangedToPast) setPastDateOpen(true);
+            }}
+          />
         </Field>
 
         <Field label="Race type">
@@ -382,7 +391,14 @@ export function EditRace() {
         </div>
       </div>
 
-      {pastDateOpen && <PastDateDialog onClose={() => setPastDateOpen(false)} />}
+      {pastDateOpen && (
+        <PastDateDialog
+          onClose={() => {
+            setPastDateOpen(false);
+            dateRef.current?.focus();
+          }}
+        />
+      )}
     </>
   );
 }

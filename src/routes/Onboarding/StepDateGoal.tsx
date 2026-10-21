@@ -4,12 +4,19 @@ import { formatClockTime, formatRaceDateReadout, goalTimeBreakdownLabel, parsePa
 import { monthsLeftLabel, isTrainingTimeShort, recommendedWeeksFor } from '../../lib/planGenerator';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { DISTANCE_LABELS } from '../../data/constants';
+import { isPastDate } from '../../lib/today';
 
 const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const SECOND_OPTIONS = MINUTE_OPTIONS;
 
-export function StepDateGoal() {
+export function StepDateGoal({
+  dateRef,
+  onPastDate,
+}: {
+  dateRef: React.RefObject<HTMLInputElement>;
+  onPastDate: () => void;
+}) {
   const { state, dispatch } = useApp();
   const { onboarding } = state;
   const isUltra = onboarding.distanceGoal === 'ultra';
@@ -50,9 +57,13 @@ export function StepDateGoal() {
 
       <Field label="Race date" style={{ marginBottom: 'var(--space-4)' }}>
         <Input
+          ref={dateRef}
           type="date"
           value={onboarding.raceDate}
           onChange={(e) => dispatch({ type: 'ONBOARDING_SET_RACE_DATE', value: e.target.value })}
+          onBlur={() => {
+            if (onboarding.raceDate && isPastDate(onboarding.raceDate)) onPastDate();
+          }}
         />
         {onboarding.raceDate && (
           <div className="text-muted" style={{ marginTop: 6, fontSize: 13 }}>
