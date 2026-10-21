@@ -488,6 +488,10 @@ export function TrainingPlan() {
                   alongside your legs.
                 </li>
                 <li>
+                  <strong>Training races:</strong> a local 50K or 50-mile race makes an excellent long run. Swap it in for
+                  a Saturday, run it as a long run (easy, fuelling as you will on race day), and keep the next day short.
+                </li>
+                <li>
                   <strong>Strength and cross-training:</strong> the weekly strength session targets the durability
                   that resists breakdown over many hours, and the weekly bike/swim keeps blood flow moving on an
                   easy day without adding to the pounding.
