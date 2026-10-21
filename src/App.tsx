@@ -7,6 +7,7 @@ import { Landing } from './routes/Landing';
 import { SignUp } from './routes/SignUp';
 import { SignIn } from './routes/SignIn';
 import { Privacy } from './routes/Privacy';
+import { Terms } from './routes/Terms';
 import { Onboarding } from './routes/Onboarding';
 import { Dashboard } from './routes/Dashboard';
 import { TrainingPlan } from './routes/TrainingPlan';
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
 
         <Route element={<RequireAuth />}>
           <Route path="/onboarding" element={<Onboarding />} />

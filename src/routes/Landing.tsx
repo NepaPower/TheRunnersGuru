@@ -239,7 +239,7 @@ export function Landing() {
         <span>The Runners Guru</span>
         <div className="rg-landing-footer-links">
           <Link to="/privacy">Privacy</Link>
-          <span>Terms</span>
+          <Link to="/terms">Terms</Link>
           <Link to="/privacy#contact">Contact</Link>
         </div>
         <span>© 2026 The Runners Guru</span>

@@ -180,7 +180,9 @@ export function Privacy() {
 
       <footer className="rg-pv-footer">
         <Link to="/">The Runners Guru</Link>
-        <span>© 2026 The Runners Guru</span>
+        <span>
+          <Link to="/terms">Terms</Link> · © 2026 The Runners Guru
+        </span>
       </footer>
     </div>
   );

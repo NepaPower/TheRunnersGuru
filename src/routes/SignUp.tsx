@@ -109,7 +109,8 @@ export function SignUp() {
         {zipMissing && <div className="rg-auth-hint">Zip code is required — we use it to find races near you.</div>}
 
         <div className="rg-auth-hint">
-          We keep your details private. <Link to="/privacy">Read our Privacy page</Link>.
+          By joining you agree to our <Link to="/terms">Terms</Link>. We keep your details private: see our{' '}
+          <Link to="/privacy">Privacy page</Link>.
         </div>
 
         <div className="rg-auth-footer-line">
