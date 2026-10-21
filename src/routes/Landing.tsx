@@ -2,28 +2,70 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { Button } from '../components/ui/Button';
-import { LANDING_FEATURES } from '../data/constants';
 import './landing.css';
 
-// Feature icons — small, purposeful glyphs (no icon library dependency),
-// one per card, cycling through the three accent colors via CSS nth-child.
-const FEATURE_ICONS = [
-  <path key="a" d="M4 17l5-6 4 4 7-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="b" d="M12 3v18M6 8l6-5 6 5M6 16l6 5 6-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="c" d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="d" d="M13 3L5 13h5l-1 8 8-11h-5l1-7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="e" d="M12 21c4-3 7-6.5 7-11a7 7 0 10-14 0c0 4.5 3 8 7 11z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="f" d="M5 21l4-11 3 6 3-9 4 14M5 21h14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="g" d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  <path key="h" d="M17 11a5 5 0 10-10 0c0 3 2 4 2 7h6c0-3 2-4 2-7z M9 21h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
-  // Route Library's trail motif (start dot - winding path - end dot) —
-  // same icon used in AppNav, so it reads as the same feature everywhere.
-  <g key="i">
-    <circle cx="5" cy="19" r="2" strokeWidth="2" fill="none" />
-    <circle cx="19" cy="5" r="2" strokeWidth="2" fill="none" />
-    <path d="M7 18c3-2 2-6 5-8s3-5 6-6" strokeWidth="2" strokeLinecap="round" fill="none" />
-  </g>,
+// Who it's for — each card names a situation, not a feature. Everything
+// described here exists in the app today. Icons are hand-drawn glyphs (no
+// icon library), tinted by position via CSS.
+const AUDIENCES: { title: string; desc: string; icon: JSX.Element }[] = [
+  {
+    title: 'Your first race',
+    desc: 'A week-by-week plan from 5K to marathon, with the pace to run every workout.',
+    icon: <path d="M6 21V4M6 4h11l-3 4 3 4H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  },
+  {
+    title: 'Your next ultra',
+    desc: 'Aid-station arrival times, cutoff pace and the weather at every station, built from your course GPX.',
+    icon: <path d="M3 20l6-12 4 7 3-5 5 10z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  },
+  {
+    title: 'Worried about a cutoff',
+    desc: 'See the pace you need to make every cutoff, leg by leg, and what you can afford to spend at each stop.',
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" strokeWidth="2" fill="none" />
+        <path d="M12 7v5l3.5 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </>
+    ),
+  },
+  {
+    title: 'Crewing someone',
+    desc: "Open your runner's plan on your phone: when they arrive, driving directions to each aid station, what to bring.",
+    icon: (
+      <path
+        d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M15 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 20v-1a3.5 3.5 0 0 0-2.5-3.36M15.5 3.13a3.5 3.5 0 0 1 0 6.75"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    ),
+  },
+  {
+    title: 'Pacing someone',
+    desc: 'Know the leg ahead before you join: distance, climb, descent, and where you meet your runner.',
+    icon: <path d="M4 12h16M14 6l6 6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />,
+  },
+  {
+    title: 'Running somewhere new',
+    desc: 'Browse and share GPX trails from runners around the world. Local trails, global Guru.',
+    icon: (
+      <g>
+        <circle cx="5" cy="19" r="2" strokeWidth="2" fill="none" />
+        <circle cx="19" cy="5" r="2" strokeWidth="2" fill="none" />
+        <path d="M7 18c3-2 2-6 5-8s3-5 6-6" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </g>
+    ),
+  },
 ];
+
+const STEPS = [
+  { label: 'Before', title: 'Train with a plan', desc: 'Built backward from race day, with a target pace for every workout.' },
+  { label: 'During', title: 'Race with a plan', desc: 'Your Crew Plan shows when you reach each aid station, and the weather when you get there.' },
+  { label: 'All night', title: 'Your crew is with you', desc: 'They follow the same plan on their phone, saved for offline when the signal drops.' },
+];
+
+const ALSO_INSIDE = ['Run log', 'Weekly mileage', 'Multiple races', 'Print-ready crew sheet', 'Works offline', 'Route Library'];
 
 export function Landing() {
   const navigate = useNavigate();
@@ -34,159 +76,154 @@ export function Landing() {
       <section className="rg-landing-hero">
         <nav className="rg-landing-nav">
           <div className="rg-landing-nav-brand">
-            <LogoMark size={32} />
+            <LogoMark size={36} />
             The Runners Guru
           </div>
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin'); }}>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/signin');
+            }}
+          >
             Sign in
           </a>
           <Button variant="primary" onClick={() => navigate('/signup')}>
-            Join free →
+            Join free
           </Button>
         </nav>
 
-        {/* Background contour lines — faint topographic texture, like
-            elevation lines on a trail map, filling the predawn section. */}
-        <svg className="rg-landing-hero-contours" viewBox="0 0 800 500" preserveAspectRatio="none" aria-hidden="true">
-          {[60, 120, 175, 235, 300, 360, 420, 470].map((y, i) => (
-            <path
-              key={y}
-              d={`M0,${y} Q100,${y - 22} 200,${y} T400,${y} T600,${y} T800,${y}`}
-              fill="none"
-              stroke="#f4efe1"
-              strokeWidth="1"
-              opacity={0.08 + (i % 3) * 0.03}
-            />
-          ))}
-        </svg>
-
         <div className="rg-landing-hero-inner">
-          <div>
-            <div className="rg-landing-eyebrow">Before sunrise, every mile counts</div>
-            <h1 className="rg-landing-headline">
-              Your next <em>mile</em>
-              <br />
-              starts here
-            </h1>
-            <p className="rg-landing-subhead">
-              Intelligent training plans built around you — whether it's your first 5K or your next 300-mile ultra. Pick
-              your distance, upload your route, and let AI handle the rest.
-            </p>
+          <div className="rg-landing-eyebrow">Training and race-day planning</div>
+          <h1 className="rg-landing-headline">
+            Run far.
+            <br />
+            Run together.
+          </h1>
+          <p className="rg-landing-subhead">
+            Training plans for every distance, and a crew plan built for the long ones — from your first 5K to your next
+            300-mile ultra.
+          </p>
 
-            <form
-              className="rg-landing-capture"
-              onSubmit={(e) => {
+          <form
+            className="rg-landing-capture"
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate('/signup', { state: { email: heroEmail } });
+            }}
+          >
+            <input
+              type="email"
+              placeholder="your@email.com"
+              aria-label="Email address"
+              value={heroEmail}
+              onChange={(e) => setHeroEmail(e.target.value)}
+            />
+            <Button variant="primary" type="submit">
+              Join free
+            </Button>
+          </form>
+          <div className="rg-landing-signin-line">
+            Already have an account?{' '}
+            <a
+              href="#"
+              onClick={(e) => {
                 e.preventDefault();
-                navigate('/signup', { state: { email: heroEmail } });
+                navigate('/signin', { state: { email: heroEmail } });
               }}
             >
-              <input
-                type="email"
-                placeholder="your@email.com"
-                aria-label="Email address"
-                value={heroEmail}
-                onChange={(e) => setHeroEmail(e.target.value)}
-              />
-              <Button variant="primary" type="submit">
-                Join free
-              </Button>
-            </form>
-            <div className="rg-landing-signin-line">
-              Already have an account?{' '}
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signin', { state: { email: heroEmail } }); }}>
-                Sign in
-              </a>
-            </div>
-
-            <div className="rg-landing-hero-stats">
-              <div>
-                <div className="rg-landing-hero-stat-value">5K–300+mi</div>
-                <div className="rg-landing-hero-stat-label">Every distance covered</div>
-              </div>
-              <div>
-                <div className="rg-landing-hero-stat-value">100%</div>
-                <div className="rg-landing-hero-stat-label">Plans built for your race</div>
-              </div>
-              <div>
-                <div className="rg-landing-hero-stat-value">Free</div>
-                <div className="rg-landing-hero-stat-label">No card required</div>
-              </div>
-            </div>
+              Sign in
+            </a>
           </div>
 
-          {/* Signature graphic: a route line drawing itself in, like a GPS
-              track from a finished run — start marker, winding path, finish. */}
-          <div className="rg-landing-route-wrap">
-            <svg viewBox="0 0 420 380" width="100%" height="100%" aria-hidden="true">
-              {/* Rocky mountain "skeleton" — layered jagged ridgelines, drawn
-                  as bare outlines rather than solid silhouettes, echoing the
-                  contour-line motif elsewhere in the hero. */}
-              <path
-                d="M0,260 L20,230 L35,245 L55,190 L70,210 L90,175 L110,200 L130,160 L150,195 L175,150 L200,185 L225,140 L250,180 L275,155 L300,190 L330,150 L360,185 L390,160 L420,195"
-                fill="none"
-                stroke="#3a5145"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-                opacity="0.5"
-              />
-              <path
-                d="M0,300 L25,250 L40,270 L65,210 L85,235 L100,190 L125,225 L145,175 L170,215 L190,165 L215,205 L240,155 L260,195 L285,150 L305,190 L335,145 L360,180 L385,150 L420,185"
-                fill="none"
-                stroke="#4a6b58"
-                strokeWidth="1.75"
-                strokeLinejoin="round"
-                opacity="0.7"
-              />
-              <path
-                d="M0,330 L15,300 L30,315 L50,270 L60,285 L80,240 L95,260 L115,210 L130,235 L150,190 L165,220 L185,175 L200,210 L220,165 L235,195 L255,155 L270,185 L295,145 L310,175 L335,140 L355,170 L375,150 L400,175 L420,155"
-                fill="none"
-                stroke="#6f8f76"
-                strokeWidth="2"
-                strokeLinejoin="round"
-                opacity="0.9"
-              />
-
-              {/* Switchback trail — a running route climbing the rocky
-                  ridge, drawing itself in like a finished route on a GPS
-                  watch. */}
-              <path
-                className="rg-landing-route-path"
-                d="M30,340 L78,318 L48,292 L98,270 L68,242 L118,222 L88,192 L140,175 L165,220 L200,210 L220,165 L250,180 L270,185 L295,145 L320,168 L345,205 L370,225"
-                fill="none"
-                stroke="#d9a441"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="30" cy="340" r="6" fill="#f4efe1" />
-              <circle className="rg-landing-route-dot" cx="370" cy="225" r="8" fill="#d9a441" stroke="#16241f" strokeWidth="3" />
-            </svg>
+          <div className="rg-landing-hero-stats">
+            <div>
+              <div className="rg-landing-hero-stat-value">5K to 300+ mi</div>
+              <div className="rg-landing-hero-stat-label">Every distance</div>
+            </div>
+            <div>
+              <div className="rg-landing-hero-stat-value">Crew-ready</div>
+              <div className="rg-landing-hero-stat-label">One plan, shared</div>
+            </div>
+            <div>
+              <div className="rg-landing-hero-stat-value">Free to join</div>
+              <div className="rg-landing-hero-stat-label">No card required</div>
+            </div>
           </div>
+        </div>
+
+        <div className="rg-landing-scene" aria-hidden="true">
+          <span className="rg-landing-sun" />
+          <svg viewBox="0 0 1200 320" preserveAspectRatio="xMidYMax slice" fill="none">
+            <polygon
+              points="0,320 0,210 70,160 130,205 210,120 290,200 370,150 450,215 540,110 640,200 720,160 800,215 890,130 980,205 1060,160 1140,200 1200,170 1200,320"
+              fill="currentColor"
+              opacity="0.1"
+            />
+            <polygon
+              points="0,320 0,250 90,190 170,240 270,170 360,245 470,150 560,235 660,180 760,250 850,200 950,245 1050,190 1140,235 1200,215 1200,320"
+              fill="currentColor"
+              opacity="0.17"
+            />
+            <path
+              d="M40 320 C120 300 200 270 270 236 S420 186 470 154"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="2 9"
+              opacity="0.6"
+            />
+            <circle cx="470" cy="152" r="6" fill="currentColor" opacity="0.7" />
+          </svg>
         </div>
       </section>
 
-      <section className="rg-landing-features">
-        <div className="rg-landing-section-kicker">Why runners choose Guru</div>
-        <h2>Everything you need between now and race day.</h2>
-        <div className="rg-landing-feature-grid">
-          {LANDING_FEATURES.map((f, i) => (
-            <div key={f.title} className="rg-landing-feature-card">
-              <div className="rg-landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor">
-                  {FEATURE_ICONS[i % FEATURE_ICONS.length]}
+      <section className="rg-landing-section">
+        <div className="rg-landing-kicker">Who it's for</div>
+        <h2>Whatever your next start line is.</h2>
+        <div className="rg-landing-grid">
+          {AUDIENCES.map((a) => (
+            <div key={a.title} className="rg-landing-card">
+              <div className="rg-landing-card-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor">
+                  {a.icon}
                 </svg>
               </div>
-              <div className="rg-landing-feature-title">{f.title}</div>
-              <p className="rg-landing-feature-desc">{f.desc}</p>
+              <div className="rg-landing-card-title">{a.title}</div>
+              <p className="rg-landing-card-desc">{a.desc}</p>
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="rg-landing-section rg-landing-story">
+        <div className="rg-landing-kicker">From the first mile to the finish</div>
+        <h2>One plan, all the way through.</h2>
+        <div className="rg-landing-steps">
+          {STEPS.map((s, i) => (
+            <div key={s.label} className="rg-landing-step">
+              <div className="rg-landing-step-num">{i + 1}</div>
+              <div className="rg-landing-step-label">{s.label}</div>
+              <div className="rg-landing-card-title">{s.title}</div>
+              <p className="rg-landing-card-desc">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="rg-landing-also">
+          <span className="rg-landing-also-label">Also inside</span>
+          {ALSO_INSIDE.map((item) => (
+            <span key={item} className="rg-landing-pill">
+              {item}
+            </span>
+          ))}
+        </div>
+        <p className="rg-landing-soon">Coming soon: gear, nutrition and strength recommendations.</p>
       </section>
 
       <section className="rg-landing-cta">
-        <h2>Every runner. Every distance. Every mile — smarter.</h2>
+        <h2>Plan the run. Trust the crew.</h2>
         <Button variant="primary" onClick={() => navigate('/signup')}>
-          Start your custom plan
+          Join free
         </Button>
       </section>
 

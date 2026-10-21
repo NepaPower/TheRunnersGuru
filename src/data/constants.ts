@@ -133,18 +133,6 @@ export const NUTRITION_BRANDS = [
   '', 'Clif Bar', 'Honey Stinger Waffle', 'Bonk Breaker', 'Picky Bars', 'Banana', 'Homemade', 'Other',
 ];
 
-export const LANDING_FEATURES = [
-  { title: 'Built For Every Runner', desc: 'From your first 5K to your fiftieth ultra — plans that meet you where you are.' },
-  { title: 'Any Distance, Your Choice', desc: '5K to 300-mile ultras, pick your race and we build the plan around it.' },
-  { title: 'Upload, Analyze, Train', desc: 'Drop in a GPX file and get route-aware training insights.' },
-  { title: 'Fuel Right', desc: 'Nutrition guidance tuned to your mileage and race distance.' },
-  { title: 'Stay Ahead of Dehydration', desc: 'Weather-aware hydration recommendations for every run.' },
-  { title: 'Gear That Fits Your Run', desc: 'Recommendations tailored to your distance, weather, and terrain.' },
-  { title: 'Strength That Supports Speed', desc: 'Targeted strength work to keep you injury-free and running strong.' },
-  { title: 'Never Run Alone', desc: 'Get matched with partners and groups who run your pace, your way.' },
-  { title: 'Local Trails, Global Guru', desc: 'Browse and share GPX routes other runners have mapped — run like a local, wherever you are.' },
-];
-
 // ─── Route Library location fields ─────────────────────────────────────
 // 'United States' triggers a US_STATES dropdown for "State"; every other
 // country gets a free-text "State / region" field instead — maintaining
