@@ -2,7 +2,7 @@
 
 .rg-cp-header-card {
   background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--color-divider-strong);
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
@@ -44,7 +44,7 @@
   align-items: flex-start;
   gap: var(--space-3);
   background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--color-divider-strong);
   border-left: 4px solid #d9a441;
   border-radius: 12px;
   box-shadow: var(--shadow-md);
@@ -91,7 +91,7 @@
 
 .rg-cp-empty-card {
   background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--color-divider-strong);
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
   padding: var(--space-6);
@@ -106,7 +106,7 @@
 }
 .rg-cp-station-card {
   background: var(--color-bg);
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--color-divider-strong);
   border-radius: 14px;
   box-shadow: var(--shadow-sm);
   padding: var(--space-5, var(--space-4));
