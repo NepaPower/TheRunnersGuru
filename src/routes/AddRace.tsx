@@ -4,6 +4,8 @@ import { Button } from '../components/ui/Button';
 import { Field, Input, Select } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { createTrainingPlan, getCurrentUserId } from '../lib/api';
+import { PastDateDialog } from '../components/PastDateDialog';
+import { isPastDate } from '../lib/today';
 import { parseGpxFile } from '../lib/gpx';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
 import type { DistanceGoal, GpxRoute, TrainingPlan, UltraDistanceId } from '../types';
@@ -28,6 +30,7 @@ export function AddRace() {
   const [gpxError, setGpxError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pastDateOpen, setPastDateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleGpx(e: React.ChangeEvent<HTMLInputElement>) {
@@ -58,6 +61,10 @@ export function AddRace() {
     setError(null);
     if (!name.trim() || !date) {
       setError('Race name and date are required.');
+      return;
+    }
+    if (isPastDate(date)) {
+      setPastDateOpen(true);
       return;
     }
     if (category === 'ultra' && ultraMiles == null) {
@@ -213,6 +220,8 @@ export function AddRace() {
           </Button>
         </div>
       </div>
+
+      {pastDateOpen && <PastDateDialog onClose={() => setPastDateOpen(false)} />}
     </>
   );
 }

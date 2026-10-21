@@ -101,3 +101,10 @@ export function isRaceLocked(raceDate: string, createdAt?: string | null, now: D
   const today = dayNumber(now.getFullYear(), now.getMonth() + 1, now.getDate());
   return today - createdDay > LOCK_GRACE_DAYS;
 }
+
+/** True when a yyyy-mm-dd date is before today (today itself is fine). */
+export function isPastDate(isoDate: string, now: Date = new Date()): boolean {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  if (!y || !m || !d) return false;
+  return dayNumber(y, m, d) < dayNumber(now.getFullYear(), now.getMonth() + 1, now.getDate());
+}

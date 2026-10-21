@@ -8,6 +8,8 @@ import { buildTrainingPlan } from '../../lib/planGenerator';
 import { saveTrainingPlan, getCurrentUserId } from '../../lib/api';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { goalPartsToMinutes } from '../../lib/format';
+import { isPastDate } from '../../lib/today';
+import { PastDateDialog } from '../../components/PastDateDialog';
 import { StepRaceCategory } from './StepRaceCategory';
 import { StepDistance } from './StepDistance';
 import { StepHillAccess } from './StepHillAccess';
@@ -33,6 +35,7 @@ export function Onboarding() {
   const paceStep = isUltra ? 4 : 3;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pastDateOpen, setPastDateOpen] = useState(false);
   // Finishing onboarding again while a primary race already exists
   // OVERWRITES that race's row in place — same id, every column replaced
   // (weekly schedule, crew notes, GPX, course segments, all of it). This
@@ -43,6 +46,10 @@ export function Onboarding() {
   function handleNext() {
     if (step < lastStep) {
       dispatch({ type: 'ONBOARDING_NEXT' });
+      return;
+    }
+    if (isPastDate(state.onboarding.raceDate)) {
+      setPastDateOpen(true);
       return;
     }
     if (state.trainingPlan) {
@@ -152,6 +159,8 @@ export function Onboarding() {
           </Button>
         </div>
       </div>
+
+      {pastDateOpen && <PastDateDialog onClose={() => setPastDateOpen(false)} />}
 
       {confirmOverwrite && state.trainingPlan && (
         <Dialog

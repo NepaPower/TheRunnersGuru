@@ -6,7 +6,8 @@ import { useApp } from '../state/AppContext';
 import { updateRaceDetails } from '../lib/api';
 import { buildTrainingPlan } from '../lib/planGenerator';
 import { goalMinutesToParts, goalPartsToMinutes } from '../lib/format';
-import { isRaceLocked } from '../lib/today';
+import { PastDateDialog } from '../components/PastDateDialog';
+import { isPastDate, isRaceLocked } from '../lib/today';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
 import type { DistanceGoal, FirstTimeAnswer, HillAccessAnswer, TrainingPlan, UltraDistanceId } from '../types';
 import './races.css';
@@ -38,6 +39,7 @@ export function EditRace() {
   const [hillAccess, setHillAccess] = useState<HillAccessAnswer>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pastDateOpen, setPastDateOpen] = useState(false);
   // Set after a save that rebuilt the weekly plan — shows a "view the
   // plan" step instead of dropping straight back to My Races.
   const [rebuiltPlan, setRebuiltPlan] = useState(false);
@@ -113,6 +115,9 @@ export function EditRace() {
           ? Math.min(Number(ultraCustom), MAX_ULTRA_MILES)
           : null
         : (ULTRA_DISTANCES.find((d) => d.id === ultraId)?.miles ?? null);
+  // Only a NEW past date is rejected — a completed race inside its grace
+  // period keeps its (past) date unless the person changes it.
+  const raceDateChangedToPast = !!raceDate && raceDate !== plan.raceDate && isPastDate(raceDate);
   const nextDistanceGoal: DistanceGoal = category === 'ultra' ? 'ultra' : stdDistance;
   const nextHillAccess: HillAccessAnswer = category === 'ultra' ? hillAccess : '';
   const goalFinishMinutes = goalPartsToMinutes(goalHours, goalMinutes, goalSeconds);
@@ -132,6 +137,10 @@ export function EditRace() {
     if (!plan || !plan.id) return;
     if (!name.trim() || !raceDate) {
       setError('Race name and date are required.');
+      return;
+    }
+    if (raceDateChangedToPast) {
+      setPastDateOpen(true);
       return;
     }
     if (category === 'ultra' && nextUltraMiles == null) {
@@ -372,6 +381,8 @@ export function EditRace() {
           </Button>
         </div>
       </div>
+
+      {pastDateOpen && <PastDateDialog onClose={() => setPastDateOpen(false)} />}
     </>
   );
 }
