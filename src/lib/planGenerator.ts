@@ -114,6 +114,14 @@ export function standardRamp(
 
 const ULTRA_PEAK_LONG_H = 6;
 
+/** Ultra mid-week runs (Tue / Wed / Thu) climb to this many hours at the peak of
+ * the build (about 10-13 miles at ultra pace); they start at about half the
+ * runner's long run. Wednesday's run is a bit shorter since strength follows it. */
+const ULTRA_PEAK_MID_H = 2;
+const WED_RUN_RATIO = 0.8;
+/** Sunday's back-to-back run, as a share of Saturday's long run (25 mi Saturday -> ~9-10 mi Sunday). */
+const B2B_RATIO = 0.38;
+
 interface UltraRamp {
   tier: RunwayTier;
   startH: number;
@@ -330,14 +338,30 @@ function ultraClimbMinutes(phase: TrainingPlanRow['phase'], linearRatio: number)
   return linearRatio > 0.7 ? 40 : 35; // Build Phase: moderate -> race-specific as the plan progresses
 }
 
-function ultraClimbText(outdoor: boolean, phase: TrainingPlanRow['phase'], linearRatio: number): string {
-  const min = ultraClimbMinutes(phase, linearRatio);
-  if (min === 0) return 'Rest';
-  if (phase === 'Taper Phase') return outdoor ? `Hill repeats — ${min} min, easy` : `Treadmill incline — ${min} min easy, 6% grade`;
-  if (phase === 'Recovery Week') return outdoor ? `Hill repeats — ${min} min, easy climbing` : `Treadmill incline — ${min} min easy, 8% grade`;
-  if (phase === 'Base Building') return outdoor ? `Hill repeats — ${min} min steady climbing` : `Treadmill incline — ${min} min steady, 8% grade`;
-  if (linearRatio > 0.7) return outdoor ? 'Hill repeats — race-pace climbing, poles optional' : `StairMaster — ${min} min, race-pace climbing`;
-  return outdoor ? 'Hill repeats — 6×3 min hard, jog recovery' : 'Treadmill HIIT — 6×3 min @ 10–12% incline';
+/** "45 min", "1 hr 30 min", "2 hrs" (to the nearest 5 minutes by the caller). */
+function fmtDur(min: number): string {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h} hr ${m} min` : h === 1 ? '1 hr' : `${h} hrs`;
+}
+
+/** Tuesday: a real mid-week run with the climbing built into it (not 30 minutes
+ * of hill work on its own). The climbing portion follows the phase, outdoors or
+ * on a treadmill / StairMaster. */
+function ultraHillRunText(outdoor: boolean, phase: TrainingPlanRow['phase'], linearRatio: number, durMin: number): string {
+  const dur = fmtDur(durMin);
+  const climb = ultraClimbMinutes(phase, linearRatio);
+  if (phase === 'Taper Phase' || phase === 'Recovery Week') {
+    return outdoor ? `Hill run — ${dur} (easy climbing)` : `Incline run — ${dur} (easy, 6–8% grade)`;
+  }
+  if (phase === 'Base Building') {
+    return outdoor ? `Hill run — ${dur} (${climb} min steady climbing)` : `Incline run — ${dur} (${climb} min steady at 8% grade)`;
+  }
+  if (linearRatio > 0.7) {
+    return outdoor ? `Hill run — ${dur} (race-pace climbing, poles optional)` : `Incline run — ${dur} (race-pace climbing, StairMaster or 10–12% incline)`;
+  }
+  return outdoor ? `Hill run — ${dur} (6×3 min hard climbs, jog recovery)` : `Incline run — ${dur} (6×3 min at 10–12% incline)`;
 }
 
 function ultraStrengthMinutes(phase: TrainingPlanRow['phase']): number {
@@ -424,8 +448,10 @@ function generateUltraPlan(
       : 1;
   const START_LONG_H = ramp ? ramp.startH : 2;
   const PEAK_LONG_H = START_LONG_H + (ULTRA_PEAK_LONG_H - START_LONG_H) * buildScale;
-  const START_B2B_H = 1.5;
-  const PEAK_B2B_H = START_B2B_H + (3 - START_B2B_H) * buildScale;
+  // Mid-week runs: start at about half the long run, climb to 2 hours (less if the
+  // build is scaled down), same shape as the long run's ramp.
+  const MID_START_H = clamp(START_LONG_H * 0.5, 0.75, ULTRA_PEAK_MID_H);
+  const MID_PEAK_H = MID_START_H + (ULTRA_PEAK_MID_H - MID_START_H) * buildScale;
   const round1 = (n: number) => Math.round(n * 10) / 10;
 
   const rows: RawPlanRow[] = [];
@@ -464,8 +490,22 @@ function generateUltraPlan(
       // No back-to-backs during Base — introduced once Build Phase begins.
     } else if (phase === 'Build Phase') {
       longHours = round1((START_LONG_H + linearRatio * (PEAK_LONG_H - START_LONG_H)) * factor);
-      b2bHours = round1((START_B2B_H + linearRatio * (PEAK_B2B_H - START_B2B_H)) * factor);
+      b2bHours = round1(longHours * B2B_RATIO);
     }
+
+    // Tue / Wed / Thu run lengths in minutes (nearest 5). Hold-and-taper plans keep
+    // their own short sessions below.
+    let midH = 0;
+    if (!readiness && phase !== 'Race Week') {
+      const built = MID_START_H + linearRatio * (MID_PEAK_H - MID_START_H);
+      if (phase === 'Taper Phase') midH = Math.max(0.75, MID_PEAK_H * Math.min(0.7, 0.35 + 0.2 * (totalWeeks - week)));
+      else if (phase === 'Recovery Week') midH = built * 0.65 * factor;
+      else midH = built * factor;
+    }
+    const toMin = (h: number) => Math.round((h * 60) / 5) * 5;
+    const tueMin = toMin(midH);
+    const wedRunMin = toMin(midH * WED_RUN_RATIO);
+    const thuMin = tueMin;
 
     // Short-runway plan swaps the hill/climb and cross-train days for the two
     // things that still help with no time to build: gear and fuel rehearsal.
@@ -475,10 +515,10 @@ function generateUltraPlan(
       ? gearMin === 0
         ? 'Rest'
         : `Gear test run — ${gearMin} min easy, in your race shoes, pack and clothes, on race-like terrain`
-      : ultraClimbText(outdoor, phase, linearRatio);
+      : ultraHillRunText(outdoor, phase, linearRatio, tueMin);
     const strengthText = ultraStrengthText(phase);
     const easyMin = ultraEasyMinutes(phase);
-    const easyText = easyMin === 0 ? 'Rest' : `Easy run — ${easyMin} min`;
+    const easyText = readiness ? (easyMin === 0 ? 'Rest' : `Easy run — ${easyMin} min`) : `Easy run — ${fmtDur(thuMin)}`;
     const crossText = readiness
       ? fuelMin === 0
         ? 'Rest'
@@ -497,9 +537,9 @@ function generateUltraPlan(
     } else {
       const hasB2B = b2bHours > 0;
       const satLabel = hasB2B ? 'Long run 1' : 'Long run';
-      mon = 'Rest';
+      mon = readiness ? 'Rest' : 'Rest, or an easy swim';
       tue = climbText;
-      wed = strengthText;
+      wed = readiness ? strengthText : `Run — ${fmtDur(wedRunMin)} easy, then ${strengthText}`;
       thu = easyText;
       fri = crossText;
       sat =
@@ -512,7 +552,7 @@ function generateUltraPlan(
               : hasB2B
                 ? `${satLabel} — ${longHours} hrs, fueling: 60–90g carb/hr`
                 : `${satLabel} — ${longHours} hrs, rolling terrain`;
-      sun = hasB2B ? `Long run 2 — ${b2bHours} hrs, run tired (back-to-back)` : 'Rest';
+      sun = hasB2B ? `Long run 2 — ${b2bHours} hrs, easy, run tired (back-to-back)` : 'Rest';
     }
 
     const totalHours =
@@ -521,9 +561,8 @@ function generateUltraPlan(
         : round1(
             longHours +
               b2bHours +
-              (readiness ? gearMin : ultraClimbMinutes(phase, linearRatio)) / 60 +
+              (readiness ? gearMin / 60 + easyMin / 60 : tueMin / 60 + wedRunMin / 60 + thuMin / 60) +
               ultraStrengthMinutes(phase) / 60 +
-              easyMin / 60 +
               (readiness ? fuelMin : ultraCrossMinutes(phase)) / 60,
           );
     // total_miles is still required by the schema (not null) — a rough

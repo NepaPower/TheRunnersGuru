@@ -36,7 +36,7 @@ function classifyWorkout(text: string): 'rest' | 'easy' | 'steady' | 'quality' |
   if (t.includes('long run')) return 'long';
   if (t.includes('strength')) return 'strength';
   if (t.includes('bike') || t.includes('swim') || t.includes('cross')) return 'cross';
-  if (t.includes('interval') || t.includes('tempo') || t.includes('hill') || t.includes('hiit') || t.includes('stairmaster')) return 'quality';
+  if (t.includes('interval') || t.includes('tempo') || t.includes('hill') || t.includes('incline') || t.includes('hiit') || t.includes('stairmaster')) return 'quality';
   if (t.includes('steady')) return 'steady';
   if (t.includes('easy') || t.includes('shakeout')) return 'easy';
   return 'plain';
@@ -162,7 +162,9 @@ function TrainingWeeks({
                   <span className="rg-tp-daycard-day">{DAY_FULL[i]}</span>
                   <span className="rg-tp-daycard-date">{weekStart != null ? dayNumberToShort(weekStart + i) : ''}</span>
                 </div>
-                {KIND_LABEL[kind] && <div className="rg-tp-daycard-kind">{KIND_LABEL[kind]}</div>}
+                {KIND_LABEL[kind] && (
+                  <div className="rg-tp-daycard-kind">{kind === 'strength' && /run/i.test(text) ? 'Run + strength' : KIND_LABEL[kind]}</div>
+                )}
                 <div className="rg-tp-daycard-text">{text}</div>
                 {detail && <div className="rg-tp-daycard-detail">{detail}</div>}
                 {runs.map((r) => (
@@ -347,7 +349,7 @@ export function TrainingPlan() {
     : isReadiness
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Easy)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles']
     : isUltra
-    ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
+    ? ['Week', 'Phase / Focus', 'Mon (Rest / swim)', 'Tue (Hill run)', 'Wed (Run + Strength)', 'Thu (Easy run)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
     : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
 
   return (
@@ -464,9 +466,10 @@ export function TrainingPlan() {
                   for late-race fatigue rather than a single long run ever could.
                 </li>
                 <li>
-                  <strong>Tuesday climbing:</strong> {plan.hillAccess === 'no' ? 'treadmill incline and StairMaster sessions' : 'hill repeats'} build the
-                  eccentric quad strength and durability that descents demand — power-hiking the steep climbs is a
-                  trained skill here, not a fallback.
+                  <strong>Mid-week runs (Tue / Wed / Thu):</strong> these grow to about 2 hours (roughly 10–13 miles) at
+                  the peak of the build, so the week adds up to real ultra volume. Tuesday builds the climbing into the run
+                  ({plan.hillAccess === 'no' ? 'treadmill incline and StairMaster work' : 'hill repeats and steady climbs'}),
+                  the eccentric quad strength and durability that descents demand. Wednesday is an easy run followed by strength.
                 </li>
                 <li>
                   <strong>Long run fueling:</strong> treat Saturday's long run as a rehearsal, not just training —
