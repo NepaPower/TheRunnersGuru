@@ -472,8 +472,8 @@ export function TrainingPlan() {
             ) : isUltra ? (
               <ul>
                 <li>
-                  <strong>Back-to-back long runs:</strong> once Build Phase begins, Saturday and Sunday both carry a
-                  long effort — Sunday is run on legs still tired from Saturday, which is what actually prepares you
+                  <strong>Back-to-back long runs:</strong> Saturday and Sunday both carry a long effort (from week 1 if
+                  your long run already supports it, otherwise once the Build Phase begins) — Sunday is run on legs still tired from Saturday, which is what actually prepares you
                   for late-race fatigue rather than a single long run ever could.
                 </li>
                 <li>

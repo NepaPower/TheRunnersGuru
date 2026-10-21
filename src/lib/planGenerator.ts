@@ -136,6 +136,9 @@ const ULTRA_PEAK_MID_H = 2;
 const WED_RUN_RATIO = 1;
 /** Sunday's back-to-back run, as a share of Saturday's long run (25 mi Saturday -> ~9-10 mi Sunday). */
 const B2B_RATIO = 0.38;
+/** A runner whose weekly long run already starts at this many hours or more (about 15 miles)
+ * does the Sunday back-to-back from week 1; others begin it once the build starts. */
+const EARLY_B2B_MIN_START_H = 3;
 
 interface UltraRamp {
   tier: RunwayTier;
@@ -453,6 +456,7 @@ function generateUltraPlan(
   const ramp = ultraRamp(totalWeeks, base, ultraMiles);
   const tier: RunwayTier = ramp ? ramp.tier : weeksTier;
   const holdH = ramp ? ramp.holdH : SHORT_RUNWAY_HOLD_H;
+  const earlyB2B = !!ramp && ramp.startH >= EARLY_B2B_MIN_START_H;
   const outdoor = hillAccess !== 'no'; // default to outdoor unless the person explicitly said no hill access
 
   const readiness = tier === 'short';
@@ -510,7 +514,9 @@ function generateUltraPlan(
       longHours = round1((START_LONG_H + linearRatio * (PEAK_LONG_H - START_LONG_H)) * 0.65 * factor);
     } else if (phase === 'Base Building') {
       longHours = round1((START_LONG_H + linearRatio * (PEAK_LONG_H - START_LONG_H)) * factor);
-      // No back-to-backs during Base — introduced once Build Phase begins.
+      // Base weeks keep Sunday free unless the runner's long run already supports a
+      // back-to-back (see EARLY_B2B_MIN_START_H); otherwise they begin with the Build Phase.
+      if (earlyB2B) b2bHours = round1(longHours * B2B_RATIO);
     } else if (phase === 'Build Phase') {
       longHours = round1((START_LONG_H + linearRatio * (PEAK_LONG_H - START_LONG_H)) * factor);
       b2bHours = round1(longHours * B2B_RATIO);
