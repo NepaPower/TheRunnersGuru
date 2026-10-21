@@ -20,29 +20,6 @@
   padding: var(--space-6) var(--space-4);
   gap: var(--space-2);
 }
-.rg-tp-race-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-  color: var(--color-accent-700);
-  margin-bottom: var(--space-2);
-}
-.rg-tp-race-name {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 24px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--color-text);
-}
-.rg-tp-weeks {
-  color: color-mix(in srgb, var(--color-text) 65%, transparent);
-  font-size: 15px;
-}
 .rg-tp-quote {
   font-style: italic;
   color: var(--color-accent-700);

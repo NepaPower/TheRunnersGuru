@@ -165,16 +165,6 @@ export function TrainingPlan() {
 
       <div className="rg-tp-header-card">
         <div className="rg-tp-header-top">
-          <div className="rg-tp-race-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-              <path d="M9 20l-5-2V4l5 2 6-2 5 2v14l-5-2-6 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M9 6v14M15 4v14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="rg-tp-race-name">
-            Your {distanceLabel} training plan for {plan.raceName}
-          </div>
-          <div className="rg-tp-weeks">{plan.totalWeeks} week training plan</div>
           <div className="rg-tp-quote">"{plan.quote}"</div>
         </div>
 
