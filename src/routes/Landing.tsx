@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { Button } from '../components/ui/Button';
 import './landing.css';
@@ -238,9 +238,9 @@ export function Landing() {
       <footer className="rg-landing-footer">
         <span>The Runners Guru</span>
         <div className="rg-landing-footer-links">
-          <span>Privacy</span>
+          <Link to="/privacy">Privacy</Link>
           <span>Terms</span>
-          <span>Contact</span>
+          <Link to="/privacy#contact">Contact</Link>
         </div>
         <span>© 2026 The Runners Guru</span>
       </footer>

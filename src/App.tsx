@@ -6,6 +6,7 @@ import { RequirePlan } from './components/layout/RequirePlan';
 import { Landing } from './routes/Landing';
 import { SignUp } from './routes/SignUp';
 import { SignIn } from './routes/SignIn';
+import { Privacy } from './routes/Privacy';
 import { Onboarding } from './routes/Onboarding';
 import { Dashboard } from './routes/Dashboard';
 import { TrainingPlan } from './routes/TrainingPlan';
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         <Route element={<RequireAuth />}>
           <Route path="/onboarding" element={<Onboarding />} />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { AuthShell } from '../components/AuthShell';
@@ -107,6 +107,10 @@ export function SignUp() {
           {submitting ? 'Creating account…' : 'Join free →'}
         </Button>
         {zipMissing && <div className="rg-auth-hint">Zip code is required — we use it to find races near you.</div>}
+
+        <div className="rg-auth-hint">
+          We keep your details private. <Link to="/privacy">Read our Privacy page</Link>.
+        </div>
 
         <div className="rg-auth-footer-line">
           Already have an account?{' '}

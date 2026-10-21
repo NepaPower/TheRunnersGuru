@@ -1,0 +1,132 @@
+/* Privacy page — a quiet public page in the landing page's look: ink top bar
+   and hero, one cream reading card on the deeper page tone. */
+
+.rg-pv {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-page);
+}
+.rg-pv a { color: var(--color-accent-700); }
+
+.rg-pv-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px clamp(16px, 4vw, 48px);
+  background: var(--color-ink);
+}
+.rg-pv-nav a { text-decoration: none; }
+.rg-pv-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--color-bg) !important;
+  white-space: nowrap;
+}
+.rg-pv-nav-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-bg) !important;
+  opacity: 0.88;
+}
+.rg-pv-nav-link:hover { opacity: 1; }
+
+.rg-pv-hero {
+  background: var(--color-ink);
+  color: var(--color-bg);
+  padding: clamp(28px, 6vw, 64px) clamp(16px, 4vw, 48px) clamp(56px, 8vw, 88px);
+}
+.rg-pv-hero-inner { max-width: 760px; margin: 0 auto; }
+.rg-pv-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-accent-300);
+}
+.rg-pv-eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+}
+.rg-pv-hero h1 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(38px, 7vw, 64px);
+  line-height: 1.02;
+}
+.rg-pv-hero p {
+  margin: 18px 0 0;
+  max-width: 560px;
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+}
+
+.rg-pv-body {
+  padding: 0 clamp(16px, 4vw, 48px) clamp(40px, 7vw, 80px);
+}
+.rg-pv-card {
+  max-width: 760px;
+  margin: calc(-1 * clamp(32px, 5vw, 56px)) auto 0;
+  padding: clamp(20px, 4vw, 40px);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  font-size: 16px;
+  line-height: 1.65;
+}
+.rg-pv-updated {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 62%, transparent);
+}
+.rg-pv-card h2 {
+  margin: 36px 0 10px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-divider);
+  font-family: var(--font-heading);
+  font-size: 28px;
+  line-height: 1.1;
+  scroll-margin-top: 16px;
+}
+.rg-pv-updated + h2 { margin-top: 18px; padding-top: 0; border-top: none; }
+.rg-pv-card h3 {
+  margin: 18px 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.rg-pv-card p { margin: 0 0 10px; }
+.rg-pv-card ul { margin: 0 0 10px; padding-left: 22px; }
+.rg-pv-card li { margin-bottom: 8px; }
+
+.rg-pv-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px clamp(16px, 4vw, 48px);
+  font-size: 14px;
+  color: color-mix(in srgb, var(--color-bg) 70%, transparent);
+  background: var(--color-ink);
+}
+.rg-pv-footer a { color: inherit; text-decoration: none; }
+
+@media (max-width: 640px) {
+  .rg-pv-brand { font-size: 21px; }
+  .rg-pv-card h2 { font-size: 25px; }
+}
