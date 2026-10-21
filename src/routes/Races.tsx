@@ -94,6 +94,15 @@ export function Races() {
   }
 
   const upcomingDays = plans.map((p) => daysUntil(p.raceDate)).filter((d): d is number => d != null && d >= 0);
+  // "On your calendar" means races still ahead; finished ones are counted separately.
+  const completedCount = plans.filter((p) => {
+    const d = daysUntil(p.raceDate);
+    return d != null && d < 0;
+  }).length;
+  const onCalendar = plans.length - completedCount;
+  const calendarInsight =
+    `${onCalendar === 0 ? 'No races' : `${onCalendar} race${onCalendar === 1 ? '' : 's'}`} on your calendar` +
+    (completedCount > 0 ? ` · ${completedCount} completed` : '');
   const nextRaceStatus = upcomingDays.length > 0 ? `Next race ${countdownLabel(Math.min(...upcomingDays))}` : undefined;
 
   return (
@@ -101,7 +110,7 @@ export function Races() {
       <PageHeader
         eyebrow="Races"
         title="My Races"
-        insight={plans.length > 0 ? `${plans.length} race${plans.length === 1 ? '' : 's'} on your calendar` : undefined}
+        insight={plans.length > 0 ? calendarInsight : undefined}
         subtitle={
           <>
             Every race you're planning for. Only your <strong>primary</strong> race gets a weekly training plan — make a
