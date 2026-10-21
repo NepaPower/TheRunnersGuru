@@ -73,6 +73,8 @@ function TrainingWeeks({
 }) {
   const currentWeek = currentPlanWeek(plan);
   const [selected, setSelected] = useState<number | null>(null);
+  // Weeks whose seven-day strip is unfolded in the list below (none by default).
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const panelRef = useRef<HTMLDivElement>(null);
   const todayISO = localISODate();
 
@@ -95,6 +97,14 @@ function TrainingWeeks({
     const days = new Set(Array.from({ length: 7 }, (_, i) => dayNumberToISO(start + i)));
     return loggedRuns.filter((r) => days.has(r.date)).reduce((sum, r) => sum + (parseFloat(r.distance) || 0), 0);
   };
+
+  const allExpanded = expanded.size === plan.rows.length;
+  const toggleWeek = (week: number) =>
+    setExpanded((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(week)) next.add(week);
+      return next;
+    });
 
   function pick(week: number) {
     setSelected(week);
@@ -171,25 +181,57 @@ function TrainingWeeks({
         </div>
       </div>
 
-      <div className="rg-tp-weeklist-head">All weeks</div>
+      <div className="rg-tp-weeklist-head">
+        <span>All weeks</span>
+        <button
+          type="button"
+          className="rg-tp-link"
+          onClick={() => setExpanded(allExpanded ? new Set() : new Set(plan.rows.map((r) => r.week)))}
+        >
+          {allExpanded ? 'Collapse all' : 'Expand all'}
+        </button>
+      </div>
       <div className="rg-tp-weeklist">
         {plan.rows.map((r) => {
           const logged = loggedMiles(r.week);
+          const open = expanded.has(r.week);
+          const rowDays = [r.mon, r.tue, r.wed, r.thu, r.fri, r.sat, r.sun];
           return (
-            <button
-              type="button"
-              key={r.week}
-              className={`rg-tp-weekrow ${weekClass(r)}${r.week === activeWeek ? ' is-active' : ''}`}
-              onClick={() => pick(r.week)}
-            >
-              <span className="rg-tp-week-badge">{r.week}</span>
-              <span className={phaseTag(r)}>{r.phase}</span>
-              <span className="rg-tp-weekrow-dates">{rangeFor(r.week)}</span>
-              {r.week === currentWeek && <span className="rg-tp-now">This week</span>}
-              {logged > 0 && <span className="rg-tp-weekrow-logged">✓ {logged.toFixed(1)} mi logged</span>}
-              <span className="rg-tp-weekrow-total">{weekTotal(r)}</span>
-              <span className="rg-tp-weekrow-chev" aria-hidden="true">›</span>
-            </button>
+            <div key={r.week} className={`rg-tp-weekitem ${weekClass(r)}${r.week === activeWeek ? ' is-active' : ''}`}>
+              <div className="rg-tp-weekitem-bar">
+                <button type="button" className="rg-tp-weekrow" onClick={() => pick(r.week)}>
+                  <span className="rg-tp-week-badge">{r.week}</span>
+                  <span className={phaseTag(r)}>{r.phase}</span>
+                  <span className="rg-tp-weekrow-dates">{rangeFor(r.week)}</span>
+                  {r.week === currentWeek && <span className="rg-tp-now">This week</span>}
+                  {logged > 0 && <span className="rg-tp-weekrow-logged">✓ {logged.toFixed(1)} mi logged</span>}
+                  <span className="rg-tp-weekrow-total">{weekTotal(r)}</span>
+                </button>
+                <button
+                  type="button"
+                  className="rg-tp-weekrow-toggle"
+                  aria-expanded={open}
+                  aria-label={`${open ? 'Collapse' : 'Expand'} week ${r.week}`}
+                  onClick={() => toggleWeek(r.week)}
+                >
+                  {open ? '▴' : '▾'}
+                </button>
+              </div>
+              {open && (
+                <div className="rg-tp-week-days rg-tp-weekitem-days">
+                  {rowDays.map((raw, i) => {
+                    const { text, detail } = dayInfo(r, i, raw);
+                    return (
+                      <div key={DAY_LABELS[i]} className="rg-tp-day-cell">
+                        <div className="rg-tp-day-label">{DAY_LABELS[i]}</div>
+                        <div className={`rg-tp-day-chip rg-tp-chip-${classifyWorkout(text)}`}>{text}</div>
+                        {detail && <div className="rg-tp-day-detail">{detail}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

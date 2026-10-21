@@ -442,6 +442,9 @@
 .rg-tp-daycard-log:hover { background: var(--color-accent-100); }
 
 .rg-tp-weeklist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 0 0 var(--space-2);
   font-size: 12px;
   font-weight: 700;
@@ -450,25 +453,49 @@
   color: color-mix(in srgb, var(--color-text) 60%, transparent);
 }
 .rg-tp-weeklist { display: flex; flex-direction: column; gap: 6px; }
-.rg-tp-weekrow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  padding: 10px var(--space-4);
+/* One week in the list: a bar (click = open the week above; the arrow unfolds its
+   seven-day strip in place) and, when unfolded, the strip. */
+.rg-tp-weekitem {
   background: var(--color-bg);
   border: 1px solid var(--color-divider-strong);
   border-radius: 12px;
+  overflow: hidden;
+}
+.rg-tp-weekitem.rg-tp-recovery { background: var(--color-accent-2-100); }
+.rg-tp-weekitem.rg-tp-race { background: #d9a441; }
+.rg-tp-weekitem.is-active { box-shadow: 0 0 0 2px var(--color-accent); }
+.rg-tp-weekitem-bar { display: flex; align-items: stretch; }
+.rg-tp-weekrow {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  background: transparent;
+  border: none;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease;
 }
-.rg-tp-weekrow:hover { background: var(--color-accent-100); }
-.rg-tp-weekrow.rg-tp-recovery { background: var(--color-accent-2-100); }
-.rg-tp-weekrow.rg-tp-race { background: #d9a441; }
-.rg-tp-weekrow.is-active { box-shadow: 0 0 0 2px var(--color-accent); }
+.rg-tp-weekrow:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+.rg-tp-weekrow-toggle {
+  flex: none;
+  width: 48px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  color: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.rg-tp-weekrow-toggle:hover { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.rg-tp-weekitem-days {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+}
 .rg-tp-weekrow-dates { font-size: 14px; color: color-mix(in srgb, var(--color-text) 75%, transparent); white-space: nowrap; }
 .rg-tp-now {
   padding: 2px 9px;
@@ -482,7 +509,6 @@
 }
 .rg-tp-weekrow-logged { font-size: 13px; font-weight: 600; color: var(--color-accent-800); white-space: nowrap; }
 .rg-tp-weekrow-total { margin-left: auto; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rg-tp-weekrow-chev { font-size: 20px; opacity: 0.45; }
 /* the "Race Prep" tag had no colour of its own */
 .rg-tp-phase-race-prep { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-accent-800); }
 
@@ -495,4 +521,5 @@
   .rg-tp-weekpanel-main { font-size: 20px; }
   .rg-tp-weekrow { flex-wrap: wrap; row-gap: 4px; }
   .rg-tp-weekrow-dates { order: 3; }
+  .rg-tp-weekitem-days { padding-inline: var(--space-3); }
 }
