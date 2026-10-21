@@ -7,7 +7,7 @@ import { updateRaceDetails } from '../lib/api';
 import { buildTrainingPlan } from '../lib/planGenerator';
 import { goalMinutesToParts, goalPartsToMinutes } from '../lib/format';
 import { PastDateDialog } from '../components/PastDateDialog';
-import { isPastDate, isRaceLocked } from '../lib/today';
+import { isPastDate, isRaceLocked, raceDateReadout } from '../lib/today';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
 import type { DistanceGoal, FirstTimeAnswer, HillAccessAnswer, TrainingPlan, UltraDistanceId } from '../types';
 import './races.css';
@@ -269,6 +269,11 @@ export function EditRace() {
               if (raceDateChangedToPast) setPastDateOpen(true);
             }}
           />
+          {raceDateReadout(raceDate) && (
+            <div className="text-muted" style={{ marginTop: 6, fontSize: 13 }}>
+              {raceDateReadout(raceDate)}
+            </div>
+          )}
         </Field>
 
         <Field label="Race type">

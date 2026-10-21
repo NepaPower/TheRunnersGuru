@@ -5,7 +5,7 @@ import { Field, Input, Select } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { createTrainingPlan, getCurrentUserId } from '../lib/api';
 import { PastDateDialog } from '../components/PastDateDialog';
-import { isPastDate } from '../lib/today';
+import { isPastDate, raceDateReadout } from '../lib/today';
 import { parseGpxFile } from '../lib/gpx';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
 import type { DistanceGoal, GpxRoute, TrainingPlan, UltraDistanceId } from '../types';
@@ -147,6 +147,11 @@ export function AddRace() {
               if (date && isPastDate(date)) setPastDateOpen(true);
             }}
           />
+          {raceDateReadout(date) && (
+            <div className="text-muted" style={{ marginTop: 6, fontSize: 13 }}>
+              {raceDateReadout(date)}
+            </div>
+          )}
         </Field>
 
         <Field label="Race type">

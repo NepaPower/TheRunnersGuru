@@ -79,6 +79,30 @@ export function daysUntil(isoDate: string): number | null {
   return Math.round((race.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** "12 weeks, 2 days to go" for a future race date; '' for a past or empty one.
+ * Weeks are whole weeks (floored), so it never overstates the time left. */
+export function timeToGoLabel(days: number | null): string {
+  if (days == null || days < 0) return '';
+  if (days === 0) return 'Race day is today';
+  if (days === 1) return '1 day to go';
+  if (days < 14) return `${days} days to go`;
+  const weeks = Math.floor(days / 7);
+  const extra = days % 7;
+  return `${weeks} weeks${extra ? `, ${extra} day${extra === 1 ? '' : 's'}` : ''} to go`;
+}
+
+/** The small line under a race-date input: the date spelled out, plus how long
+ * is left. Only once the typed date is complete (a date input fires change with
+ * partial years like 0002 while typing). */
+export function raceDateReadout(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || Number(isoDate.slice(0, 4)) < 2000) return '';
+  const d = new Date(isoDate + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const left = timeToGoLabel(daysUntil(isoDate));
+  return left ? `${date} · ${left}` : date;
+}
+
 export function countdownLabel(days: number | null): string {
   if (days == null) return '';
   if (days < 0) return 'past';
