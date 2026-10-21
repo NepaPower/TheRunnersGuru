@@ -52,6 +52,12 @@
   padding: 1px 8px;
 }
 
+.rg-races-badge-done {
+  color: var(--color-neutral-800);
+  background: var(--color-neutral-200);
+  border-color: var(--color-neutral-300);
+}
+
 .rg-races-card-actions {
   display: flex;
   align-items: center;

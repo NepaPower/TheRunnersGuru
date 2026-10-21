@@ -16,6 +16,13 @@ const DISTANCE_LABEL: Record<DistanceGoal, string> = {
   ultra: 'Ultra',
 };
 
+function agoLabel(daysAgo: number): string {
+  if (daysAgo === 0) return 'today';
+  if (daysAgo === 1) return 'yesterday';
+  if (daysAgo < 60) return `${daysAgo} days ago`;
+  return `${Math.round(daysAgo / 30)} months ago`;
+}
+
 export function Races() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -131,6 +138,7 @@ export function Races() {
         <div className="rg-races-list">
           {plans.map((p) => {
             const days = daysUntil(p.raceDate);
+            const isPast = days != null && days < 0;
             const canDelete = !p.isPrimary || !hasMultiple;
             return (
               <div key={p.id} className="rg-races-card">
@@ -138,11 +146,12 @@ export function Races() {
                   <div className="rg-races-card-title">
                     {p.raceName}
                     {p.isPrimary && <span className="rg-races-badge">Primary</span>}
+                    {isPast && <span className="rg-races-badge rg-races-badge-done">Completed</span>}
                   </div>
                   <div className="text-muted rg-races-card-meta">
                     {DISTANCE_LABEL[p.distanceGoal]}
                     {p.raceDate ? ` · ${p.raceDate}` : ''}
-                    {days != null ? ` · ${countdownLabel(days)}` : ''}
+                    {days != null ? ` · ${isPast ? agoLabel(-days) : countdownLabel(days)}` : ''}
                     {p.gpxRoute ? ` · ${p.gpxRoute.distanceMiles} mi course` : ''}
                   </div>
                 </div>
@@ -173,7 +182,7 @@ export function Races() {
                       <Button variant="ghost" onClick={() => navigate(`/races/${p.id}/edit`)}>
                         Edit
                       </Button>
-                      {p.isPrimary && p.rows.length === 0 && (
+                      {p.isPrimary && p.rows.length === 0 && !isPast && (
                         <Button
                           variant="ghost"
                           disabled={generatingId === p.id}
@@ -182,7 +191,7 @@ export function Races() {
                           {generatingId === p.id ? 'Generating…' : 'Generate plan'}
                         </Button>
                       )}
-                      {!p.isPrimary && (
+                      {!p.isPrimary && !isPast && (
                         <Button
                           variant="ghost"
                           disabled={primaryId === p.id}
