@@ -53,6 +53,8 @@ export function buildInitialState(): AppState {
       goalHours: '',
       goalMinutes: '',
       goalSeconds: '',
+      weeklyMiles: '',
+      longestRun: '',
     },
     trainingPlan: null,
     ownPlans: [],
@@ -212,6 +214,12 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'ONBOARDING_SET_GOAL_SECONDS':
       return { ...state, onboarding: { ...state.onboarding, goalSeconds: action.value } };
+
+    case 'ONBOARDING_SET_WEEKLY_MILES':
+      return { ...state, onboarding: { ...state.onboarding, weeklyMiles: action.value } };
+
+    case 'ONBOARDING_SET_LONGEST_RUN':
+      return { ...state, onboarding: { ...state.onboarding, longestRun: action.value } };
 
     case 'ONBOARDING_NEXT': {
       // The final step (Race date & goal — index varies: 3 normally, 4 for

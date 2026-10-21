@@ -132,3 +132,10 @@ export function paceLabelPerMile(totalMiles: number, totalSeconds: number): stri
   const avgPace = totalSeconds / 60 / totalMiles;
   return `${Math.floor(avgPace)}:${Math.round((avgPace % 1) * 60).toString().padStart(2, '0')}/mi`;
 }
+
+/** A typed miles figure ("12", "7.5") as a number, or null when blank/invalid.
+ * Used for the "current running" answers, where blank means "skipped". */
+export function parseMilesInput(text: string): number | null {
+  const n = parseFloat(text);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}

@@ -53,6 +53,8 @@ export type Action =
   | { type: 'ONBOARDING_SET_GOAL_HOURS'; value: string }
   | { type: 'ONBOARDING_SET_GOAL_MINUTES'; value: string }
   | { type: 'ONBOARDING_SET_GOAL_SECONDS'; value: string }
+  | { type: 'ONBOARDING_SET_WEEKLY_MILES'; value: string }
+  | { type: 'ONBOARDING_SET_LONGEST_RUN'; value: string }
   | { type: 'ONBOARDING_NEXT' }
   | { type: 'ONBOARDING_PREV' }
   // Dispatched by the Onboarding screen after the generated plan has been

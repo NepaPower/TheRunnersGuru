@@ -1,6 +1,6 @@
 import { Field, Input, Select } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
-import { formatClockTime, formatRaceDateReadout, goalTimeBreakdownLabel, parsePaceMinutes, raceSecondsAtPace } from '../../lib/format';
+import { formatClockTime, formatRaceDateReadout, goalTimeBreakdownLabel, parseMilesInput, parsePaceMinutes, raceSecondsAtPace } from '../../lib/format';
 import { monthsLeftLabel, isTrainingTimeShort, recommendedWeeksFor } from '../../lib/planGenerator';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { DISTANCE_LABELS } from '../../data/constants';
@@ -22,7 +22,10 @@ export function StepDateGoal({
   const isUltra = onboarding.distanceGoal === 'ultra';
   const months = monthsLeftLabel(onboarding.raceDate);
   const ultraMiles = isUltra ? ultraDistanceMiles(onboarding) : null;
-  const isShort = isTrainingTimeShort(onboarding.raceDate, onboarding.distanceGoal || undefined, ultraMiles);
+  const isShort = isTrainingTimeShort(onboarding.raceDate, onboarding.distanceGoal || undefined, ultraMiles, {
+    base: { weeklyMiles: parseMilesInput(onboarding.weeklyMiles), longestRunMiles: parseMilesInput(onboarding.longestRun) },
+    firstTime: onboarding.firstTime,
+  });
   const breakdown = isUltra ? goalTimeBreakdownLabel(onboarding.goalHours, onboarding.goalMinutes) : '';
   // Distance-scaled "aim for at least this many weeks" — shown regardless
   // of whether the chosen date already meets it, so picking a race date

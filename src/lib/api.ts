@@ -188,6 +188,10 @@ function planColumns(userId: string, plan: TrainingPlan) {
     mandatory_gear_notes: plan.mandatoryGearNotes || null,
     total_weeks: plan.totalWeeks,
     quote: plan.quote,
+    // Only plans built with the "current running" answers carry these (null =
+    // skipped). Older plan objects leave the columns alone.
+    ...(plan.currentWeeklyMiles !== undefined ? { current_weekly_miles: plan.currentWeeklyMiles } : {}),
+    ...(plan.longestRunMiles !== undefined ? { longest_run_miles: plan.longestRunMiles } : {}),
   };
 }
 
@@ -291,6 +295,7 @@ export async function regeneratePlanWeeks(plan: TrainingPlan): Promise<Partial<T
     plan.ultraMiles,
     plan.gpxRoute,
     plan.goalFinishMinutes,
+    { weeklyMiles: plan.currentWeeklyMiles ?? null, longestRunMiles: plan.longestRunMiles ?? null },
   );
   if (!rebuilt) throw new Error('This race needs a date and distance first — set them on Edit race.');
   const merged = { ...plan, rows: rebuilt.rows, totalWeeks: rebuilt.totalWeeks, phases: rebuilt.phases, quote: rebuilt.quote };
@@ -348,6 +353,8 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     raceDate: planRow.race_date,
     raceStartTime: planRow.race_start_time ?? null,
     goalFinishMinutes: planRow.goal_finish_minutes != null ? Number(planRow.goal_finish_minutes) : null,
+    currentWeeklyMiles: planRow.current_weekly_miles != null ? Number(planRow.current_weekly_miles) : null,
+    longestRunMiles: planRow.longest_run_miles != null ? Number(planRow.longest_run_miles) : null,
     createdAt: planRow.created_at ?? undefined,
     pace: planRow.pace ?? null,
     paceUnit: planRow.pace_unit ?? null,

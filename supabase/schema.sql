@@ -143,6 +143,11 @@ create table public.training_plans (
   pace text,
   pace_unit text,
   custom_pace text,
+  -- Onboarding's "Current running" answers (average weekly miles and longest
+  -- single run over the last 4 weeks). The plan starts from these and its
+  -- tier depends on them. Null = skipped. Hand-run version: supabase/runner_base.sql.
+  current_weekly_miles numeric check (current_weekly_miles is null or (current_weekly_miles >= 0 and current_weekly_miles <= 500)),
+  longest_run_miles numeric check (longest_run_miles is null or (longest_run_miles >= 0 and longest_run_miles <= 500)),
   quote text,
   created_at timestamptz not null default now()
 );
@@ -644,6 +649,10 @@ create policy "course-segment images: delete by owner or chief"
 --   -- minutes), so the column can no longer be a whole-number int.
 --   -- Existing values convert unchanged.
 --   alter table public.training_plans alter column goal_finish_minutes type numeric;
+--
+--   -- Onboarding's "Current running" step: weekly miles + longest run, so plans
+--   -- start where the runner is. Run supabase/runner_base.sql (BEFORE deploying
+--   -- the app version that writes them).
 --
 --   -- Regular crew are now view-only: only the plan owner and its Chief
 --   -- Crew may edit a shared plan. (Replaces "crew members can edit

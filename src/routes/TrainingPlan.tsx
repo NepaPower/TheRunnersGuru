@@ -108,7 +108,10 @@ export function TrainingPlan() {
   }
 
   const isUltra = plan.distanceGoal === 'ultra';
-  const timeWarning = getTrainingTimeWarning(plan.distanceGoal, plan.totalWeeks, plan.ultraMiles);
+  const timeWarning = getTrainingTimeWarning(plan.distanceGoal, plan.totalWeeks, plan.ultraMiles, {
+    base: { weeklyMiles: plan.currentWeeklyMiles ?? null, longestRunMiles: plan.longestRunMiles ?? null },
+    firstTime: plan.firstTime,
+  });
   const distanceLabel = isUltra
     ? plan.ultraMiles
       ? `${plan.ultraMiles}-Mile Ultra`
@@ -132,9 +135,11 @@ export function TrainingPlan() {
     };
   };
   // Short-runway ultra plans swap the hill and cross-train days for gear and fuel rehearsal.
-  const isReadiness = isUltra && plan.rows.some((r) => r.phase === 'Race Prep');
-  const tableHeaders = isReadiness
+  const isReadiness = plan.rows.some((r) => r.phase === 'Race Prep');
+  const tableHeaders = isReadiness && isUltra
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Gear test)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Fuel rehearsal)', 'Sat (Long Run)', 'Sun', 'Total Weekly Hours']
+    : isReadiness
+    ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Easy)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles']
     : isUltra
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
     : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];

@@ -166,6 +166,7 @@ export function EditRace() {
           nextUltraMiles,
           plan.gpxRoute,
           goalFinishMinutes,
+          { weeklyMiles: plan.currentWeeklyMiles ?? null, longestRunMiles: plan.longestRunMiles ?? null },
         );
         if (!rebuilt) throw new Error('Could not rebuild the training plan from those inputs.');
         rows = rebuilt.rows;

@@ -7,7 +7,7 @@ import { useApp } from '../../state/AppContext';
 import { buildTrainingPlan } from '../../lib/planGenerator';
 import { saveTrainingPlan, getCurrentUserId } from '../../lib/api';
 import { ultraDistanceMiles } from '../../lib/ultraDistance';
-import { goalPartsToMinutes } from '../../lib/format';
+import { goalPartsToMinutes, parseMilesInput } from '../../lib/format';
 import { isPastDate } from '../../lib/today';
 import { PastDateDialog } from '../../components/PastDateDialog';
 import { StepRaceCategory } from './StepRaceCategory';
@@ -15,6 +15,7 @@ import { StepDistance } from './StepDistance';
 import { StepHillAccess } from './StepHillAccess';
 import { StepFirstTime } from './StepFirstTime';
 import { StepPace } from './StepPace';
+import { StepRunning } from './StepRunning';
 import { StepDateGoal } from './StepDateGoal';
 import { onboardingStepLabels } from '../../lib/onboardingSteps';
 import '../auth.css';
@@ -36,6 +37,8 @@ export function Onboarding() {
   const hillAccessStep = 2;
   const firstTimeStep = isUltra ? 3 : 2;
   const paceStep = isUltra ? 4 : 3;
+  // Current running sits right before the final date/goal step.
+  const runningStep = lastStep - 1;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pastDateOpen, setPastDateOpen] = useState(false);
@@ -117,6 +120,10 @@ export function Onboarding() {
         isUltra ? ultraDistanceMiles(state.onboarding) : null,
         isUltra ? state.onboarding.gpxRoute : null,
         goalFinishMinutes,
+        {
+          weeklyMiles: parseMilesInput(state.onboarding.weeklyMiles),
+          longestRunMiles: parseMilesInput(state.onboarding.longestRun),
+        },
       );
       if (!built) throw new Error('Missing race date or distance — go back and fill those in.');
       const plan = {
@@ -175,6 +182,7 @@ export function Onboarding() {
         {isUltra && step === hillAccessStep && <StepHillAccess />}
         {step === firstTimeStep && <StepFirstTime />}
         {step === paceStep && <StepPace />}
+        {!isCrew && step === runningStep && <StepRunning />}
         {/* The crew/pace path has one step, which is both first and last: don't also draw the plan's date form. */}
         {!isCrew && step === lastStep && <StepDateGoal dateRef={dateRef} onPastDate={() => setPastDateOpen(true)} />}
 

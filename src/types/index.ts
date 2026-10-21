@@ -138,6 +138,10 @@ export interface OnboardingState {
   goalHours: string;
   goalMinutes: string;
   goalSeconds: string; // only asked for non-ultra distances
+  // "Current running" step: average miles per week and longest single run over
+  // the last 4 weeks, as typed. Blank means skipped (plans then use fixed starts).
+  weeklyMiles: string;
+  longestRun: string;
 }
 
 /** One row of the generated week-by-week training plan. */
@@ -278,6 +282,11 @@ export interface TrainingPlan {
   // Total goal finish time in minutes, from onboarding's goal-time step.
   // Used by the Crew Plan screen to predict aid-station arrival times.
   goalFinishMinutes: number | null;
+  // The runner's average weekly miles and longest single run in the 4 weeks
+  // before the plan was built (null = not given). The plan starts from these
+  // and its tier (full / gentler / hold-and-taper) depends on them.
+  currentWeeklyMiles?: number | null;
+  longestRunMiles?: number | null;
   // When the race was added (the row's created_at). Used for the 14-day
   // grace period before a completed race is locked. Absent on plans built
   // in the client and not yet re-read.
