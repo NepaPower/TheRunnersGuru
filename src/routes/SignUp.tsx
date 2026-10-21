@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
-import { BrandHeader } from '../components/Logo';
+import { AuthShell } from '../components/AuthShell';
 import { signUp, saveProfileAddress, hydrateUserData } from '../lib/api';
 import { useApp } from '../state/AppContext';
 import type { Address } from '../types';
@@ -53,8 +53,11 @@ export function SignUp() {
   }
 
   return (
-    <div className="rg-auth-page">
-      <BrandHeader />
+    <AuthShell
+      eyebrow="Join The Runners Guru"
+      headline="Run far. Run together."
+      blurb="Training plans for every distance, and a crew plan built for the long ones."
+    >
       <div className="rg-auth-card">
         <div className="rg-auth-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" fill="none">
@@ -112,6 +115,6 @@ export function SignUp() {
           </a>
         </div>
       </div>
-    </div>
+    </AuthShell>
   );
 }
