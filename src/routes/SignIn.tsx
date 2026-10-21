@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Field, Input } from '../components/ui/Form';
 import { Button } from '../components/ui/Button';
 import { AuthShell } from '../components/AuthShell';
@@ -80,6 +80,10 @@ export function SignIn() {
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('/signup', { state: { email } }); }}>
             Join free
           </a>
+        </div>
+
+        <div className="rg-auth-hint">
+          <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
         </div>
       </div>
     </AuthShell>
