@@ -28,9 +28,33 @@ export function AuthShell({
           <h1 className="rg-auth-brand-headline">{headline}</h1>
           <p className="rg-auth-brand-blurb">{blurb}</p>
         </div>
-        <svg className="rg-auth-brand-mark" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-          <path d="M3 22L11 8L16 17L19 12L27 22" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-          <circle cx="22" cy="7" r="2.2" fill="currentColor" />
+        <span className="rg-auth-brand-sun" aria-hidden="true" />
+        <svg
+          className="rg-auth-brand-mark"
+          viewBox="0 0 400 300"
+          preserveAspectRatio="xMidYMax slice"
+          fill="none"
+          aria-hidden="true"
+        >
+          <polygon
+            points="0,300 0,190 50,138 96,186 150,106 212,192 262,150 322,204 362,164 400,196 400,300"
+            fill="currentColor"
+            opacity="0.09"
+          />
+          <polygon
+            points="0,300 0,238 68,168 122,218 192,136 252,226 312,184 400,244 400,300"
+            fill="currentColor"
+            opacity="0.15"
+          />
+          <path
+            d="M372 296 C330 276 296 262 258 240 S204 196 192 140"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray="2 9"
+            opacity="0.5"
+          />
+          <circle cx="192" cy="136" r="5" fill="currentColor" opacity="0.6" />
         </svg>
       </aside>
       <main className="rg-auth-main">{children}</main>

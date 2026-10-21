@@ -185,12 +185,27 @@
   color: color-mix(in srgb, var(--color-bg) 78%, transparent);
 }
 .rg-auth-brand-mark {
+  /* A mountain scene filling the panel's empty space: ridgelines rise from
+     the bottom edge behind the headline. `slice` makes it cover the box at
+     any panel size (cropping the sides) instead of leaving a gap. */
   position: absolute;
-  right: -56px;
-  top: 22%;
-  width: 320px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 64%;
   color: var(--color-accent-300);
-  opacity: 0.12;
+  pointer-events: none;
+}
+.rg-auth-brand-sun {
+  position: absolute;
+  top: 24%;
+  right: 16%;
+  width: clamp(60px, 9vw, 112px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--color-accent-300);
+  opacity: 0.16;
   pointer-events: none;
 }
 .rg-auth-main {
@@ -204,6 +219,7 @@
   .rg-auth-brand { position: relative; align-self: stretch; height: auto; gap: var(--space-4); padding: var(--space-6) var(--space-4); }
   .rg-auth-brand-headline { font-size: 30px; margin-bottom: 0; }
   .rg-auth-brand-blurb { display: none; }
-  .rg-auth-brand-mark { width: 170px; right: -24px; top: -14px; }
+  .rg-auth-brand-mark { height: 100%; }
+  .rg-auth-brand-sun { top: 14px; right: 28px; width: 40px; }
   .rg-auth-main { align-items: flex-start; padding: var(--space-6) var(--space-4) var(--space-8); }
 }
