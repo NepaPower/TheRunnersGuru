@@ -5,7 +5,7 @@ import { Field, Input, Select } from '../components/ui/Form';
 import { useApp } from '../state/AppContext';
 import { updateRaceDetails } from '../lib/api';
 import { buildTrainingPlan } from '../lib/planGenerator';
-import { goalMinutesToParts, goalPartsToMinutes } from '../lib/format';
+import { goalMinutesToParts, goalPartsToMinutes, parseMilesInput } from '../lib/format';
 import { PastDateDialog } from '../components/PastDateDialog';
 import { isPastDate, isRaceLocked, raceDateReadout } from '../lib/today';
 import { MAX_ULTRA_MILES, ULTRA_DISTANCES } from '../data/constants';
@@ -37,6 +37,9 @@ export function EditRace() {
   const [goalSeconds, setGoalSeconds] = useState('');
   const [firstTime, setFirstTime] = useState<FirstTimeAnswer>('no');
   const [hillAccess, setHillAccess] = useState<HillAccessAnswer>('');
+  // "Current running": typed miles, blank = not given (plans then use fixed starting points).
+  const [weeklyMiles, setWeeklyMiles] = useState('');
+  const [longestRun, setLongestRun] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pastDateOpen, setPastDateOpen] = useState(false);
@@ -62,6 +65,8 @@ export function EditRace() {
     setGoalSeconds(goal.seconds === '0' ? '' : goal.seconds);
     setFirstTime(plan.firstTime || 'no');
     setHillAccess(plan.hillAccess || '');
+    setWeeklyMiles(plan.currentWeeklyMiles != null ? String(plan.currentWeeklyMiles) : '');
+    setLongestRun(plan.longestRunMiles != null ? String(plan.longestRunMiles) : '');
   }, [plan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!plan) {
@@ -122,15 +127,20 @@ export function EditRace() {
   const nextDistanceGoal: DistanceGoal = category === 'ultra' ? 'ultra' : stdDistance;
   const nextHillAccess: HillAccessAnswer = category === 'ultra' ? hillAccess : '';
   const goalFinishMinutes = goalPartsToMinutes(goalHours, goalMinutes, goalSeconds);
+  const nextWeekly = parseMilesInput(weeklyMiles);
+  const nextLongest = parseMilesInput(longestRun);
 
   // Fields that change the weekly schedule. Goal time, race name and GPX
-  // don't — they save without a rebuild.
+  // don't — they save without a rebuild. Current running does: the plan starts
+  // from it and its tier (full / gentler / hold-and-taper) depends on it.
   const scheduleChanged =
     nextDistanceGoal !== plan.distanceGoal ||
     nextUltraMiles !== plan.ultraMiles ||
     raceDate !== plan.raceDate ||
     firstTime !== plan.firstTime ||
-    nextHillAccess !== (plan.hillAccess || '');
+    nextHillAccess !== (plan.hillAccess || '') ||
+    nextWeekly !== (plan.currentWeeklyMiles ?? null) ||
+    nextLongest !== (plan.longestRunMiles ?? null);
   const willRegenerate = plan.isPrimary && scheduleChanged;
 
   async function handleSave() {
@@ -166,7 +176,7 @@ export function EditRace() {
           nextUltraMiles,
           plan.gpxRoute,
           goalFinishMinutes,
-          { weeklyMiles: plan.currentWeeklyMiles ?? null, longestRunMiles: plan.longestRunMiles ?? null },
+          { weeklyMiles: nextWeekly, longestRunMiles: nextLongest },
         );
         if (!rebuilt) throw new Error('Could not rebuild the training plan from those inputs.');
         rows = rebuilt.rows;
@@ -188,6 +198,8 @@ export function EditRace() {
         gpxRoute,
         raceDate,
         goalFinishMinutes,
+        currentWeeklyMiles: plan.isPrimary ? nextWeekly : plan.currentWeeklyMiles,
+        longestRunMiles: plan.isPrimary ? nextLongest : plan.longestRunMiles,
         totalWeeks,
         rows,
         phases,
@@ -207,6 +219,8 @@ export function EditRace() {
           gpxRoute: merged.gpxRoute,
           raceDate: merged.raceDate,
           goalFinishMinutes: merged.goalFinishMinutes,
+          currentWeeklyMiles: merged.currentWeeklyMiles,
+          longestRunMiles: merged.longestRunMiles,
           totalWeeks: merged.totalWeeks,
           rows: merged.rows,
           phases: merged.phases,
@@ -239,7 +253,7 @@ export function EditRace() {
           <p className="text-muted" style={{ marginTop: 4 }}>
             Your answers from onboarding.{' '}
             {plan.isPrimary
-              ? 'Changing the distance, date, or experience level rebuilds this race’s weekly training schedule.'
+              ? 'Changing the distance, date, experience level, or current running rebuilds this race’s weekly training schedule.'
               : 'This race is crew-planning only, so there’s no training schedule to rebuild.'}
           </p>
         </div>
@@ -382,6 +396,33 @@ export function EditRace() {
             </label>
           </div>
         </Field>
+
+        {plan.isPrimary && (
+          <>
+            <Field
+              label="Miles per week"
+              optional
+              hint="Your average over the last 4 weeks. Update this as your fitness changes."
+            >
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 20"
+                value={weeklyMiles}
+                onChange={(e) => setWeeklyMiles(e.target.value.replace(/[^0-9.]/g, '').slice(0, 5))}
+              />
+            </Field>
+            <Field label="Longest single run" optional hint="In miles, from the last 4 weeks.">
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 8"
+                value={longestRun}
+                onChange={(e) => setLongestRun(e.target.value.replace(/[^0-9.]/g, '').slice(0, 5))}
+              />
+            </Field>
+          </>
+        )}
 
         {willRegenerate && (
           <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>

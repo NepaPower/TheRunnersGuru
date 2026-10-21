@@ -274,6 +274,9 @@ export async function updateRaceDetails(planId: string, plan: TrainingPlan, opts
       goal_finish_minutes: plan.goalFinishMinutes ?? null,
       total_weeks: plan.totalWeeks,
       quote: plan.quote,
+      // "Current running" (Edit race can change these); only sent when the plan carries them.
+      ...(plan.currentWeeklyMiles !== undefined ? { current_weekly_miles: plan.currentWeeklyMiles } : {}),
+      ...(plan.longestRunMiles !== undefined ? { longest_run_miles: plan.longestRunMiles } : {}),
     })
     .eq('id', planId);
   if (error) throw error;

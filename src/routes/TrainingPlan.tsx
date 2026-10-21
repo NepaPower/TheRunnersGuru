@@ -375,6 +375,13 @@ export function TrainingPlan() {
           }}
         >
           ⚠ {timeWarning}
+          {plan.id && (
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <button type="button" className="rg-tp-link" onClick={editGoal}>
+                Fitness changed? Update my current running
+              </button>
+            </div>
+          )}
         </div>
       )}
 
