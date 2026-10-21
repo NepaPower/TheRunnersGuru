@@ -116,9 +116,9 @@ const ULTRA_PEAK_LONG_H = 6;
 
 /** Ultra mid-week runs (Tue / Wed / Thu) climb to this many hours at the peak of
  * the build (about 10-13 miles at ultra pace); they start at about half the
- * runner's long run. Wednesday's run is a bit shorter since strength follows it. */
+ * runner's long run. Wednesday's run is as long as the other two; strength follows it. */
 const ULTRA_PEAK_MID_H = 2;
-const WED_RUN_RATIO = 0.8;
+const WED_RUN_RATIO = 1;
 /** Sunday's back-to-back run, as a share of Saturday's long run (25 mi Saturday -> ~9-10 mi Sunday). */
 const B2B_RATIO = 0.38;
 
