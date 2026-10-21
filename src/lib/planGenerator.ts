@@ -574,7 +574,8 @@ function generateUltraPlan(
       sun = 'Rest';
     } else {
       const hasB2B = b2bHours > 0;
-      const satLabel = hasB2B ? 'Long run 1' : 'Long run';
+      // Plain 'Long run' for Saturday: a numbered 'Long run 1 — 9 hrs' reads like a 1-9 hour range.
+      const satLabel = 'Long run';
       mon = readiness ? 'Rest' : 'Rest, or an easy swim';
       tue = climbText;
       wed = readiness ? strengthText : `Run — ${fmtDur(wedRunMin)} easy, then ${strengthText}`;
@@ -590,7 +591,7 @@ function generateUltraPlan(
               : hasB2B
                 ? `${satLabel} — ${longRunRange(longHours)}, fueling: 60–90g carb/hr`
                 : `${satLabel} — ${longRunRange(longHours)}, rolling terrain`;
-      sun = hasB2B ? `Long run 2 — ${b2bHours} hrs, easy, run tired (back-to-back)` : 'Rest';
+      sun = hasB2B ? `Back-to-back run — ${b2bHours} hrs, easy, on tired legs` : 'Rest';
     }
 
     const totalHours =

@@ -33,7 +33,7 @@ function classifyWorkout(text: string): 'rest' | 'easy' | 'steady' | 'quality' |
   const t = text.toLowerCase();
   if (t.includes('race day')) return 'race';
   if (t === 'rest' || t.startsWith('rest,')) return 'rest'; // "Rest, or an easy swim" is still a rest day
-  if (t.includes('long run')) return 'long';
+  if (t.includes('long run') || t.includes('back-to-back')) return 'long';
   if (t.includes('strength')) return 'strength';
   if (t.includes('bike') || t.includes('swim') || t.includes('cross')) return 'cross';
   if (t.includes('interval') || t.includes('tempo') || t.includes('hill') || t.includes('incline') || t.includes('hiit') || t.includes('stairmaster')) return 'quality';
@@ -360,7 +360,7 @@ export function TrainingPlan() {
     : isReadiness
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Easy)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles']
     : isUltra
-    ? ['Week', 'Phase / Focus', 'Mon (Rest / swim)', 'Tue (Hill run)', 'Wed (Run + Strength)', 'Thu (Easy run)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
+    ? ['Week', 'Phase / Focus', 'Mon (Rest / swim)', 'Tue (Hill run)', 'Wed (Run + Strength)', 'Thu (Easy run)', 'Fri (Cross-train)', 'Sat (Long run)', 'Sun (Back-to-back)', 'Total Weekly Hours']
     : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
 
   return (
