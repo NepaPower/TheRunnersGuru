@@ -225,3 +225,21 @@
   .rg-today { padding: var(--space-4); }
   .rg-today-side { flex-direction: row; flex-wrap: wrap; align-items: center; }
 }
+
+/* Phones: two columns of compact cards instead of one long column, so the
+   nine Home cards fit in about five rows. */
+@media (max-width: 560px) {
+  .rg-dash-nav-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .rg-dash-nav-card { padding: var(--space-3); }
+  .rg-dash-nav-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: var(--space-2);
+  }
+  .rg-dash-nav-title { font-size: 15px; }
+  .rg-dash-nav-subtitle { font-size: 12px; }
+  .rg-dash-badge { top: var(--space-2); right: var(--space-2); }
+}
