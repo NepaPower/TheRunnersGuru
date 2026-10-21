@@ -333,9 +333,11 @@ textarea.input { min-height: 90px; resize: vertical; }
   .bottom-tab.active { color: var(--color-accent-300); }
   .bottom-tab svg { flex: none; }
 
-  /* Keeps page content (and the Crew Plan "Save" footer, etc.) from
-     sitting underneath the fixed bottom bar. */
-  .app-main { padding-bottom: calc(var(--space-8) + 64px); }
+  /* Keeps page content (and the Crew Plan "Save" footer, the Send feedback /
+     Privacy / Terms line, etc.) from sitting underneath the fixed bottom bar.
+     Needs .app-shell for specificity: app.css's own .app-main padding loads
+     later and would otherwise win, leaving the bar on top of the page end. */
+  .app-shell .app-main { padding-bottom: calc(var(--space-8) + 64px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Mobile-only touch-target sizing. Desktop's tighter, mouse-precision
