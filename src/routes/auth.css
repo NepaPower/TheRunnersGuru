@@ -135,30 +135,61 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-8);
   padding: var(--space-8);
   background: var(--color-ink);
   color: var(--color-bg);
 }
 .rg-auth-brand-logo {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   align-self: flex-start;
   font-family: var(--font-heading);
   font-weight: 600;
-  font-size: 22px;
+  font-size: 34px;
+  line-height: 1;
   color: inherit;
   text-decoration: none;
 }
-.rg-auth-brand-copy { position: relative; z-index: 1; }
+/* The mountain scene fills the space between the logo and the headline,
+   bleeding to the panel's edges; its base is the horizon the text sits under. */
+.rg-auth-brand-scene {
+  position: relative;
+  flex: 1;
+  min-height: 140px;
+  margin: var(--space-4) calc(var(--space-8) * -1) 0;
+  color: var(--color-accent-300);
+  pointer-events: none;
+}
+.rg-auth-brand-mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rg-auth-brand-sun {
+  position: absolute;
+  top: 12%;
+  right: 18%;
+  width: clamp(60px, 9vw, 108px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.17;
+}
+.rg-auth-brand-copy {
+  position: relative;
+  z-index: 1;
+  padding-top: var(--space-6);
+}
 .rg-auth-brand-eyebrow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: var(--space-3);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -166,7 +197,7 @@
 }
 .rg-auth-brand-eyebrow::before {
   content: '';
-  width: 22px;
+  width: 28px;
   height: 1px;
   background: currentColor;
 }
@@ -184,30 +215,6 @@
   line-height: 1.5;
   color: color-mix(in srgb, var(--color-bg) 78%, transparent);
 }
-.rg-auth-brand-mark {
-  /* A mountain scene filling the panel's empty space: ridgelines rise from
-     the bottom edge behind the headline. `slice` makes it cover the box at
-     any panel size (cropping the sides) instead of leaving a gap. */
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 64%;
-  color: var(--color-accent-300);
-  pointer-events: none;
-}
-.rg-auth-brand-sun {
-  position: absolute;
-  top: 24%;
-  right: 16%;
-  width: clamp(60px, 9vw, 112px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--color-accent-300);
-  opacity: 0.16;
-  pointer-events: none;
-}
 .rg-auth-main {
   display: flex;
   align-items: center;
@@ -216,10 +223,19 @@
 }
 @media (max-width: 860px) {
   .rg-auth-split { display: flex; flex-direction: column; }
-  .rg-auth-brand { position: relative; align-self: stretch; height: auto; gap: var(--space-4); padding: var(--space-6) var(--space-4); }
+  .rg-auth-brand {
+    position: relative;
+    align-self: stretch;
+    height: auto;
+    gap: var(--space-4);
+    padding: var(--space-6) var(--space-4);
+  }
+  .rg-auth-brand-logo { font-size: 28px; gap: 10px; }
+  .rg-auth-brand-logo svg { width: 36px; height: 36px; }
+  .rg-auth-brand-scene { position: absolute; inset: 0; margin: 0; min-height: 0; }
+  .rg-auth-brand-sun { top: 14px; right: 28px; width: 40px; }
+  .rg-auth-brand-copy { padding-top: 0; }
+  .rg-auth-brand-eyebrow { font-size: 12px; }
   .rg-auth-brand-headline { font-size: 30px; margin-bottom: 0; }
   .rg-auth-brand-blurb { display: none; }
-  .rg-auth-brand-mark { height: 100%; }
-  .rg-auth-brand-sun { top: 14px; right: 28px; width: 40px; }
-  .rg-auth-main { align-items: flex-start; padding: var(--space-6) var(--space-4) var(--space-8); }
 }

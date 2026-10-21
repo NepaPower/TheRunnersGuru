@@ -2,9 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { LogoMark } from './Logo';
 
-/** Two-panel layout for Sign in / Sign up: a dark brand panel (logo, small
- * label, headline, one-line promise) beside the form. On phones the panel
- * shrinks to a short banner above the form. Styled in auth.css. */
+/** Two-panel layout for Sign in / Sign up: a dark brand panel (logo, a
+ * mountain scene, small label, headline, one-line promise) beside the form.
+ * On phones the panel shrinks to a short banner above the form, with the
+ * scene as a faint backdrop. Styled in auth.css. */
 export function AuthShell({
   eyebrow,
   headline,
@@ -20,42 +21,43 @@ export function AuthShell({
     <div className="rg-auth-split">
       <aside className="rg-auth-brand">
         <Link to="/" className="rg-auth-brand-logo">
-          <LogoMark size={32} />
+          <LogoMark size={44} />
           The Runners Guru
         </Link>
+        <div className="rg-auth-brand-scene" aria-hidden="true">
+          <span className="rg-auth-brand-sun" />
+          <svg
+            className="rg-auth-brand-mark"
+            viewBox="0 0 400 260"
+            preserveAspectRatio="xMidYMax slice"
+            fill="none"
+          >
+            <polygon
+              points="0,260 0,190 36,154 70,190 110,130 160,194 196,166 240,206 282,158 332,202 372,176 400,198 400,260"
+              fill="currentColor"
+              opacity="0.1"
+            />
+            <polygon
+              points="0,260 0,216 58,166 104,206 168,116 232,216 292,184 350,220 400,200 400,260"
+              fill="currentColor"
+              opacity="0.17"
+            />
+            <path
+              d="M20 260 C66 244 98 222 124 192 S158 146 168 120"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="2 8"
+              opacity="0.6"
+            />
+            <circle cx="168" cy="116" r="5.5" fill="currentColor" opacity="0.7" />
+          </svg>
+        </div>
         <div className="rg-auth-brand-copy">
           <div className="rg-auth-brand-eyebrow">{eyebrow}</div>
           <h1 className="rg-auth-brand-headline">{headline}</h1>
           <p className="rg-auth-brand-blurb">{blurb}</p>
         </div>
-        <span className="rg-auth-brand-sun" aria-hidden="true" />
-        <svg
-          className="rg-auth-brand-mark"
-          viewBox="0 0 400 300"
-          preserveAspectRatio="xMidYMax slice"
-          fill="none"
-          aria-hidden="true"
-        >
-          <polygon
-            points="0,300 0,190 50,138 96,186 150,106 212,192 262,150 322,204 362,164 400,196 400,300"
-            fill="currentColor"
-            opacity="0.09"
-          />
-          <polygon
-            points="0,300 0,238 68,168 122,218 192,136 252,226 312,184 400,244 400,300"
-            fill="currentColor"
-            opacity="0.15"
-          />
-          <path
-            d="M372 296 C330 276 296 262 258 240 S204 196 192 140"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray="2 9"
-            opacity="0.5"
-          />
-          <circle cx="192" cy="136" r="5" fill="currentColor" opacity="0.6" />
-        </svg>
       </aside>
       <main className="rg-auth-main">{children}</main>
     </div>
