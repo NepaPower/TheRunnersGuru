@@ -79,6 +79,42 @@ export function daysUntil(isoDate: string): number | null {
   return Math.round((race.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** Day number of the Monday that starts plan week `week`. Race week is the last
+ * row (see buildTrainingPlan), so weeks count back from the race date's Monday. */
+export function planWeekStart(plan: Pick<TrainingPlan, 'raceDate' | 'totalWeeks'>, week: number): number | null {
+  const [y, m, d] = (plan.raceDate || '').split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return mondayOf(dayNumber(y, m, d)) - (plan.totalWeeks - week) * 7;
+}
+
+/** yyyy-mm-dd of a day in a plan week (dayIndex 0 = Monday), or null without a race date. */
+export function planDayISO(plan: Pick<TrainingPlan, 'raceDate' | 'totalWeeks'>, week: number, dayIndex: number): string | null {
+  const start = planWeekStart(plan, week);
+  return start == null ? null : dayNumberToISO(start + dayIndex);
+}
+
+/** "Oct 19" for a day number. */
+export function dayNumberToShort(dayNum: number): string {
+  return new Date(dayNum * DAY_MS).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/** "Oct 19–25", or "Oct 26 – Nov 1" across a month change. */
+export function weekRangeLabel(startDay: number): string {
+  const a = new Date(startDay * DAY_MS);
+  const b = new Date((startDay + 6) * DAY_MS);
+  const sameMonth = a.getUTCMonth() === b.getUTCMonth();
+  return sameMonth ? `${dayNumberToShort(startDay)}–${b.getUTCDate()}` : `${dayNumberToShort(startDay)} – ${dayNumberToShort(startDay + 6)}`;
+}
+
+/** The plan week "today" falls in: the current week during the plan, week 1
+ * before it starts, the last week once the race is over. */
+export function currentPlanWeek(plan: Pick<TrainingPlan, 'raceDate' | 'totalWeeks' | 'rows'>, now: Date = new Date()): number {
+  const pos = todayInPlan(plan, now);
+  if (pos?.status === 'during') return pos.row.week;
+  if (pos?.status === 'after') return plan.rows[plan.rows.length - 1]?.week ?? 1;
+  return plan.rows[0]?.week ?? 1;
+}
+
 /** "12 weeks, 2 days to go" for a future race date; '' for a past or empty one.
  * Weeks are whole weeks (floored), so it never overstates the time left. */
 export function timeToGoLabel(days: number | null): string {

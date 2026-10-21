@@ -329,3 +329,170 @@
   font-weight: 400;
   color: color-mix(in srgb, var(--color-text) 70%, transparent);
 }
+
+
+/* — Card view: one week open in big day cards, a slim list of all weeks below — */
+.rg-tp-weekpanel {
+  scroll-margin-top: 90px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+.rg-tp-weekpanel.rg-tp-recovery { background: var(--color-accent-2-100); }
+.rg-tp-weekpanel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.rg-tp-weekpanel-title { flex: 1; min-width: 0; }
+.rg-tp-weekpanel-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
+.rg-tp-weekpanel-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: 4px;
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.rg-tp-weekpanel-total { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rg-tp-weeknav {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--color-divider-strong);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.rg-tp-weeknav:hover:not(:disabled) { background: var(--color-accent-100); }
+.rg-tp-weeknav:disabled { opacity: 0.35; cursor: default; }
+
+.rg-tp-daygrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.rg-tp-daycard {
+  --kind-fg: var(--color-divider-strong);
+  --kind-bg: color-mix(in srgb, var(--color-text) 5%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 150px;
+  padding: var(--space-4);
+  background: var(--kind-bg);
+  border: 1px solid var(--color-divider-strong);
+  border-left: 5px solid var(--kind-fg);
+  border-radius: 12px;
+}
+.rg-tp-daycard.is-today { box-shadow: 0 0 0 2px var(--color-accent); }
+.rg-tp-kind-easy { --kind-fg: var(--color-accent); --kind-bg: color-mix(in srgb, var(--color-accent) 13%, transparent); }
+.rg-tp-kind-steady { --kind-fg: var(--color-accent-700); --kind-bg: color-mix(in srgb, var(--color-accent) 24%, transparent); }
+.rg-tp-kind-quality { --kind-fg: #d9534f; --kind-bg: color-mix(in srgb, #d9534f 13%, transparent); }
+.rg-tp-kind-long { --kind-fg: #d9a441; --kind-bg: color-mix(in srgb, #d9a441 22%, transparent); }
+.rg-tp-kind-cross { --kind-fg: #4a9ac0; --kind-bg: color-mix(in srgb, #4a9ac0 16%, transparent); }
+.rg-tp-kind-strength { --kind-fg: #8e6cc7; --kind-bg: color-mix(in srgb, #8e6cc7 16%, transparent); }
+.rg-tp-kind-race { --kind-fg: #16241f; --kind-bg: #16241f; color: #f7f7f1; }
+.rg-tp-daycard-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rg-tp-daycard-day { font-family: var(--font-heading); font-size: 22px; font-weight: 600; line-height: 1.1; }
+.rg-tp-daycard-date { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; white-space: nowrap; }
+.rg-tp-daycard-kind { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--kind-fg); }
+.rg-tp-kind-race .rg-tp-daycard-kind { color: #d9a441; }
+.rg-tp-daycard-text { font-size: 16px; line-height: 1.4; }
+.rg-tp-kind-rest .rg-tp-daycard-text { font-style: italic; opacity: 0.7; }
+.rg-tp-daycard-detail { font-size: 12.5px; line-height: 1.4; opacity: 0.75; }
+.rg-tp-daycard-done {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--color-accent-800);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.rg-tp-daycard-log {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--color-divider-strong);
+  background: var(--color-bg);
+  color: var(--color-accent-800);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rg-tp-daycard-log:hover { background: var(--color-accent-100); }
+
+.rg-tp-weeklist-head {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
+.rg-tp-weeklist { display: flex; flex-direction: column; gap: 6px; }
+.rg-tp-weekrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 10px var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider-strong);
+  border-radius: 12px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.rg-tp-weekrow:hover { background: var(--color-accent-100); }
+.rg-tp-weekrow.rg-tp-recovery { background: var(--color-accent-2-100); }
+.rg-tp-weekrow.rg-tp-race { background: #d9a441; }
+.rg-tp-weekrow.is-active { box-shadow: 0 0 0 2px var(--color-accent); }
+.rg-tp-weekrow-dates { font-size: 14px; color: color-mix(in srgb, var(--color-text) 75%, transparent); white-space: nowrap; }
+.rg-tp-now {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rg-tp-weekrow-logged { font-size: 13px; font-weight: 600; color: var(--color-accent-800); white-space: nowrap; }
+.rg-tp-weekrow-total { margin-left: auto; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rg-tp-weekrow-chev { font-size: 20px; opacity: 0.45; }
+/* the "Race Prep" tag had no colour of its own */
+.rg-tp-phase-race-prep { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-accent-800); }
+
+@media (max-width: 960px) {
+  .rg-tp-daygrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .rg-tp-daygrid { grid-template-columns: minmax(0, 1fr); }
+  .rg-tp-weekpanel { padding: var(--space-4); }
+  .rg-tp-weekpanel-main { font-size: 20px; }
+  .rg-tp-weekrow { flex-wrap: wrap; row-gap: 4px; }
+  .rg-tp-weekrow-dates { order: 3; }
+}

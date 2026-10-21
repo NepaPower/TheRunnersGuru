@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PageHeader, SectionHeader } from '../components/PageHeader';
@@ -16,6 +16,8 @@ import {
   workoutKind,
 } from '../lib/trainingPaces';
 import { regeneratePlanWeeks } from '../lib/api';
+import { currentPlanWeek, dayNumberToISO, dayNumberToShort, localISODate, planDayISO, planWeekStart, weekRangeLabel } from '../lib/today';
+import type { LoggedRun, TrainingPlan as TrainingPlanType, TrainingPlanRow } from '../types';
 import { DISTANCE_LABELS } from '../data/constants';
 import './trainingplan.css';
 
@@ -40,6 +42,161 @@ function classifyWorkout(text: string): 'rest' | 'easy' | 'steady' | 'quality' |
   return 'plain';
 }
 
+const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+const KIND_LABEL: Record<ReturnType<typeof classifyWorkout>, string> = {
+  rest: 'Rest day',
+  easy: 'Easy',
+  steady: 'Steady',
+  quality: 'Quality',
+  long: 'Long run',
+  cross: 'Cross-train',
+  strength: 'Strength',
+  race: 'Race day',
+  plain: '',
+};
+
+/** Card view: one week open at a time in big day cards (this week by default),
+ * with a slim list of every week below to jump to. Each past or current day can
+ * be logged from here (opens Log a Run with the date and planned miles filled in). */
+function TrainingWeeks({
+  plan,
+  isUltra,
+  dayInfo,
+  loggedRuns,
+  onLog,
+}: {
+  plan: TrainingPlanType;
+  isUltra: boolean;
+  dayInfo: (row: TrainingPlanRow, dayIndex: number, raw: string) => { text: string; detail: string | null };
+  loggedRuns: LoggedRun[];
+  onLog: (iso: string, raw: string) => void;
+}) {
+  const currentWeek = currentPlanWeek(plan);
+  const [selected, setSelected] = useState<number | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const todayISO = localISODate();
+
+  const activeWeek = selected ?? currentWeek;
+  const idx = Math.max(0, plan.rows.findIndex((r) => r.week === activeWeek));
+  const row = plan.rows[idx];
+
+  const weekTotal = (r: TrainingPlanRow) =>
+    isUltra && r.totalHours != null ? `${r.totalHours.toFixed(1)} hrs` : `${r.totalMiles.toFixed(1)} mi`;
+  const phaseTag = (r: TrainingPlanRow) => `rg-tp-phase-tag rg-tp-phase-${r.phase.replace(/\s+/g, '-').toLowerCase()}`;
+  const weekClass = (r: TrainingPlanRow) => (r.isRaceWeek ? 'rg-tp-race' : r.phase === 'Recovery Week' ? 'rg-tp-recovery' : '');
+  const rangeFor = (week: number) => {
+    const start = planWeekStart(plan, week);
+    return start == null ? '' : weekRangeLabel(start);
+  };
+  /** Miles logged on the days of a plan week. */
+  const loggedMiles = (week: number) => {
+    const start = planWeekStart(plan, week);
+    if (start == null) return 0;
+    const days = new Set(Array.from({ length: 7 }, (_, i) => dayNumberToISO(start + i)));
+    return loggedRuns.filter((r) => days.has(r.date)).reduce((sum, r) => sum + (parseFloat(r.distance) || 0), 0);
+  };
+
+  function pick(week: number) {
+    setSelected(week);
+    requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  const days = [row.mon, row.tue, row.wed, row.thu, row.fri, row.sat, row.sun];
+  const weekStart = planWeekStart(plan, row.week);
+
+  return (
+    <>
+      <div ref={panelRef} className={`rg-tp-weekpanel ${weekClass(row)}`}>
+        <div className="rg-tp-weekpanel-head">
+          <button
+            type="button"
+            className="rg-tp-weeknav"
+            aria-label="Previous week"
+            disabled={idx <= 0}
+            onClick={() => setSelected(plan.rows[idx - 1].week)}
+          >
+            ‹
+          </button>
+          <div className="rg-tp-weekpanel-title">
+            <div className="rg-tp-weekpanel-kicker">
+              Week {row.week} of {plan.totalWeeks}
+              {row.week === currentWeek ? ' · This week' : ''}
+            </div>
+            <div className="rg-tp-weekpanel-main">
+              <span className={phaseTag(row)}>{row.phase}</span>
+              <span>{rangeFor(row.week)}</span>
+            </div>
+          </div>
+          <div className="rg-tp-weekpanel-total">{weekTotal(row)}</div>
+          <button
+            type="button"
+            className="rg-tp-weeknav"
+            aria-label="Next week"
+            disabled={idx >= plan.rows.length - 1}
+            onClick={() => setSelected(plan.rows[idx + 1].week)}
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="rg-tp-daygrid">
+          {days.map((raw, i) => {
+            const { text, detail } = dayInfo(row, i, raw);
+            const kind = classifyWorkout(text);
+            const iso = planDayISO(plan, row.week, i);
+            const runs = iso ? loggedRuns.filter((r) => r.date === iso) : [];
+            const canLog = iso != null && iso <= todayISO;
+            return (
+              <div key={DAY_FULL[i]} className={`rg-tp-daycard rg-tp-kind-${kind}${iso === todayISO ? ' is-today' : ''}`}>
+                <div className="rg-tp-daycard-top">
+                  <span className="rg-tp-daycard-day">{DAY_FULL[i]}</span>
+                  <span className="rg-tp-daycard-date">{weekStart != null ? dayNumberToShort(weekStart + i) : ''}</span>
+                </div>
+                {KIND_LABEL[kind] && <div className="rg-tp-daycard-kind">{KIND_LABEL[kind]}</div>}
+                <div className="rg-tp-daycard-text">{text}</div>
+                {detail && <div className="rg-tp-daycard-detail">{detail}</div>}
+                {runs.map((r) => (
+                  <div key={r.id} className="rg-tp-daycard-done">
+                    ✓ {parseFloat(r.distance) || r.distance} mi{r.paceLabel ? ` · ${r.paceLabel}/mi` : ''}
+                  </div>
+                ))}
+                {canLog && (
+                  <button type="button" className="rg-tp-daycard-log" onClick={() => onLog(iso, raw)}>
+                    {runs.length > 0 ? 'Log another run' : 'Log run'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rg-tp-weeklist-head">All weeks</div>
+      <div className="rg-tp-weeklist">
+        {plan.rows.map((r) => {
+          const logged = loggedMiles(r.week);
+          return (
+            <button
+              type="button"
+              key={r.week}
+              className={`rg-tp-weekrow ${weekClass(r)}${r.week === activeWeek ? ' is-active' : ''}`}
+              onClick={() => pick(r.week)}
+            >
+              <span className="rg-tp-week-badge">{r.week}</span>
+              <span className={phaseTag(r)}>{r.phase}</span>
+              <span className="rg-tp-weekrow-dates">{rangeFor(r.week)}</span>
+              {r.week === currentWeek && <span className="rg-tp-now">This week</span>}
+              {logged > 0 && <span className="rg-tp-weekrow-logged">✓ {logged.toFixed(1)} mi logged</span>}
+              <span className="rg-tp-weekrow-total">{weekTotal(r)}</span>
+              <span className="rg-tp-weekrow-chev" aria-hidden="true">›</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 export function TrainingPlan() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
@@ -47,6 +204,13 @@ export function TrainingPlan() {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const plan = state.trainingPlan;
+
+  /** Logs a run from the plan: Log a Run opens with the day's date, and the planned miles if the day has any. */
+  function logFromPlan(iso: string, raw: string) {
+    const miles = /(\d+(?:\.\d+)?)\s*mi\b/.exec(raw);
+    dispatch({ type: 'LOG_FORM_SET_MANY', fields: { date: iso, ...(miles ? { distance: miles[1] } : {}) } });
+    navigate('/log-run');
+  }
 
   async function handleGenerate() {
     if (!plan?.id) return;
@@ -337,36 +501,7 @@ export function TrainingPlan() {
       />
 
       {view === 'cards' ? (
-        <div className="rg-tp-week-list">
-          {plan.rows.map((row) => {
-            const cardClass = row.isRaceWeek ? 'rg-tp-race' : row.phase === 'Recovery Week' ? 'rg-tp-recovery' : '';
-            const phaseClass = `rg-tp-phase-tag rg-tp-phase-${row.phase.replace(/\s+/g, '-').toLowerCase()}`;
-            const days = [row.mon, row.tue, row.wed, row.thu, row.fri, row.sat, row.sun];
-            return (
-              <div key={row.week} className={`rg-tp-week-card ${cardClass}`}>
-                <div className="rg-tp-week-card-head">
-                  <span className="rg-tp-week-badge">{row.week}</span>
-                  <span className={phaseClass}>{row.phase}</span>
-                  <span className="rg-tp-week-total">
-                    {isUltra && row.totalHours != null ? `${row.totalHours.toFixed(1)} hrs` : `${row.totalMiles.toFixed(1)} mi`}
-                  </span>
-                </div>
-                <div className="rg-tp-week-days">
-                  {days.map((raw, i) => {
-                    const { text, detail } = dayInfo(row, i, raw);
-                    return (
-                      <div key={DAY_LABELS[i]} className="rg-tp-day-cell">
-                        <div className="rg-tp-day-label">{DAY_LABELS[i]}</div>
-                        <div className={`rg-tp-day-chip rg-tp-chip-${classifyWorkout(text)}`}>{text}</div>
-                        {detail && <div className="rg-tp-day-detail">{detail}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <TrainingWeeks plan={plan} isUltra={isUltra} dayInfo={dayInfo} loggedRuns={state.loggedRuns} onLog={logFromPlan} />
       ) : (
         <div className="rg-tp-table-card">
           <div className="rg-tp-table-scroll">
