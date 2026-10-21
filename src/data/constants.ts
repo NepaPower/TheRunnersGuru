@@ -21,6 +21,7 @@ export const STANDARD_DISTANCES = DISTANCES.filter((d) => d.id !== 'ultra');
  * mileage input capped at MAX_ULTRA_MILES. */
 export const ULTRA_DISTANCES: { id: Exclude<UltraDistanceId, ''>; label: string; miles?: number }[] = [
   { id: '50k', label: '50K', miles: 31 },
+  { id: '50mi', label: '50 Miles', miles: 50 },
   { id: '100k', label: '100K', miles: 62 },
   { id: '100mi', label: '100 Miles', miles: 100 },
   { id: '135mi', label: '135 Miles', miles: 135 },

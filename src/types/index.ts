@@ -30,7 +30,7 @@ export type RaceCategory = 'standard' | 'ultra' | 'crew' | '';
 /** Only used when raceCategory === 'ultra'. 'custom' pairs with
  * OnboardingState.ultraCustomMiles (capped at MAX_ULTRA_MILES, see
  * data/constants.ts). */
-export type UltraDistanceId = '50k' | '100k' | '100mi' | '135mi' | '200mi' | '300mi' | 'custom' | '';
+export type UltraDistanceId = '50k' | '50mi' | '100k' | '100mi' | '135mi' | '200mi' | '300mi' | 'custom' | '';
 
 /** Only used when distanceGoal === 'ultra' — the official race GPX, parsed
  * client-side (see lib/gpx.ts). We store the parsed summary (distance,
