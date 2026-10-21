@@ -19,13 +19,28 @@
 
 /* — nav — */
 .rg-landing-nav {
-  position: relative;
-  z-index: 3;
+  /* fixed, not sticky: html/body/#root are all overflow-x: hidden (app.css),
+     which makes them scroll containers and stops sticky from working. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 20px;
   padding: 20px clamp(16px, 4vw, 48px);
+  background: var(--color-ink);
+  transition: padding 0.2s ease, box-shadow 0.2s ease;
 }
+.rg-landing-nav.is-scrolled {
+  padding-block: 10px;
+  box-shadow: 0 2px 14px color-mix(in srgb, #000 35%, transparent);
+}
+.rg-landing-nav-brand svg { transition: width 0.2s ease, height 0.2s ease; }
+.rg-landing-nav.is-scrolled .rg-landing-nav-brand { font-size: 24px; }
+.rg-landing-nav.is-scrolled .rg-landing-nav-brand svg { width: 30px; height: 30px; }
+.rg-landing-nav.is-scrolled .btn-primary { padding-block: 7px; }
 .rg-landing-nav-brand {
   margin-right: auto;
   display: flex;
@@ -52,6 +67,7 @@
   position: relative;
   background: var(--color-ink);
   overflow: hidden;
+  padding-top: 86px; /* room for the fixed top bar */
   padding-bottom: clamp(150px, 24vw, 280px);
 }
 .rg-landing-hero-inner {

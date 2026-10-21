@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { Button } from '../components/ui/Button';
@@ -70,29 +70,37 @@ const ALSO_INSIDE = ['Run log', 'Weekly mileage', 'Multiple races', 'Print-ready
 export function Landing() {
   const navigate = useNavigate();
   const [heroEmail, setHeroEmail] = useState('');
+  // The top bar stays pinned and shrinks once you scroll past the top.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
     <div className="rg-landing">
-      <section className="rg-landing-hero">
-        <nav className="rg-landing-nav">
-          <div className="rg-landing-nav-brand">
-            <LogoMark size={36} />
-            The Runners Guru
-          </div>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/signin');
-            }}
-          >
-            Sign in
-          </a>
-          <Button variant="primary" onClick={() => navigate('/signup')}>
-            Join free
-          </Button>
-        </nav>
+      <nav className={`rg-landing-nav${scrolled ? ' is-scrolled' : ''}`}>
+        <div className="rg-landing-nav-brand">
+          <LogoMark size={36} />
+          The Runners Guru
+        </div>
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/signin');
+          }}
+        >
+          Sign in
+        </a>
+        <Button variant="primary" onClick={() => navigate('/signup')}>
+          Join free
+        </Button>
+      </nav>
 
+      <section className="rg-landing-hero">
         <div className="rg-landing-hero-inner">
           <div className="rg-landing-eyebrow">Training and race-day planning</div>
           <h1 className="rg-landing-headline">
