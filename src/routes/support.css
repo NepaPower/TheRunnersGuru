@@ -46,19 +46,38 @@
 }
 .rg-su-ask { background: var(--color-accent-100); }
 
-/* Home: a slim card under "Your numbers", not a banner. */
+/* Home: a dark card under "Your numbers" (same ink as the page-header bands),
+   with a solid green button, so it reads as an invitation without shouting. */
 .rg-su-home {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-4);
   margin-top: var(--space-6);
-  padding: var(--space-4) var(--space-6);
-  background: var(--color-bg);
-  border: 1px solid var(--color-divider-strong);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-ink);
+  color: var(--color-bg);
   border-radius: 14px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
-.rg-su-home-title { font-family: var(--font-heading); font-weight: 600; font-size: 20px; }
-.rg-su-home-text { font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+.rg-su-home-icon {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent-2) 24%, transparent);
+  color: var(--color-accent-2-300, var(--color-accent-2));
+}
+.rg-su-home-body { flex: 1 1 260px; min-width: 0; }
+.rg-su-home-title { font-family: var(--font-heading); font-weight: 600; font-size: 24px; line-height: 1.1; }
+.rg-su-home-text { margin-top: 4px; font-size: 14px; color: color-mix(in srgb, var(--color-bg) 78%, transparent); }
+.rg-su-home .btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 26px;
+  border-radius: 999px;
+  font-size: 16px;
+}

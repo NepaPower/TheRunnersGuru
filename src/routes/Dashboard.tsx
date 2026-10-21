@@ -281,11 +281,16 @@ export function Dashboard() {
       </div>
 
       <div className="rg-su-home">
-        <div>
+        <div className="rg-su-home-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 0 0-7.1 7.1l1.7 1.7L12 21.5l7.1-7.1 1.7-1.7a5 5 0 0 0 0-7.1Z" />
+          </svg>
+        </div>
+        <div className="rg-su-home-body">
           <div className="rg-su-home-title">Enjoying The Runners Guru?</div>
           <div className="rg-su-home-text">It's free while we're in beta. If it's helped you, you can back it.</div>
         </div>
-        <Button variant="secondary" onClick={() => navigate('/support')}>
+        <Button variant="primary" onClick={() => navigate('/support')}>
           Support the Guru
         </Button>
       </div>
