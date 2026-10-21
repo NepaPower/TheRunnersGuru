@@ -1,0 +1,64 @@
+/* Support the Guru: a quiet page for people who want to back the app, plus the
+   small card on Home that leads to it. */
+
+.rg-su-card {
+  max-width: 640px;
+  margin: 0 0 var(--space-6);
+  padding: var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.rg-su-card h3 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: 24px;
+  line-height: 1.15;
+}
+.rg-su-card p { margin: 0 0 var(--space-4); line-height: 1.6; }
+.rg-su-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-accent-2) 16%, transparent);
+  color: var(--color-accent-2-700);
+}
+.rg-su-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 28px;
+  border-radius: 999px;
+  font-size: 16px;
+  text-decoration: none;
+}
+.rg-su-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.rg-su-note {
+  margin: var(--space-3) 0 0 !important;
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--color-text) 65%, transparent);
+}
+.rg-su-ask { background: var(--color-accent-100); }
+
+/* Home: a slim card under "Your numbers", not a banner. */
+.rg-su-home {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.rg-su-home-title { font-family: var(--font-heading); font-weight: 600; font-size: 20px; }
+.rg-su-home-text { font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }

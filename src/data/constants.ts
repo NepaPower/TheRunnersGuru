@@ -36,6 +36,10 @@ export const MAX_ULTRA_MILES = 500;
  * in-app "Send feedback" route. */
 export const SUPPORT_EMAIL = 'info@therunnersguru.com';
 
+/** Where the "Support the Guru" button sends people (a payment or donation page).
+ * Leave empty until one exists: the Support page then says it isn't switched on. */
+export const SUPPORT_URL = '';
+
 export const FIRST_TIME_OPTIONS = [
   { id: 'yes', label: 'Yes, this is my first time' },
   { id: 'no', label: "No, I've done this distance before" },

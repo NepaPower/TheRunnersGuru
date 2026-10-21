@@ -24,6 +24,7 @@ import { Run } from './routes/Run';
 import { Chat } from './routes/Chat';
 import { Profile } from './routes/Profile';
 import { RouteLibrary } from './routes/RouteLibrary';
+import { Support } from './routes/Support';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { OfflineBanner } from './components/OfflineBanner';
 
@@ -57,6 +58,7 @@ export default function App() {
             {/* Route Library ("Local Trails, Global Guru.") — standalone GPX
                 sharing, unrelated to any race, so it only needs sign-in. */}
             <Route path="/route-library" element={<RouteLibrary />} />
+            <Route path="/support" element={<Support />} />
 
             <Route element={<RequirePlan />}>
               <Route path="/home" element={<Dashboard />} />

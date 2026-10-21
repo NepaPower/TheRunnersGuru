@@ -3,6 +3,7 @@ import { Button } from '../components/ui/Button';
 import { PageHeader, SectionHeader } from '../components/PageHeader';
 import { TodayCard } from '../components/TodayCard';
 import { ConsistencyCalendar } from '../components/ConsistencyCalendar';
+import './support.css';
 import { consistencyWeeks } from '../lib/consistency';
 import { countdownLabel, daysUntil, localISODate } from '../lib/today';
 import { formatRaceDateReadout } from '../lib/format';
@@ -277,6 +278,16 @@ export function Dashboard() {
             <div className="rg-dash-stat-label">{stat.label}</div>
           </div>
         ))}
+      </div>
+
+      <div className="rg-su-home">
+        <div>
+          <div className="rg-su-home-title">Enjoying The Runners Guru?</div>
+          <div className="rg-su-home-text">It's free while we're in beta. If it's helped you, you can back it.</div>
+        </div>
+        <Button variant="secondary" onClick={() => navigate('/support')}>
+          Support the Guru
+        </Button>
       </div>
     </>
   );
