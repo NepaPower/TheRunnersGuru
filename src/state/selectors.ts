@@ -1,4 +1,4 @@
-import type { AppState } from '../types';
+import type { AppState, TrainingPlan } from '../types';
 import { DISTANCE_LABELS, PACES_KM, PACES_KM_ULTRA, PACES_MI, PACES_MI_ULTRA } from '../data/constants';
 import { durationToSeconds, paceLabelPerMile } from '../lib/format';
 
@@ -74,10 +74,14 @@ export function homeStats(state: AppState) {
   ];
 }
 
-export function paceLabel(state: AppState): string {
-  const { pace, customPace, paceUnit, distanceGoal } = state.onboarding;
+/** The pace a saved plan was built around ("Steady", "9:30 min/mi", ...), or
+ * null if none was recorded. Reads the PLAN, not the onboarding wizard's
+ * in-progress answers (those reset to defaults on every page load). */
+export function paceLabel(plan: Pick<TrainingPlan, 'pace' | 'customPace' | 'paceUnit' | 'distanceGoal'>): string | null {
+  const { pace, customPace, paceUnit, distanceGoal } = plan;
+  if (!pace) return null;
   if (pace === 'custom') {
-    return customPace ? `${customPace} ${paceUnit === 'km' ? 'min/km' : 'min/mi'}` : 'Set a pace';
+    return customPace ? `${customPace} ${paceUnit === 'km' ? 'min/km' : 'min/mi'}` : null;
   }
   // Ultra reuses the same easy/steady/fast ids at slower speeds, so the
   // lookup has to branch the same way Onboarding/StepPace.tsx does — a
@@ -85,11 +89,13 @@ export function paceLabel(state: AppState): string {
   // faster road-pace label for an ultra runner.
   const bands = distanceGoal === 'ultra' ? [...PACES_MI_ULTRA, ...PACES_KM_ULTRA] : [...PACES_MI, ...PACES_KM];
   const found = bands.find((p) => p.id === pace);
-  return found?.label || 'Set a pace';
+  return found?.label || null;
 }
 
-export function distanceGoalLabel(state: AppState): string {
-  return state.onboarding.distanceGoal ? DISTANCE_LABELS[state.onboarding.distanceGoal] : 'Set a goal';
+/** "100-mile ultra", "Marathon", ... for a saved plan. */
+export function distanceGoalLabel(plan: Pick<TrainingPlan, 'distanceGoal' | 'ultraMiles'>): string {
+  if (plan.distanceGoal === 'ultra' && plan.ultraMiles) return `${plan.ultraMiles}-mile ultra`;
+  return DISTANCE_LABELS[plan.distanceGoal];
 }
 
 export function runElapsedLabel(elapsedSeconds: number): string {

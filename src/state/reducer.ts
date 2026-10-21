@@ -71,7 +71,7 @@ export function buildInitialState(): AppState {
     chatInput: '',
     run: { active: false, elapsedSeconds: 0, distanceMiles: 0 },
     sosOpen: false,
-    profileTab: 'stats',
+    profileTab: 'settings',
     garminConnected: false,
     logForm: { ...emptyLogForm },
     loggedRuns: [],

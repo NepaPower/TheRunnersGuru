@@ -52,7 +52,10 @@ export function SettingsTab() {
         </div>
       )}
 
-      <div className="rg-card stack-3" style={{ maxWidth: 520, marginBottom: 'var(--space-6)' }}>
+      {/* Two columns on wide screens: account + profile on the left, devices on the right. */}
+      <div className="rg-pf-cols">
+      <div className="rg-pf-col">
+      <div className="rg-card stack-3">
         <div className="row-3">
           <div className="rg-card-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
@@ -75,7 +78,69 @@ export function SettingsTab() {
         </p>
       </div>
 
-      <div className="rg-card stack-3" style={{ maxWidth: 520, marginBottom: 'var(--space-6)' }}>
+      <div className="rg-card">
+        <div className="row-3" style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="rg-card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+              <circle cx="12" cy="8" r="4" strokeWidth="2" />
+              <path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <h3 style={{ margin: 0 }}>Your profile</h3>
+            <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
+              Your name and address — used to find races and running partners near you.
+            </p>
+          </div>
+        </div>
+
+        <Field label="Name" style={{ marginBottom: 'var(--space-4)' }}>
+          <Input
+            type="text"
+            placeholder="Your name"
+            value={state.auth.name}
+            onChange={(e) => dispatch({ type: 'AUTH_NAME_CHANGE', value: e.target.value })}
+          />
+        </Field>
+
+        <Field label="Street address" style={{ marginBottom: 'var(--space-4)' }}>
+          <Input type="text" placeholder="123 Main St" value={address.street} onChange={setField('street')} />
+        </Field>
+        <Field label="Apt / Suite" optional style={{ marginBottom: 'var(--space-4)' }}>
+          <Input type="text" placeholder="Apt 4B" value={address.unit} onChange={setField('unit')} />
+        </Field>
+
+        <div className="rg-grid-name" style={{ marginBottom: 'var(--space-4)' }}>
+          <Field label="City">
+            <Input type="text" placeholder="Austin" value={address.city} onChange={setField('city')} />
+          </Field>
+          <Field label="State">
+            <Input type="text" placeholder="TX" value={address.state} onChange={setField('state')} />
+          </Field>
+          <Field label="Zip" required>
+            <Input type="text" placeholder="78701" value={address.zip} onChange={setField('zip')} />
+          </Field>
+        </div>
+
+        <Field label="Phone number" optional style={{ marginBottom: 'var(--space-6)' }}>
+          <Input type="tel" placeholder="(555) 555-0100" value={address.phone} onChange={setField('phone')} />
+        </Field>
+
+        <div className="row-3">
+          <Button variant="primary" disabled={zipMissing || savingAddress} onClick={handleSaveAddress}>
+            {savingAddress ? 'Saving…' : 'Save profile'}
+          </Button>
+          {state.addressSaved && !savingAddress && (
+            <span className="text-muted" style={{ fontSize: 13 }}>
+              Saved ✓
+            </span>
+          )}
+        </div>
+      </div>
+      </div>
+
+      <div className="rg-pf-col">
+      <div className="rg-card stack-3">
         <div className="row-3">
           <div className="rg-card-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
@@ -134,65 +199,7 @@ export function SettingsTab() {
           </>
         )}
       </div>
-
-      <div className="rg-card" style={{ maxWidth: 520 }}>
-        <div className="row-3" style={{ marginBottom: 'var(--space-4)' }}>
-          <div className="rg-card-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-              <circle cx="12" cy="8" r="4" strokeWidth="2" />
-              <path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div>
-            <h3 style={{ margin: 0 }}>Your profile</h3>
-            <p className="text-muted" style={{ margin: 0, fontSize: 13.5 }}>
-              Your name and address — used to find races and running partners near you.
-            </p>
-          </div>
-        </div>
-
-        <Field label="Name" style={{ marginBottom: 'var(--space-4)' }}>
-          <Input
-            type="text"
-            placeholder="Your name"
-            value={state.auth.name}
-            onChange={(e) => dispatch({ type: 'AUTH_NAME_CHANGE', value: e.target.value })}
-          />
-        </Field>
-
-        <Field label="Street address" style={{ marginBottom: 'var(--space-4)' }}>
-          <Input type="text" placeholder="123 Main St" value={address.street} onChange={setField('street')} />
-        </Field>
-        <Field label="Apt / Suite" optional style={{ marginBottom: 'var(--space-4)' }}>
-          <Input type="text" placeholder="Apt 4B" value={address.unit} onChange={setField('unit')} />
-        </Field>
-
-        <div className="rg-grid-name" style={{ marginBottom: 'var(--space-4)' }}>
-          <Field label="City">
-            <Input type="text" placeholder="Austin" value={address.city} onChange={setField('city')} />
-          </Field>
-          <Field label="State">
-            <Input type="text" placeholder="TX" value={address.state} onChange={setField('state')} />
-          </Field>
-          <Field label="Zip" required>
-            <Input type="text" placeholder="78701" value={address.zip} onChange={setField('zip')} />
-          </Field>
-        </div>
-
-        <Field label="Phone number" optional style={{ marginBottom: 'var(--space-6)' }}>
-          <Input type="tel" placeholder="(555) 555-0100" value={address.phone} onChange={setField('phone')} />
-        </Field>
-
-        <div className="row-3">
-          <Button variant="primary" disabled={zipMissing || savingAddress} onClick={handleSaveAddress}>
-            {savingAddress ? 'Saving…' : 'Save profile'}
-          </Button>
-          {state.addressSaved && !savingAddress && (
-            <span className="text-muted" style={{ fontSize: 13 }}>
-              Saved ✓
-            </span>
-          )}
-        </div>
+      </div>
       </div>
     </>
   );

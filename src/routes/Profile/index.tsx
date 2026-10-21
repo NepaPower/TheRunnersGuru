@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { useApp } from '../../state/AppContext';
 import { distanceGoalLabel, paceLabel } from '../../state/selectors';
 import { signOut } from '../../lib/api';
+import '../profile.css';
 import type { ProfileTab } from '../../types';
 import { StatsTab } from './StatsTab';
 import { LeaderboardTab } from './LeaderboardTab';
@@ -15,10 +16,10 @@ import { SettingsTab } from './SettingsTab';
 // Leaderboard and Challenges still run on hardcoded placeholder data
 // (src/data/constants.ts), not real users. Flip the flag to bring one back.
 const TABS: { id: ProfileTab; label: string; hidden?: boolean }[] = [
+  { id: 'settings', label: 'Settings' },
   { id: 'stats', label: 'Stats' },
   { id: 'leaderboard', label: 'Leaderboard', hidden: true },
   { id: 'challenges', label: 'Challenges', hidden: true },
-  { id: 'settings', label: 'Settings' },
 ];
 
 const VISIBLE_TABS = TABS.filter((t) => !t.hidden);
@@ -44,6 +45,12 @@ export function Profile() {
     navigate('/');
   }
 
+  // Describes the saved primary race. Someone with no race of their own (a
+  // crew-only account) gets no line, rather than the wizard's default answers.
+  const plan = state.trainingPlan;
+  const planPace = plan ? paceLabel(plan) : null;
+  const subtitle = plan ? [distanceGoalLabel(plan), planPace].filter(Boolean).join(' · ') : undefined;
+
   return (
     <>
       {/* The Log out action is the only reachable path to logging out on
@@ -52,7 +59,7 @@ export function Profile() {
       <PageHeader
         eyebrow="Profile"
         title="Your profile"
-        subtitle={`${distanceGoalLabel(state)} · ${paceLabel(state)}`}
+        subtitle={subtitle}
         action={
           <Button variant="ghost" onClick={handleLogout}>
             Log out
@@ -79,10 +86,10 @@ export function Profile() {
         ))}
       </div>
 
-      {(state.profileTab === 'stats' || !isVisibleTab(state.profileTab)) && <StatsTab />}
+      {state.profileTab === 'stats' && <StatsTab />}
       {state.profileTab === 'leaderboard' && isVisibleTab('leaderboard') && <LeaderboardTab />}
       {state.profileTab === 'challenges' && isVisibleTab('challenges') && <ChallengesTab />}
-      {state.profileTab === 'settings' && <SettingsTab />}
+      {(state.profileTab === 'settings' || !isVisibleTab(state.profileTab)) && <SettingsTab />}
     </>
   );
 }
