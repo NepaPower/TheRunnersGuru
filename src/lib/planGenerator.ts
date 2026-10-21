@@ -49,8 +49,26 @@ interface RawPlanRow {
 
 /** Phase 1..4 summary, scaled to plan length (used in the Training Plan
  * screen's "Phase Summary" panel — independent of the week-by-week table). */
-export function buildPhaseSummary(totalWeeks: number): PhaseSummaryItem[] {
+export function buildPhaseSummary(totalWeeks: number, readiness = false): PhaseSummaryItem[] {
   if (!totalWeeks) return [];
+  if (readiness) {
+    // Short-runway ultra plan: no build, just hold fitness, rehearse, taper.
+    const taper = shortRunwayTaperWeeks(totalWeeks);
+    const prep = totalWeeks - taper;
+    const out: PhaseSummaryItem[] = [];
+    if (prep > 0) {
+      out.push({
+        label: 'Phase 1 (Weeks 1' + (prep > 1 ? '–' + prep : '') + ')',
+        title: 'Hold Your Fitness & Rehearse Race Day',
+      });
+    }
+    const from = prep + 1;
+    out.push({
+      label: 'Phase ' + (out.length + 1) + ' (Weeks ' + from + (totalWeeks > from ? '–' + totalWeeks : '') + ')',
+      title: 'Taper & Race Day Preparation',
+    });
+    return out;
+  }
   const taperLen = totalWeeks >= 10 ? 3 : totalWeeks >= 5 ? 2 : 1;
   const p3Len = Math.min(taperLen, Math.max(1, totalWeeks - taperLen));
   const remaining = Math.max(0, totalWeeks - taperLen - p3Len);
@@ -165,6 +183,27 @@ function generateDynamicPlan(
   return rows;
 }
 
+/** How much of an ultra's recommended runway the plan has: 'full' (all of
+ * it), 'tight' (half or more: the build is scaled down to fit) or 'short'
+ * (under half: no time to add endurance, so the plan holds fitness instead).
+ * Only the weeks matter here — onboarding doesn't ask for current mileage. */
+export type RunwayTier = 'full' | 'tight' | 'short';
+
+export function ultraRunwayTier(totalWeeks: number, ultraMiles: number | null | undefined): RunwayTier {
+  const ratio = totalWeeks / recommendedUltraWeeks(ultraMiles ?? PLAN_TARGETS.ultra.raceMiles);
+  return ratio >= 1 ? 'full' : ratio >= 0.5 ? 'tight' : 'short';
+}
+
+/** Taper length for the short-runway plan, counting race week. Longer than
+ * the normal one (a short plan is mostly taper), but never the whole plan. */
+function shortRunwayTaperWeeks(totalWeeks: number): number {
+  return Math.max(1, Math.min(totalWeeks - 1, totalWeeks >= 6 ? 4 : 3));
+}
+
+/** The long run the short-runway plan holds (and never exceeds), in hours.
+ * Cells also tell the runner not to go past their own longest run. */
+const SHORT_RUNWAY_HOLD_H = 3;
+
 /** Phase-scoped session helpers for the ultra generator below. Each pairs a
  * minutes figure with the display text so the weekly hour total (used
  * instead of totalMiles for ultra) is computed from the same numbers shown
@@ -189,6 +228,7 @@ function ultraClimbText(outdoor: boolean, phase: TrainingPlanRow['phase'], linea
 
 function ultraStrengthMinutes(phase: TrainingPlanRow['phase']): number {
   if (phase === 'Race Week') return 0;
+  if (phase === 'Race Prep') return 20;
   if (phase === 'Taper Phase') return 15;
   if (phase === 'Recovery Week') return 20;
   if (phase === 'Base Building') return 30;
@@ -198,6 +238,7 @@ function ultraStrengthMinutes(phase: TrainingPlanRow['phase']): number {
 function ultraStrengthText(phase: TrainingPlanRow['phase']): string {
   const min = ultraStrengthMinutes(phase);
   if (min === 0) return 'Rest';
+  if (phase === 'Race Prep') return `Strength — ${min} min, light maintenance`;
   if (phase === 'Base Building') return `Strength — ${min} min (eccentric legs, core)`;
   if (phase === 'Build Phase') return `Strength — ${min} min (single-leg stability, hip strength)`;
   if (phase === 'Recovery Week') return `Strength — ${min} min, easy`;
@@ -206,6 +247,7 @@ function ultraStrengthText(phase: TrainingPlanRow['phase']): string {
 
 function ultraEasyMinutes(phase: TrainingPlanRow['phase']): number {
   if (phase === 'Race Week') return 0;
+  if (phase === 'Race Prep') return 35;
   if (phase === 'Taper Phase') return 25;
   if (phase === 'Recovery Week') return 35;
   if (phase === 'Base Building') return 40;
@@ -236,17 +278,29 @@ function ultraCrossText(week: number, phase: TrainingPlanRow['phase']): string {
  * boundaries (taper length, recovery-week cadence, base-vs-build cutoff)
  * intentionally mirror generateDynamicPlan's so both generators produce the
  * same overall plan shape. */
-function generateUltraPlan(totalWeeks: number, firstTime: FirstTimeAnswer, hillAccess: HillAccessAnswer, raceMiles: number): RawPlanRow[] {
+function generateUltraPlan(
+  totalWeeks: number,
+  firstTime: FirstTimeAnswer,
+  hillAccess: HillAccessAnswer,
+  raceMiles: number,
+  tier: RunwayTier = 'full',
+  ultraMiles?: number | null,
+): RawPlanRow[] {
   const factor = firstTime === 'yes' ? 0.85 : 1;
   const outdoor = hillAccess !== 'no'; // default to outdoor unless the person explicitly said no hill access
 
-  const taperWeeks = totalWeeks >= 10 ? 3 : totalWeeks >= 5 ? 2 : 1;
+  const readiness = tier === 'short';
+  const taperWeeks = readiness ? shortRunwayTaperWeeks(totalWeeks) : totalWeeks >= 10 ? 3 : totalWeeks >= 5 ? 2 : 1;
   const buildWeeks = totalWeeks - taperWeeks;
 
+  // 'tight': scale the build to the time there is. Squared so a plan with
+  // 75% of the runway climbs to ~56% of the way to a full peak, not 75%.
+  const buildScale =
+    tier === 'tight' ? Math.pow(totalWeeks / recommendedUltraWeeks(ultraMiles ?? PLAN_TARGETS.ultra.raceMiles), 2) : 1;
   const START_LONG_H = 2;
-  const PEAK_LONG_H = 6;
+  const PEAK_LONG_H = START_LONG_H + (6 - START_LONG_H) * buildScale;
   const START_B2B_H = 1.5;
-  const PEAK_B2B_H = 3;
+  const PEAK_B2B_H = START_B2B_H + (3 - START_B2B_H) * buildScale;
   const round1 = (n: number) => Math.round(n * 10) / 10;
 
   const rows: RawPlanRow[] = [];
@@ -255,6 +309,7 @@ function generateUltraPlan(totalWeeks: number, firstTime: FirstTimeAnswer, hillA
     if (week === totalWeeks) phase = 'Race Week';
     else if (week > totalWeeks - taperWeeks) phase = 'Taper Phase';
     else if (week % 4 === 0 && week < buildWeeks) phase = 'Recovery Week';
+    else if (readiness) phase = 'Race Prep';
     else if (week <= Math.max(4, Math.floor(totalWeeks / 4))) phase = 'Base Building';
     else phase = 'Build Phase';
 
@@ -262,9 +317,21 @@ function generateUltraPlan(totalWeeks: number, firstTime: FirstTimeAnswer, hillA
 
     let longHours = 0;
     let b2bHours = 0;
-    if (phase === 'Taper Phase') {
+    if (readiness) {
+      // Hold, never build: a flat easy long run, stepping down into race week.
+      const taperStep = totalWeeks - week;
+      if (phase === 'Taper Phase') {
+        longHours = round1(Math.min(SHORT_RUNWAY_HOLD_H, Math.max(1.5, SHORT_RUNWAY_HOLD_H * (0.25 + 0.25 * taperStep))) * factor);
+      } else if (phase === 'Recovery Week') {
+        longHours = round1(SHORT_RUNWAY_HOLD_H * 0.65 * factor);
+      } else if (phase === 'Race Prep') {
+        longHours = round1(SHORT_RUNWAY_HOLD_H * factor);
+      }
+    } else if (phase === 'Taper Phase') {
       const taperStep = totalWeeks - week;
       longHours = round1(Math.max(1.5, 2 + taperStep));
+      // A scaled-down build must still taper to below its own peak.
+      if (tier === 'tight') longHours = Math.min(longHours, round1(PEAK_LONG_H * 0.75 * factor));
     } else if (phase === 'Recovery Week') {
       longHours = round1((START_LONG_H + linearRatio * (PEAK_LONG_H - START_LONG_H)) * 0.65 * factor);
     } else if (phase === 'Base Building') {
@@ -275,11 +342,23 @@ function generateUltraPlan(totalWeeks: number, firstTime: FirstTimeAnswer, hillA
       b2bHours = round1((START_B2B_H + linearRatio * (PEAK_B2B_H - START_B2B_H)) * factor);
     }
 
-    const climbText = ultraClimbText(outdoor, phase, linearRatio);
+    // Short-runway plan swaps the hill/climb and cross-train days for the two
+    // things that still help with no time to build: gear and fuel rehearsal.
+    const gearMin = phase === 'Race Week' ? 0 : phase === 'Race Prep' ? 45 : 30;
+    const fuelMin = phase === 'Race Week' ? 0 : phase === 'Race Prep' ? 60 : phase === 'Recovery Week' ? 45 : 30;
+    const climbText = readiness
+      ? gearMin === 0
+        ? 'Rest'
+        : `Gear test run — ${gearMin} min easy, in your race shoes, pack and clothes, on race-like terrain`
+      : ultraClimbText(outdoor, phase, linearRatio);
     const strengthText = ultraStrengthText(phase);
     const easyMin = ultraEasyMinutes(phase);
     const easyText = easyMin === 0 ? 'Rest' : `Easy run — ${easyMin} min`;
-    const crossText = ultraCrossText(week, phase);
+    const crossText = readiness
+      ? fuelMin === 0
+        ? 'Rest'
+        : `Fuel rehearsal — ${fuelMin} min easy, eat and drink on your race-day schedule`
+      : ultraCrossText(week, phase);
 
     let mon: string, tue: string, wed: string, thu: string, fri: string, sat: string, sun: string;
     if (phase === 'Race Week') {
@@ -303,9 +382,11 @@ function generateUltraPlan(totalWeeks: number, firstTime: FirstTimeAnswer, hillA
           ? 'Rest'
           : phase === 'Taper Phase'
             ? `${satLabel} — ${longHours} hrs, easy`
-            : hasB2B
-              ? `${satLabel} — ${longHours} hrs, fueling: 60–90g carb/hr`
-              : `${satLabel} — ${longHours} hrs, rolling terrain`;
+            : readiness
+              ? `${satLabel} — up to ${longHours} hrs, easy (never longer than your current longest run)`
+              : hasB2B
+                ? `${satLabel} — ${longHours} hrs, fueling: 60–90g carb/hr`
+                : `${satLabel} — ${longHours} hrs, rolling terrain`;
       sun = hasB2B ? `Long run 2 — ${b2bHours} hrs, run tired (back-to-back)` : 'Rest';
     }
 
@@ -315,10 +396,10 @@ function generateUltraPlan(totalWeeks: number, firstTime: FirstTimeAnswer, hillA
         : round1(
             longHours +
               b2bHours +
-              ultraClimbMinutes(phase, linearRatio) / 60 +
+              (readiness ? gearMin : ultraClimbMinutes(phase, linearRatio)) / 60 +
               ultraStrengthMinutes(phase) / 60 +
               easyMin / 60 +
-              ultraCrossMinutes(phase) / 60,
+              (readiness ? fuelMin : ultraCrossMinutes(phase)) / 60,
           );
     // total_miles is still required by the schema (not null) — a rough
     // estimate for storage only, since ultra terrain/pace vary too much for
@@ -378,9 +459,10 @@ export function buildTrainingPlan(
   const totalWeeks = weeks.length;
   const dayKeyByDow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
   const raceKey = dayKeyByDow[race.getDay()];
+  const tier = distanceGoal === 'ultra' ? ultraRunwayTier(totalWeeks, ultraMiles) : 'full';
   const planRows =
     distanceGoal === 'ultra'
-      ? generateUltraPlan(totalWeeks, firstTime, hillAccess, ultraMiles ?? PLAN_TARGETS.ultra.raceMiles)
+      ? generateUltraPlan(totalWeeks, firstTime, hillAccess, ultraMiles ?? PLAN_TARGETS.ultra.raceMiles, tier, ultraMiles)
       : generateDynamicPlan(totalWeeks, distanceGoal, firstTime);
 
   const rows: TrainingPlanRow[] = weeks.map((wk) => {
@@ -420,7 +502,7 @@ export function buildTrainingPlan(
     mandatoryGearNotes: '',
     totalWeeks,
     rows,
-    phases: buildPhaseSummary(totalWeeks),
+    phases: buildPhaseSummary(totalWeeks, tier === 'short'),
     quote: RUNNING_QUOTES[Math.floor(Math.random() * RUNNING_QUOTES.length)],
   };
 }
@@ -468,7 +550,10 @@ export function getTrainingTimeWarning(
     const want = recommendedUltraWeeks(miles);
     if (totalWeeks >= want) return null;
     const label = ultraMiles ? `${ultraMiles}-mile` : '50K+';
-    return `Your race is ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} out — a ${label} ultra ideally has ${want}+ weeks of runway, and there isn't time to safely build new endurance for this distance now. So the plan below leans on what you already have: keep your long runs consistent but don't force big weekly jumps, guard recovery and sleep, and put the rest of your prep into race-day execution — fuelling and hydration you've actually rehearsed, conservative early pacing, deliberate hiking on the climbs, and a foot / blister / chafe plan. If your current longest run is well short of race demands, seriously consider a longer-runway race or a more conservative goal.`;
+    if (ultraRunwayTier(totalWeeks, ultraMiles) === 'tight') {
+      return `Your race is ${totalWeeks} weeks out — a ${label} ultra ideally has ${want}+ weeks of runway. There's time to build, but not a full build, so the plan below climbs more gently: long runs and back-to-backs peak lower than a full plan's, with the same taper. Protect your recovery, rehearse your fuelling on long runs, and put the rest of your prep into race-day execution: conservative early pacing, hiking the climbs, and a foot / blister / chafe plan.`;
+    }
+    return `Your race is ${totalWeeks} week${totalWeeks === 1 ? '' : 's'} out — a ${label} ultra ideally has ${want}+ weeks of runway, and there isn't time to safely build new endurance for this distance now. So the plan below doesn't try to build: it holds your long runs at an easy, steady level (never longer than your current longest run), swaps the hill and cross-training days for gear-test and fuel-rehearsal runs, and tapers into race week. Guard recovery and sleep, and put the rest of your prep into race-day execution — fuelling and hydration you've actually rehearsed, conservative early pacing, deliberate hiking on the climbs, and a foot / blister / chafe plan. If your current longest run is well short of race demands, seriously consider a longer-runway race or a more conservative goal.`;
   }
   const want = recommendedWeeksFor(distanceGoal);
   if (totalWeeks >= want) return null;

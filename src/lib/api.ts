@@ -323,7 +323,12 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     mandatoryGearNotes: planRow.mandatory_gear_notes ?? '',
     totalWeeks: planRow.total_weeks,
     quote: planRow.quote ?? '',
-    phases: buildPhaseSummary(planRow.total_weeks),
+    // Short-runway ultra plans are marked by their 'Race Prep' weeks, so a plan saved
+    // before this existed keeps its original phase summary.
+    phases: buildPhaseSummary(
+      planRow.total_weeks,
+      (weekRows ?? []).some((w) => w.phase === 'Race Prep'),
+    ),
     rows: (weekRows ?? []).map((w) => ({
       week: w.week_number,
       phase: w.phase,

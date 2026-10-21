@@ -131,7 +131,11 @@ export function TrainingPlan() {
       detail: paces ? workoutDetail(kind, raw, { distanceGoal: plan.distanceGoal, phase: row.phase, paces, unit: paceUnit }) : null,
     };
   };
-  const tableHeaders = isUltra
+  // Short-runway ultra plans swap the hill and cross-train days for gear and fuel rehearsal.
+  const isReadiness = isUltra && plan.rows.some((r) => r.phase === 'Race Prep');
+  const tableHeaders = isReadiness
+    ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Gear test)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Fuel rehearsal)', 'Sat (Long Run)', 'Sun', 'Total Weekly Hours']
+    : isUltra
     ? ['Week', 'Phase / Focus', 'Mon', 'Tue (Hills/Climbing)', 'Wed (Strength)', 'Thu (Easy)', 'Fri (Cross-train)', 'Sat (Long Run 1)', 'Sun (Long Run 2)', 'Total Weekly Hours']
     : ['Week', 'Phase / Focus', 'Mon', 'Tue (Intervals/Tempo)', 'Wed (Steady)', 'Thu (Easy)', 'Fri', 'Sat (Long Run)', 'Sun', 'Total Weekly Miles'];
 

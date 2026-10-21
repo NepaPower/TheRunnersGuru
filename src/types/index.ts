@@ -143,7 +143,7 @@ export interface OnboardingState {
 /** One row of the generated week-by-week training plan. */
 export interface TrainingPlanRow {
   week: number;
-  phase: 'Base Building' | 'Build Phase' | 'Recovery Week' | 'Taper Phase' | 'Race Week';
+  phase: 'Base Building' | 'Build Phase' | 'Race Prep' | 'Recovery Week' | 'Taper Phase' | 'Race Week';
   mon: string;
   tue: string;
   wed: string;

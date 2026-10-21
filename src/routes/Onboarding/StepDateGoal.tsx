@@ -173,7 +173,7 @@ export function StepDateGoal({
           {isShort && (
             <p style={{ margin: '6px 0 0', fontSize: 13 }}>
               {isUltra
-                ? `That's short for ${distanceLabel} — not enough runway to safely build new endurance. The plan will focus on keeping your long runs consistent, protecting recovery, and race-day execution (rehearsed fuelling, conservative pacing, hiking the climbs). If your longest run is well short of the distance, consider a race further out or an easier goal.`
+                ? `That's short for ${distanceLabel} — less runway than we'd like for building new endurance. We'll still make you a plan: it eases off the build (or, if it's very short, holds your long runs steady with gear and fuel rehearsal instead), protects recovery, and focuses on race-day execution. If your longest run is well short of the distance, consider a race further out or an easier goal.`
                 : `That's a compressed timeline for ${distanceLabel} — under the recommended ${recommendedWeeks}+ weeks. We'll still build you a full plan, just expect a faster ramp-up in volume than a longer buildup would allow, especially if this is your first time at the distance.`}
             </p>
           )}
