@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState, PageHeader, SectionHeader } from '../components/PageHeader';
 import { useApp } from '../state/AppContext';
 import { deleteTrainingPlan, fetchCrewAccessList, regeneratePlanWeeks, setPrimaryRace } from '../lib/api';
-import { countdownLabel, daysUntil } from '../lib/today';
+import { countdownLabel, daysUntil, isRaceLocked } from '../lib/today';
 import type { CrewAccessEntry, DistanceGoal } from '../types';
 import './races.css';
 
@@ -139,6 +139,7 @@ export function Races() {
           {plans.map((p) => {
             const days = daysUntil(p.raceDate);
             const isPast = days != null && days < 0;
+            const locked = isRaceLocked(p.raceDate, p.createdAt);
             const canDelete = !p.isPrimary || !hasMultiple;
             return (
               <div key={p.id} className="rg-races-card">
@@ -181,8 +182,8 @@ export function Races() {
                       </Button>
                       <Button
                         variant="ghost"
-                        disabled={isPast}
-                        title={isPast ? "Completed races can't be edited" : undefined}
+                        disabled={locked}
+                        title={locked ? 'Locked — this race ended more than 14 days ago' : undefined}
                         onClick={() => navigate(`/races/${p.id}/edit`)}
                       >
                         Edit
@@ -208,8 +209,8 @@ export function Races() {
                       {canDelete ? (
                         <Button
                           variant="ghost"
-                          disabled={isPast}
-                          title={isPast ? "Completed races can't be deleted" : undefined}
+                          disabled={locked}
+                          title={locked ? 'Locked — this race ended more than 14 days ago' : undefined}
                           onClick={() => p.id && openDeleteConfirm(p.id)}
                         >
                           Delete

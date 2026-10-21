@@ -278,6 +278,10 @@ export interface TrainingPlan {
   // Total goal finish time in minutes, from onboarding's goal-time step.
   // Used by the Crew Plan screen to predict aid-station arrival times.
   goalFinishMinutes: number | null;
+  // When the race was added (the row's created_at). Used for the 14-day
+  // grace period before a completed race is locked. Absent on plans built
+  // in the client and not yet re-read.
+  createdAt?: string;
   // The pace picked/typed during onboarding step 4. Only used to sanity-check
   // the goal time against current fitness; absent on older plans and on
   // crew-only races.

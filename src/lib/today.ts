@@ -83,3 +83,21 @@ export function countdownLabel(days: number | null): string {
   if (days < 90) return `in ${Math.round(days / 7)} weeks`;
   return `in ${Math.round(days / 30)} months`;
 }
+
+const LOCK_GRACE_DAYS = 14;
+
+/** Completed races are locked (no Edit / Delete) once they're more than 14
+ * days past — except for 14 days after the race was added, so a race entered
+ * with a wrong past date (say the wrong year) can still be fixed or removed.
+ * When the creation time is unknown the race is left unlocked rather than
+ * risk trapping someone. */
+export function isRaceLocked(raceDate: string, createdAt?: string | null, now: Date = new Date()): boolean {
+  const days = daysUntil(raceDate);
+  if (days == null || days >= -LOCK_GRACE_DAYS) return false;
+  if (!createdAt) return false;
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return false;
+  const createdDay = dayNumber(created.getFullYear(), created.getMonth() + 1, created.getDate());
+  const today = dayNumber(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  return today - createdDay > LOCK_GRACE_DAYS;
+}

@@ -89,7 +89,7 @@ export function AddRace() {
         quote: '',
       };
       const row = await createTrainingPlan(userId, plan);
-      dispatch({ type: 'PLAN_ADDED', plan: { ...plan, id: row.id } });
+      dispatch({ type: 'PLAN_ADDED', plan: { ...plan, id: row.id, createdAt: row.created_at } });
       navigate(`/crew-plan/${row.id}`);
     } catch (e) {
       setError(

@@ -96,7 +96,7 @@ export function Onboarding() {
         customPace: state.onboarding.pace === 'custom' ? state.onboarding.customPace || null : null,
       };
       const savedRow = await saveTrainingPlan(liveUserId, plan);
-      dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan: { ...plan, id: savedRow.id } });
+      dispatch({ type: 'ONBOARDING_PLAN_SAVED', plan: { ...plan, id: savedRow.id, createdAt: savedRow.created_at } });
       navigate('/home');
     } catch (e) {
       // Supabase's PostgrestError isn't an instanceof Error, so the old

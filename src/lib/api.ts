@@ -313,6 +313,7 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     raceDate: planRow.race_date,
     raceStartTime: planRow.race_start_time ?? null,
     goalFinishMinutes: planRow.goal_finish_minutes != null ? Number(planRow.goal_finish_minutes) : null,
+    createdAt: planRow.created_at ?? undefined,
     pace: planRow.pace ?? null,
     paceUnit: planRow.pace_unit ?? null,
     customPace: planRow.custom_pace ?? null,
