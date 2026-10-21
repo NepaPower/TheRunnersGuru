@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { PageHeader, SectionHeader } from '../components/PageHeader';
 import { TodayCard } from '../components/TodayCard';
+import { ConsistencyCalendar } from '../components/ConsistencyCalendar';
+import { consistencyWeeks } from '../lib/consistency';
 import { countdownLabel, daysUntil, localISODate } from '../lib/today';
 import { formatRaceDateReadout } from '../lib/format';
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart';
@@ -105,9 +107,10 @@ const NAV_CARDS = [
 ];
 
 export function Dashboard() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const navigate = useNavigate();
   const stats = homeStats(state);
+  const consistency = consistencyWeeks(state.loggedRuns);
   const week = weeklyMileageSeries(state);
   const hasPlan = !!state.trainingPlan;
   const hasAnyRuns = state.loggedRuns.length > 0;
@@ -248,6 +251,18 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      <SectionHeader
+        title="Your consistency"
+        status={`Last 4 weeks · ${consistency.totalRuns} run${consistency.totalRuns === 1 ? '' : 's'}`}
+      />
+      <ConsistencyCalendar
+        weeks={consistency.weeks}
+        onPickDay={(iso) => {
+          dispatch({ type: 'LOG_FORM_SET_MANY', fields: { date: iso } });
+          navigate('/log-run');
+        }}
+      />
 
       <SectionHeader title="Your numbers" />
       <div className="rg-dash-stat-grid">

@@ -5,13 +5,18 @@ const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
 // Whole days since 1970-01-01, from a calendar date (month is 1-based).
 // Working in day numbers keeps date math free of time-of-day and DST drift.
-function dayNumber(year: number, month: number, day: number): number {
+export function dayNumber(year: number, month: number, day: number): number {
   return Math.floor(Date.UTC(year, month - 1, day) / DAY_MS);
 }
 
 // 1970-01-01 was a Thursday (Monday-based index 3).
-const weekdayIndex = (dayNum: number) => (dayNum + 3) % 7;
-const mondayOf = (dayNum: number) => dayNum - weekdayIndex(dayNum);
+export const weekdayIndex = (dayNum: number) => (dayNum + 3) % 7;
+export const mondayOf = (dayNum: number) => dayNum - weekdayIndex(dayNum);
+
+/** yyyy-mm-dd for a day number (the format logged runs use). */
+export function dayNumberToISO(dayNum: number): string {
+  return new Date(dayNum * DAY_MS).toISOString().slice(0, 10);
+}
 
 export function dayNumberToLabel(dayNum: number): string {
   return new Date(dayNum * DAY_MS).toLocaleDateString('en-US', {
