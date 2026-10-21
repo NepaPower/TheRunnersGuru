@@ -2,12 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// On GitHub Actions, GITHUB_REPOSITORY is "owner/repo" — use the repo name
-// as the base path so assets resolve correctly on a project Pages site
-// (https://<owner>.github.io/<repo>/). Locally (and for a custom domain or
-// a user/org Pages site named <owner>.github.io), base stays '/'.
-const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1];
-const base = process.env.GITHUB_ACTIONS && repoName && !repoName.endsWith('.github.io') ? `/${repoName}/` : '/';
+// The app is served from the root of its own domain (therunnersguru.com, set
+// under the repo's Settings -> Pages -> Custom domain), so base is '/'. It used
+// to be '/TheRunnersGuru/' while the site lived at
+// https://nepapower.github.io/TheRunnersGuru/ — GitHub now 301s that address
+// to the custom domain. Set SITE_BASE to build for a subpath again.
+const base = process.env.SITE_BASE ?? '/';
 
 export default defineConfig({
   base,
@@ -33,9 +33,8 @@ export default defineConfig({
         theme_color: '#345a2f',
         background_color: '#f7f7f1',
         display: 'standalone',
-        // Relative so they inherit the deploy base ('/TheRunnersGuru/' on
-        // GitHub Pages, '/' locally) — an absolute '/' would break the
-        // project-subpath install.
+        // Relative so they inherit the deploy base — an absolute '/' would
+        // break an install under a subpath (see SITE_BASE above).
         start_url: '.',
         scope: '.',
         icons: [
