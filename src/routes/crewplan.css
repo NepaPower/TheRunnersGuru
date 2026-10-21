@@ -37,7 +37,8 @@
 
 .rg-cp-pace-callout {
   position: sticky;
-  top: var(--space-3);
+  /* sits just under the pinned top bar (~77px tall) */
+  top: calc(78px + var(--space-3));
   z-index: 40;
   display: flex;
   align-items: flex-start;

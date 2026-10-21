@@ -6,7 +6,11 @@
 
 html, body, #root {
   min-height: 100vh;
+  /* `hidden` makes each of these a scroll container, which silently breaks
+     position: sticky for everything inside. `clip` hides the overflow the
+     same way without creating one (hidden stays as the fallback). */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -128,6 +132,11 @@ body {
 .app-shell > .nav {
   padding-top: var(--space-4);
   padding-bottom: var(--space-4);
+  /* Stays pinned to the top while the page scrolls. Above page content and
+     the Crew Plan pace bar (40), below dialogs. */
+  position: sticky;
+  top: 0;
+  z-index: 45;
 }
 
 /* Progress bar for challenges */
