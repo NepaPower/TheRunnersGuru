@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { AppNav } from './AppNav';
 import { FeedbackDialog } from '../FeedbackDialog';
 import { useApp } from '../../state/AppContext';
@@ -20,6 +20,14 @@ export function AppLayout() {
           <button type="button" className="app-feedback-link" onClick={() => setFeedbackOpen(true)}>
             Send feedback
           </button>
+          {' · '}
+          <Link to="/privacy" className="app-feedback-link">
+            Privacy
+          </Link>
+          {' · '}
+          <Link to="/terms" className="app-feedback-link">
+            Terms
+          </Link>
         </div>
       </div>
       {feedbackOpen && <FeedbackDialog onClose={() => setFeedbackOpen(false)} />}

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { SUPPORT_EMAIL } from '../data/constants';
+import { useApp } from '../state/AppContext';
 import './privacy.css';
 
 const LAST_UPDATED = 'October 20, 2026';
@@ -12,6 +13,8 @@ const LAST_UPDATED = 'October 20, 2026';
  * matching section below needs a line. */
 export function Privacy() {
   const { hash } = useLocation();
+  const { state } = useApp();
+  const signedIn = !!state.userId;
 
   // Router doesn't scroll for us: honor "#contact" links, else start at the top.
   useEffect(() => {
@@ -23,12 +26,12 @@ export function Privacy() {
   return (
     <div className="rg-pv">
       <nav className="rg-pv-nav">
-        <Link to="/" className="rg-pv-brand">
+        <Link to={signedIn ? '/home' : '/'} className="rg-pv-brand">
           <LogoMark size={30} />
           The Runners Guru
         </Link>
-        <Link to="/signin" className="rg-pv-nav-link">
-          Sign in
+        <Link to={signedIn ? '/home' : '/signin'} className="rg-pv-nav-link">
+          {signedIn ? 'Back to app' : 'Sign in'}
         </Link>
       </nav>
 

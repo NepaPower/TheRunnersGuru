@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { SUPPORT_EMAIL } from '../data/constants';
+import { useApp } from '../state/AppContext';
 // Terms and Privacy are twin legal pages: they share one stylesheet.
 import './privacy.css';
 
@@ -13,6 +14,8 @@ const LAST_UPDATED = 'October 21, 2026';
  * generated or shared, this needs a matching line. */
 export function Terms() {
   const { hash } = useLocation();
+  const { state } = useApp();
+  const signedIn = !!state.userId;
 
   useEffect(() => {
     const target = hash ? document.getElementById(hash.slice(1)) : null;
@@ -23,12 +26,12 @@ export function Terms() {
   return (
     <div className="rg-pv">
       <nav className="rg-pv-nav">
-        <Link to="/" className="rg-pv-brand">
+        <Link to={signedIn ? '/home' : '/'} className="rg-pv-brand">
           <LogoMark size={30} />
           The Runners Guru
         </Link>
-        <Link to="/signin" className="rg-pv-nav-link">
-          Sign in
+        <Link to={signedIn ? '/home' : '/signin'} className="rg-pv-nav-link">
+          {signedIn ? 'Back to app' : 'Sign in'}
         </Link>
       </nav>
 
