@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
+import { FeedbackDialog } from '../components/FeedbackDialog';
 import { SUPPORT_URL } from '../data/constants';
 import './support.css';
 
@@ -8,6 +10,8 @@ import './support.css';
  * until then it says so plainly instead of pretending. Deliberately makes no
  * promise about where money goes or about tax treatment. */
 export function Support() {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+
   return (
     <>
       <PageHeader
@@ -47,10 +51,15 @@ export function Support() {
         <h3>Help us decide what to build</h3>
         <p>
           Later on, extras for race week may be offered as an optional paid pass: a printable crew sheet, pacing adjusted
-          for heat and climbs, live updates for your crew. Which of those would you actually use? Tell us with{' '}
-          <strong>Send feedback</strong> at the bottom of any screen.
+          for heat and climbs, live updates for your crew. Which of those would you actually use?{' '}
+          <button type="button" className="app-feedback-link" style={{ fontWeight: 700 }} onClick={() => setFeedbackOpen(true)}>
+            Send feedback
+          </button>{' '}
+          and tell us.
         </p>
       </div>
+
+      {feedbackOpen && <FeedbackDialog onClose={() => setFeedbackOpen(false)} />}
     </>
   );
 }
