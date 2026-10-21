@@ -32,7 +32,7 @@ const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 function classifyWorkout(text: string): 'rest' | 'easy' | 'steady' | 'quality' | 'long' | 'cross' | 'strength' | 'race' | 'plain' {
   const t = text.toLowerCase();
   if (t.includes('race day')) return 'race';
-  if (t === 'rest') return 'rest';
+  if (t === 'rest' || t.startsWith('rest,')) return 'rest'; // "Rest, or an easy swim" is still a rest day
   if (t.includes('long run')) return 'long';
   if (t.includes('strength')) return 'strength';
   if (t.includes('bike') || t.includes('swim') || t.includes('cross')) return 'cross';
@@ -147,6 +147,17 @@ function TrainingWeeks({
           >
             ›
           </button>
+        </div>
+
+        <div className="rg-tp-tip">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+          <span>
+            <strong>Warm up before every run or workout.</strong> 5–10 minutes of easy walking or jogging, then dynamic
+            stretches (leg swings, walking lunges, hip circles, ankle rolls). Save the long, held stretches for after.
+          </span>
         </div>
 
         <div className="rg-tp-daygrid">
