@@ -113,6 +113,8 @@ export function standardRamp(
 }
 
 const ULTRA_PEAK_LONG_H = 6;
+/** The weekly long run starts at most this share of the race's peak long run. */
+const MAX_START_SHARE_OF_PEAK = 0.7;
 
 /** The peak Saturday long run for an ultra, in hours, by race distance: longer
  * races need longer long runs (6-9 hrs is normal for the build phase of a 100K
@@ -151,8 +153,10 @@ interface UltraRamp {
 export function ultraRamp(totalWeeks: number, base?: RunnerBase | null, ultraMiles?: number | null): UltraRamp | null {
   if (!base || base.longestRunMiles == null) return null;
   const peakH = ultraPeakLongHours(ultraMiles);
-  // A runner already past this race's peak just holds at the peak.
-  const startH = clamp(base.longestRunMiles / LONG_RUN_MILES_PER_HOUR, 1, peakH);
+  // The weekly long run starts where the runner is, but never above 70% of this race's
+  // peak: a longest run that was a one-off effort (a training 50-miler, say) isn't what
+  // they repeat every Saturday, and starting at the peak would leave no build at all.
+  const startH = clamp(base.longestRunMiles / LONG_RUN_MILES_PER_HOUR, 1, peakH * MAX_START_SHARE_OF_PEAK);
   const taper = totalWeeks >= 10 ? 3 : totalWeeks >= 5 ? 2 : 1;
   const reachH = Math.min(peakH, startH * Math.pow(MAX_WEEKLY_GROWTH, rampSteps(totalWeeks - taper)));
   const span = peakH - startH;
