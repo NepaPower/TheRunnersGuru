@@ -268,6 +268,24 @@ export function Landing() {
         </div>
       </section>
 
+      <section className="rg-landing-section">
+        <div className="rg-landing-kicker">Who it's for</div>
+        <h2>Whatever your next start line is.</h2>
+        <div className="rg-landing-grid">
+          {AUDIENCES.map((a) => (
+            <div key={a.title} className="rg-landing-card">
+              <div className="rg-landing-card-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor">
+                  {a.icon}
+                </svg>
+              </div>
+              <div className="rg-landing-card-title">{a.title}</div>
+              <p className="rg-landing-card-desc">{a.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="rg-landing-section rg-landing-crew">
         <div className="rg-landing-kicker">The Crew Plan</div>
         <h2>Upload the course. Get your whole race day.</h2>
@@ -335,24 +353,6 @@ export function Landing() {
             Plan your race day
           </Button>
           <span>Free to join. Works for any race with a GPX file.</span>
-        </div>
-      </section>
-
-      <section className="rg-landing-section">
-        <div className="rg-landing-kicker">Who it's for</div>
-        <h2>Whatever your next start line is.</h2>
-        <div className="rg-landing-grid">
-          {AUDIENCES.map((a) => (
-            <div key={a.title} className="rg-landing-card">
-              <div className="rg-landing-card-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor">
-                  {a.icon}
-                </svg>
-              </div>
-              <div className="rg-landing-card-title">{a.title}</div>
-              <p className="rg-landing-card-desc">{a.desc}</p>
-            </div>
-          ))}
         </div>
       </section>
 
