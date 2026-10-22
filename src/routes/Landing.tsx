@@ -244,6 +244,7 @@ export function Landing() {
       <footer className="rg-landing-footer">
         <span>The Runners Guru</span>
         <div className="rg-landing-footer-links">
+          <Link to="/whats-new">What's new</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <Link to="/privacy#contact">Contact</Link>
