@@ -59,6 +59,82 @@ const AUDIENCES: { title: string; desc: string; icon: JSX.Element }[] = [
   },
 ];
 
+// The Crew Plan: what the GPX upload turns into. Every line describes something the
+// Crew Plan screen really does today.
+const CREW_STEPS = [
+  { title: 'Upload your GPX', desc: "Course distance, climb and descent, and the aid stations the race organizer named, read straight from the file." },
+  { title: 'See every station', desc: 'Mile marker, when you will arrive at your goal pace, and the pace you need to make each cutoff.' },
+  { title: 'Check the weather', desc: 'Temperature, rain chance and wind for race day at each station, or typical conditions when it is still far off.' },
+  { title: 'Bring your crew', desc: 'Invite them by email. Everyone sees the same plan, and only you and your Chief Crew can change it.' },
+];
+
+const CREW_FEATURES: { title: string; desc: string; icon: JSX.Element }[] = [
+  {
+    title: 'Aid stations, found for you',
+    desc: "The organizer's named waypoints in your GPX become aid stations, placed on the course by mile. Fix a mile marker and every time recalculates.",
+    icon: (
+      <>
+        <path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10Z" strokeWidth="2" strokeLinejoin="round" fill="none" />
+        <circle cx="12" cy="11" r="2.2" strokeWidth="2" fill="none" />
+      </>
+    ),
+  },
+  {
+    title: 'Arrival times and cutoffs',
+    desc: 'Your goal time and rest stops become the time you reach every station, plus the pace you must hold to make each cutoff, leg by leg.',
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" strokeWidth="2" fill="none" />
+        <path d="M12 7v5l3.5 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </>
+    ),
+  },
+  {
+    title: 'Weather at every station',
+    desc: 'Temperature, chance of rain and wind through race day at each aid station, so you and your crew pack for what is really coming.',
+    icon: (
+      <>
+        <circle cx="9" cy="9" r="3" strokeWidth="2" fill="none" />
+        <path d="M9 3v1.5M3 9h1.5M4.8 4.8l1 1M13.2 4.8l-1 1" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M8 20h9a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8 13.6 3.2 3.2 0 0 0 8 20Z" strokeWidth="2" strokeLinejoin="round" fill="none" />
+      </>
+    ),
+  },
+  {
+    title: 'Manage your crew',
+    desc: 'Invite crew and pacers by email. Your Chief Crew helps keep the plan current and everyone else follows along: one plan, no group-text confusion.',
+    icon: (
+      <path
+        d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M15 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 20v-1a3.5 3.5 0 0 0-2.5-3.36M15.5 3.13a3.5 3.5 0 0 1 0 6.75"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    ),
+  },
+  {
+    title: 'Works offline',
+    desc: 'Save the plan before you lose signal and it stays readable on the trail, at the aid station and in the car.',
+    icon: (
+      <>
+        <path d="M12 3v11M8 10l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </>
+    ),
+  },
+  {
+    title: 'Everything your crew needs',
+    desc: 'Drop bags and pacer pickups, mandatory gear, notes for nutrition and hydration at each stop, driving directions to every station, and a print-ready crew sheet.',
+    icon: (
+      <>
+        <rect x="5" y="4" width="14" height="17" rx="2" strokeWidth="2" fill="none" />
+        <path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </>
+    ),
+  },
+];
+
 const STEPS = [
   { label: 'Before', title: 'Train with a plan', desc: 'Built backward from race day, with a target pace for every workout.' },
   { label: 'During', title: 'Race with a plan', desc: 'Your Crew Plan shows when you reach each aid station, and the weather when you get there.' },
@@ -189,6 +265,76 @@ export function Landing() {
             />
             <circle cx="470" cy="152" r="6" fill="currentColor" opacity="0.7" />
           </svg>
+        </div>
+      </section>
+
+      <section className="rg-landing-section rg-landing-crew">
+        <div className="rg-landing-kicker">The Crew Plan</div>
+        <h2>Upload the course. Get your whole race day.</h2>
+        <p className="rg-landing-lead">
+          Drop in your race's GPX file and The Runners Guru finds the aid stations the race organizer marked, then builds the
+          plan your crew actually needs: when you will be there, what the weather will be, and what to bring.
+        </p>
+
+        <div className="rg-landing-crew-top">
+          <ol className="rg-landing-crew-steps">
+            {CREW_STEPS.map((st, i) => (
+              <li key={st.title}>
+                <span className="rg-landing-crew-step-num">{i + 1}</span>
+                <div>
+                  <div className="rg-landing-crew-step-title">{st.title}</div>
+                  <p>{st.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="rg-landing-mock" aria-hidden="true">
+            <div className="rg-landing-mock-tag">Example station</div>
+            <div className="rg-landing-mock-head">
+              <span>Aid station 4</span>
+              <span>Mile 52.3</span>
+            </div>
+            <div className="rg-landing-mock-row">
+              <span>You arrive</span>
+              <strong>6:40 PM</strong>
+            </div>
+            <div className="rg-landing-mock-row">
+              <span>Cutoff</span>
+              <strong>9:00 PM</strong>
+            </div>
+            <div className="rg-landing-mock-row">
+              <span>Ahead of cutoff</span>
+              <strong>2 h 20 min</strong>
+            </div>
+            <div className="rg-landing-mock-weather">71°F · 10% chance of rain · wind 6 mph</div>
+            <div className="rg-landing-mock-chips">
+              <span>Drop bag</span>
+              <span>Pacer pickup</span>
+            </div>
+            <div className="rg-landing-mock-link">Driving directions to this station →</div>
+          </div>
+        </div>
+
+        <div className="rg-landing-grid">
+          {CREW_FEATURES.map((f) => (
+            <div key={f.title} className="rg-landing-card">
+              <div className="rg-landing-card-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor">
+                  {f.icon}
+                </svg>
+              </div>
+              <div className="rg-landing-card-title">{f.title}</div>
+              <p className="rg-landing-card-desc">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rg-landing-crew-cta">
+          <Button variant="primary" onClick={() => navigate('/signup')}>
+            Plan your race day
+          </Button>
+          <span>Free to join. Works for any race with a GPX file.</span>
         </div>
       </section>
 
