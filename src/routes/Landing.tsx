@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogoMark } from '../components/Logo';
 import { Button } from '../components/ui/Button';
 import './landing.css';
@@ -69,6 +69,7 @@ const ALSO_INSIDE = ['Run log', 'Weekly mileage', 'Multiple races', 'Print-ready
 
 export function Landing() {
   const navigate = useNavigate();
+  const accountDeleted = !!(useLocation().state as { accountDeleted?: boolean } | null)?.accountDeleted;
   const [heroEmail, setHeroEmail] = useState('');
   // The top bar stays pinned and shrinks once you scroll past the top.
   const [scrolled, setScrolled] = useState(false);
@@ -102,6 +103,11 @@ export function Landing() {
 
       <section className="rg-landing-hero">
         <div className="rg-landing-hero-inner">
+          {accountDeleted && (
+            <div className="rg-landing-deleted" role="status">
+              Your account and its data have been deleted. Thanks for running with us.
+            </div>
+          )}
           <div className="rg-landing-eyebrow">Training and race-day planning</div>
           <h1 className="rg-landing-headline">
             Run far.

@@ -105,6 +105,24 @@ export async function cacheDel(key: string): Promise<void> {
   });
 }
 
+/** Wipes the whole on-device cache (used when an account is deleted, so none of its
+ * saved plans, weather or images stay on this device). */
+export async function cacheClearAll(): Promise<void> {
+  const db = await openDb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
 /** "3 minutes ago", "2 hours ago", "yesterday", "5 days ago". */
 export function relativeTime(ts: number, now = Date.now()): string {
   const s = Math.max(0, Math.round((now - ts) / 1000));

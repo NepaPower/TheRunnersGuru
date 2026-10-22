@@ -132,7 +132,7 @@ export function Terms() {
 
           <h2>Ending things</h2>
           <p>
-            You can stop using the app whenever you like, and you can ask us to delete your account (see the{' '}
+            You can stop using the app whenever you like, and you can delete your account yourself in Profile, or ask us to (see the{' '}
             <Link to="/privacy">Privacy page</Link>). We may suspend an account that breaks these rules or puts others at
             risk.
           </p>

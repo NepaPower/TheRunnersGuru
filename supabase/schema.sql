@@ -768,6 +768,9 @@ create policy "feedback is insertable by the signed-in sender"
   on public.feedback for insert
   with check (auth.uid() = user_id);
 
+-- Self-serve account deletion (Profile -> Settings -> Delete my account) calls
+-- public.delete_my_account(): hand-run SQL in supabase/delete_account.sql.
+
 -- New feedback is also emailed to the developer by a trigger — see
 -- supabase/feedback_email.sql (hand-run; its API key and recipient live in
 -- the Vault, not in this public repo).

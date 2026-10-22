@@ -336,6 +336,53 @@ export async function deleteTrainingPlan(planId: string) {
   if (error) throw error;
 }
 
+// ─── Delete account ──────────────────────────────────────────────────────
+
+/** What the delete-account confirm screen shows beyond what is already in memory. */
+export async function fetchAccountSummary(userId: string): Promise<{ crewMembers: number; sharedRoutes: number }> {
+  const [crew, routes] = await Promise.all([
+    supabase.from('crew_plan_access').select('id', { count: 'exact', head: true }).eq('owner_user_id', userId),
+    supabase.from('shared_routes').select('id', { count: 'exact', head: true }).eq('uploader_user_id', userId),
+  ]);
+  if (crew.error) throw crew.error;
+  if (routes.error) throw routes.error;
+  return { crewMembers: crew.count ?? 0, sharedRoutes: routes.count ?? 0 };
+}
+
+/** Removes every file in a storage folder (best-effort: a leftover file is not fatal, but the
+ * database step below fails if a storage object still points at the user, so errors surface there). */
+async function removeFolder(bucket: string, folder: string) {
+  try {
+    const { data: objects } = await supabase.storage.from(bucket).list(folder, { limit: 1000 });
+    if (objects && objects.length > 0) {
+      await supabase.storage.from(bucket).remove(objects.map((o) => `${folder}/${o.name}`));
+    }
+  } catch {
+    // ignore; see above
+  }
+}
+
+/** Permanently deletes the signed-in person's account: their uploaded files first (course
+ * images and GPX files don't cascade), then the account itself through the delete_my_account()
+ * database function (hand-run SQL in supabase/delete_account.sql), which cascades to all their
+ * rows. Finally clears the local session. Throws, with nothing deleted, if the function isn't
+ * installed or the call fails. */
+export async function deleteMyAccount(userId: string, ownPlanIds: string[]): Promise<void> {
+  await Promise.all([
+    ...ownPlanIds.map((planId) => removeFolder(COURSE_SEGMENTS_BUCKET, planId)),
+    removeFolder(ROUTE_LIBRARY_BUCKET, userId),
+  ]);
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) {
+    if (error.code === 'PGRST202' || /could not find the function/i.test(error.message)) {
+      throw new Error("Deleting accounts isn't switched on yet. Nothing was deleted. Please contact us and we'll delete it for you.");
+    }
+    throw new Error('Could not delete the account. Please try again, or contact us. (' + error.message + ')');
+  }
+  // The account no longer exists server-side, so only clear this browser's session.
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+}
+
 async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
   const { data: weekRows, error: weeksErr } = await supabase
     .from('training_plan_weeks')

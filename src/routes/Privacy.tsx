@@ -149,7 +149,8 @@ export function Privacy() {
             <li>Update your name, address, and phone any time from Profile.</li>
             <li>Delete a run, a race, or a route you shared from inside the app.</li>
             <li>
-              To delete your account and everything attached to it, contact us (below). Deleting an account removes your
+              To delete your account and everything attached to it, use <strong>Delete my account</strong> in Profile
+              (Settings), or contact us (below). Deleting an account removes your
               profile, runs, races, and plans, and removes you from other people's crews.
             </li>
           </ul>

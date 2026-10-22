@@ -4,6 +4,7 @@ import { Field, Input } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import { GARMIN_SAMPLE_ACTIVITIES } from '../../data/constants';
 import { saveProfileAddress, setGarminConnected, requestPasswordReset } from '../../lib/api';
+import { DeleteAccountDialog } from '../../components/DeleteAccountDialog';
 import { describeError } from '../../lib/useOnlineStatus';
 
 export function SettingsTab() {
@@ -13,6 +14,7 @@ export function SettingsTab() {
   const [savingAddress, setSavingAddress] = useState(false);
   const [garminBusy, setGarminBusy] = useState(false);
   const [passwordMail, setPasswordMail] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -234,8 +236,27 @@ export function SettingsTab() {
           </>
         )}
       </div>
+
+      <div className="rg-card stack-3">
+        <div>
+          <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#a3362f' }}>
+            Danger zone
+          </div>
+          <h3 style={{ margin: 0 }}>Delete account</h3>
+        </div>
+        <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
+          Permanently delete your account and everything attached to it: runs, races, training plans and Crew Plans. This
+          can't be undone.
+        </p>
+        <div>
+          <Button variant="secondary" onClick={() => setDeleteOpen(true)} style={{ color: '#a3362f', borderColor: '#a3362f' }}>
+            Delete my account…
+          </Button>
+        </div>
       </div>
       </div>
+      </div>
+      {deleteOpen && <DeleteAccountDialog onClose={() => setDeleteOpen(false)} />}
     </>
   );
 }

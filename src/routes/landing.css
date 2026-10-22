@@ -364,3 +364,13 @@
   .rg-landing-card, .rg-landing-step { padding: var(--space-4); }
   .rg-landing-footer { flex-direction: column; text-align: center; }
 }
+
+.rg-landing-deleted {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent-300) 18%, transparent);
+  color: var(--color-bg);
+  font-size: 15px;
+}
