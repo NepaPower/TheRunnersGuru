@@ -473,6 +473,29 @@
   background: color-mix(in srgb, var(--color-accent-2) 22%, transparent);
   font-size: 14px;
 }
+.rg-landing-mock-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-bg) 84%, transparent);
+}
+.rg-landing-mock-notes b {
+  margin-right: 6px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-300);
+}
+.rg-landing-mock-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--color-bg) 18%, transparent);
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-bg) 68%, transparent);
+}
 .rg-landing-mock-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .rg-landing-mock-chips span {
   padding: 4px 12px;

@@ -125,7 +125,7 @@ const CREW_FEATURES: { title: string; desc: string; icon: JSX.Element }[] = [
   },
   {
     title: 'Everything your crew needs',
-    desc: 'Drop bags and pacer pickups, mandatory gear, notes for nutrition and hydration at each stop, driving directions to every station, and a print-ready crew sheet.',
+    desc: 'Rest and sleep stops, what goes in each drop bag, pacer pickups, a race-wide mandatory gear list, nutrition and hydration notes, driving directions to every station, and a print-ready crew sheet.',
     icon: (
       <>
         <rect x="5" y="4" width="14" height="17" rx="2" strokeWidth="2" fill="none" />
@@ -325,12 +325,26 @@ export function Landing() {
               <span>Ahead of cutoff</span>
               <strong>2 h 20 min</strong>
             </div>
+            <div className="rg-landing-mock-row">
+              <span>Rest / sleep here</span>
+              <strong>1 hr 30 min</strong>
+            </div>
             <div className="rg-landing-mock-weather">71°F · 10% chance of rain · wind 6 mph</div>
+            <div className="rg-landing-mock-notes">
+              <div>
+                <b>Drop bag</b> Headlamp + spare batteries, dry socks, warm layer, charger
+              </div>
+              <div>
+                <b>Nutrition</b> Broth and rice, 2 gels for the climb
+              </div>
+            </div>
             <div className="rg-landing-mock-chips">
               <span>Drop bag</span>
               <span>Pacer pickup</span>
+              <span>Planned sleep stop</span>
             </div>
             <div className="rg-landing-mock-link">Driving directions to this station →</div>
+            <div className="rg-landing-mock-foot">Race-wide: mandatory gear list, one tap away for you and your crew</div>
           </div>
         </div>
 
