@@ -10,6 +10,7 @@ import { ForgotPassword } from './routes/ForgotPassword';
 import { ResetPassword } from './routes/ResetPassword';
 import { Privacy } from './routes/Privacy';
 import { Terms } from './routes/Terms';
+import { WhatsNew } from './routes/WhatsNew';
 import { Onboarding } from './routes/Onboarding';
 import { Dashboard } from './routes/Dashboard';
 import { TrainingPlan } from './routes/TrainingPlan';
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/whats-new" element={<WhatsNew />} />
 
         <Route element={<RequireAuth />}>
           <Route path="/onboarding" element={<Onboarding />} />

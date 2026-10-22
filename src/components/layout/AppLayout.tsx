@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
+import { hasUnseenWhatsNew } from '../../data/whatsNew';
+import '../../routes/privacy.css';
 import { AppNav } from './AppNav';
 import { FeedbackDialog } from '../FeedbackDialog';
 import { useApp } from '../../state/AppContext';
@@ -20,6 +22,11 @@ export function AppLayout() {
           <button type="button" className="app-feedback-link" onClick={() => setFeedbackOpen(true)}>
             Send feedback
           </button>
+          {' · '}
+          <Link to="/whats-new" className="app-feedback-link">
+            What's new
+            {hasUnseenWhatsNew() && <span className="rg-wn-dot" aria-label="new" />}
+          </Link>
           {' · '}
           <Link to="/privacy" className="app-feedback-link">
             Privacy
