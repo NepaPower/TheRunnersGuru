@@ -6,7 +6,7 @@ import { ultraDistanceMiles } from '../../lib/ultraDistance';
 import { DISTANCE_LABELS } from '../../data/constants';
 import { isPastDate } from '../../lib/today';
 
-const HOUR_OPTIONS_STANDARD = Array.from({ length: 7 }, (_, i) => String(i));
+const HOUR_OPTIONS_STANDARD = Array.from({ length: 10 }, (_, i) => String(i));
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const SECOND_OPTIONS = MINUTE_OPTIONS;
 
