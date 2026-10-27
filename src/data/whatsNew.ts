@@ -15,7 +15,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     items: [
       'New Background tab in Profile: add the races you have already run (with finish time and notes) and your current or past injuries.',
       'Injuries are private. Only you can see them, never your crew or other runners. You can tag how each one happened: in a race, in training, or neither.',
-      'Races that are over now have a "How did it go?" box on My Races: Finished (with your time), DNF, DNS or cancelled. Finished and DNF races also appear in Profile → Background.',
+      'Races that are over now have a "How did it go?" box on My Races: Finished (with your time), DNF, DNS or cancelled. Every past race also shows in Profile → Background.',
       'Marathon goal times can now go up to 9 hours, for slower trail marathons.',
       'A closer look at the Crew Plan on the home page: GPX upload, arrival times, weather at every station, crew, offline and more.',
     ],
