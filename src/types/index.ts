@@ -401,7 +401,7 @@ export interface RunSession {
 
 export type ProfileTab = 'stats' | 'leaderboard' | 'challenges' | 'settings' | 'background';
 
-/** A race the runner has already run (Profile → Background). Private to them; separate
+/** A race the runner has already run (Profile → History). Private to them; separate
  * from the races they plan in My Races. `finishSeconds` is null when no time was entered. */
 export interface PastRace {
   id: string;
@@ -418,7 +418,7 @@ export interface PastRace {
 /** How an injury happened; '' when not entered. */
 export type InjuryCause = 'race' | 'training' | 'other' | 'unsure' | '';
 
-/** A current or past injury (Profile → Background). Health information: private to the
+/** A current or past injury (Profile → History). Health information: private to the
  * runner, never shown to crew. `startedOn` is yyyy-mm-01 or '' when not entered. */
 export interface Injury {
   id: string;

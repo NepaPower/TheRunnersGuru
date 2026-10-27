@@ -18,7 +18,7 @@ import { BackgroundTab } from './BackgroundTab';
 // (src/data/constants.ts), not real users. Flip the flag to bring one back.
 const TABS: { id: ProfileTab; label: string; hidden?: boolean }[] = [
   { id: 'settings', label: 'Settings' },
-  { id: 'background', label: 'Background' },
+  { id: 'background', label: 'History' },
   { id: 'stats', label: 'Stats' },
   { id: 'leaderboard', label: 'Leaderboard', hidden: true },
   { id: 'challenges', label: 'Challenges', hidden: true },

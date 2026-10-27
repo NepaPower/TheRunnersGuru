@@ -38,7 +38,7 @@ function errorText(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 }
 
-/** Profile → Background: races the runner has already run, and current / past injuries.
+/** Profile → History: races the runner has already run, and current / past injuries.
  * Both lists are private to the account (owner-only in the database): crew and other
  * runners never see them. */
 export function BackgroundTab() {
@@ -71,7 +71,7 @@ export function BackgroundTab() {
     return (
       <div className="rg-card stack-3">
         <h3 style={{ margin: 0 }}>Running background</h3>
-        <div className="rg-auth-error">We couldn't load your running background. {loadError}</div>
+        <div className="rg-auth-error">We couldn't load your running history. {loadError}</div>
       </div>
     );
   }
