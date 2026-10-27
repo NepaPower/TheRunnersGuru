@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Field, Input, Select, TextArea } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
@@ -12,7 +13,9 @@ import {
   updateInjury,
   updatePastRace,
 } from '../../lib/api';
-import { localISODate } from '../../lib/today';
+import { formatFinishTime } from '../../lib/format';
+import { daysUntil, localISODate } from '../../lib/today';
+import { distanceGoalLabel } from '../../state/selectors';
 import type { Injury, InjuryCause, PastRace } from '../../types';
 
 const DISTANCE_SUGGESTIONS = ['5K', '10K', 'Half marathon', 'Marathon', '50K', '50 miles', '100K', '100 miles', '200 miles'];
@@ -30,14 +33,6 @@ const formatDate = (iso: string) =>
   new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const formatMonth = (iso: string) =>
   new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-
-/** h:mm:ss from total seconds; hours keep counting past 24 (a 40-hour finish reads 40:12:09). */
-function formatFinish(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong. Please try again.';
@@ -124,7 +119,27 @@ function draftFromRace(r: PastRace): RaceDraft {
 
 const digits = (v: string) => v.replace(/[^\d]/g, '');
 
+/** One row in the Past races list: either something the runner added here, or a race from
+ * My Races whose result was recorded there (shown here without copying it). */
+type PastRaceItem =
+  | { kind: 'manual'; date: string; race: PastRace }
+  | { kind: 'plan'; date: string; id: string; name: string; distance: string; finishSeconds: number | null; result: 'finished' | 'dnf' };
+
 function PastRaces({ userId, races, onChange }: { userId: string; races: PastRace[] | null; onChange: (r: PastRace[]) => void }) {
+  const { state } = useApp();
+  const navigate = useNavigate();
+  // Past races from My Races: those with a Finished or DNF result are listed here; the rest
+  // (no result yet) get a prompt. DNS and Cancelled stay on My Races only: this list is races you ran.
+  const pastPlans = state.ownPlans.filter((p) => p.id && p.raceDate && (daysUntil(p.raceDate) ?? 0) < 0);
+  const fromPlans: PastRaceItem[] = pastPlans.flatMap((p): PastRaceItem[] =>
+    p.raceResult === 'finished' || p.raceResult === 'dnf'
+      ? [{ kind: 'plan', date: p.raceDate, id: p.id as string, name: p.raceName, distance: distanceGoalLabel(p), finishSeconds: p.raceFinishSeconds ?? null, result: p.raceResult }]
+      : [],
+  );
+  const missingResults = pastPlans.filter((p) => !p.raceResult).length;
+  const merged: PastRaceItem[] = [...(races ?? []).map((r): PastRaceItem => ({ kind: 'manual', date: r.date, race: r })), ...fromPlans].sort((a, b) =>
+    b.date.localeCompare(a.date),
+  );
   // editingId: null = form closed, 'new' = adding, otherwise the race being edited
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<RaceDraft>(EMPTY_RACE);
@@ -219,20 +234,52 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
         </p>
       ) : (
         <>
-          {races.length === 0 && editingId == null && (
+          {merged.length === 0 && editingId == null && (
             <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
               No past races yet. Add the ones you are proud of, especially the long ones.
             </p>
           )}
 
-          {races.length > 0 && (
+          {missingResults > 0 && (
+            <div className="rg-pf-prompt">
+              <span>
+                {missingResults === 1 ? '1 race in My Races has' : `${missingResults} races in My Races have`} no result yet.
+              </span>
+              <Button variant="secondary" onClick={() => navigate('/races')}>
+                Add {missingResults === 1 ? 'it' : 'them'}
+              </Button>
+            </div>
+          )}
+
+          {merged.length > 0 && (
             <div className="rg-pf-list">
-              {races.map((r) => (
+              {merged.map((m) => {
+                if (m.kind === 'plan') {
+                  return (
+                    <div key={'plan-' + m.id} className="rg-pf-item">
+                      <div className="rg-pf-item-main">
+                        <div className="rg-pf-item-title">{m.name}</div>
+                        <div className="rg-pf-item-meta">
+                          {[formatDate(m.date), m.distance, m.finishSeconds ? formatFinishTime(m.finishSeconds) : null].filter(Boolean).join(' · ')}
+                          {m.result === 'dnf' && <span className="rg-pf-badge rg-pf-badge-dnf">Did not finish</span>}
+                          <span className="rg-pf-badge rg-pf-badge-past">From My Races</span>
+                        </div>
+                      </div>
+                      <div className="rg-pf-item-actions">
+                        <Button variant="ghost" onClick={() => navigate('/races')}>
+                          Edit in My Races
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+                const r = m.race;
+                return (
                 <div key={r.id} className="rg-pf-item">
                   <div className="rg-pf-item-main">
                     <div className="rg-pf-item-title">{r.name}</div>
                     <div className="rg-pf-item-meta">
-                      {[formatDate(r.date), r.distance, r.finishSeconds ? formatFinish(r.finishSeconds) : null].filter(Boolean).join(' · ')}
+                      {[formatDate(r.date), r.distance, r.finishSeconds ? formatFinishTime(r.finishSeconds) : null].filter(Boolean).join(' · ')}
                       {r.result === 'dnf' && <span className="rg-pf-badge rg-pf-badge-dnf">Did not finish</span>}
                     </div>
                     {r.notes && <div className="rg-pf-item-notes">{r.notes}</div>}
@@ -260,7 +307,8 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

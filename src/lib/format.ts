@@ -139,3 +139,11 @@ export function parseMilesInput(text: string): number | null {
   const n = parseFloat(text);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
+
+/** h:mm:ss from total seconds; hours keep counting past 24 (a 40-hour finish reads 40:12:09). */
+export function formatFinishTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}

@@ -148,6 +148,10 @@ create table public.training_plans (
   -- tier depends on them. Null = skipped. Hand-run version: supabase/runner_base.sql.
   current_weekly_miles numeric check (current_weekly_miles is null or (current_weekly_miles >= 0 and current_weekly_miles <= 500)),
   longest_run_miles numeric check (longest_run_miles is null or (longest_run_miles >= 0 and longest_run_miles <= 500)),
+  -- How a past race went, recorded by the owner on My Races. Null = not recorded.
+  -- Owner-only (enforce_course_setup_chief_only). Hand-run version: supabase/race_result.sql.
+  race_result text check (race_result is null or race_result in ('finished', 'dnf', 'dns', 'cancelled')),
+  race_finish_seconds int check (race_finish_seconds is null or (race_finish_seconds > 0 and race_finish_seconds <= 31536000)),
   quote text,
   created_at timestamptz not null default now()
 );
@@ -323,6 +327,11 @@ begin
       or new.mandatory_gear_notes is distinct from old.mandatory_gear_notes)
      and not public.can_edit_plan_course_setup(old.id) then
     raise exception 'Only the plan owner or Chief Crew can change the course file, segment info, or mandatory gear';
+  end if;
+  if (new.race_result is distinct from old.race_result
+      or new.race_finish_seconds is distinct from old.race_finish_seconds)
+     and auth.uid() is not null and auth.uid() is distinct from old.user_id then
+    raise exception 'Only the race owner can record the result';
   end if;
   return new;
 end;

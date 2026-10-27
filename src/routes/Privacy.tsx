@@ -72,7 +72,7 @@ export function Privacy() {
           <h3>Your training and races</h3>
           <p>
             The races you add (name, date, distance, location), your goal time and fitness answers, your generated training
-            plan, and everything you put in a Crew Plan: aid-station notes, cutoffs, pace and rest times, your course GPX
+            plan, how a race went if you record it (finished with a time, did not finish, did not start, or cancelled; visible with that race to any crew you invite), and everything you put in a Crew Plan: aid-station notes, cutoffs, pace and rest times, your course GPX
             file, and any gear or segment images you upload.
           </p>
           <h3>Your running background</h3>

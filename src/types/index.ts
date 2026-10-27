@@ -287,6 +287,10 @@ export interface TrainingPlan {
   // and its tier (full / gentler / hold-and-taper) depends on them.
   currentWeeklyMiles?: number | null;
   longestRunMiles?: number | null;
+  // How a past race went, recorded by the owner on My Races (null/absent = not
+  // recorded). `raceFinishSeconds` is only set for 'finished', and only if a time was given.
+  raceResult?: RaceResult | null;
+  raceFinishSeconds?: number | null;
   // When the race was added (the row's created_at). Used for the 14-day
   // grace period before a completed race is locked. Absent on plans built
   // in the client and not yet re-read.
@@ -316,6 +320,9 @@ export interface TrainingPlan {
   phases: PhaseSummaryItem[];
   quote: string;
 }
+
+/** The outcome of a race that has been run (or not): see TrainingPlan.raceResult. */
+export type RaceResult = 'finished' | 'dnf' | 'dns' | 'cancelled';
 
 export interface LoggedRun {
   id: string;

@@ -10,6 +10,7 @@ import type {
   InjuryCause,
   LoggedRun,
   PastRace,
+  RaceResult,
   SharedPlanEntry,
   SharedRoute,
   TrainingPlan,
@@ -286,6 +287,19 @@ export async function updateRaceDetails(planId: string, plan: TrainingPlan, opts
   if (opts.regenerateWeeks) await replaceWeekRows(planId, plan);
 }
 
+/** Records how a past race went ("How did it go?" on My Races). Owner-only in the
+ * database. The finish time is kept only for 'finished'. Pass result null to clear it. */
+export async function saveRaceResult(planId: string, result: RaceResult | null, finishSeconds: number | null) {
+  const { error } = await supabase
+    .from('training_plans')
+    .update({
+      race_result: result,
+      race_finish_seconds: result === 'finished' ? finishSeconds : null,
+    })
+    .eq('id', planId);
+  if (error) throw error;
+}
+
 /** Builds the weekly schedule for `plan` from its stored details and
  * persists it. Returns the fields to PLAN_PATCH into state. Throws if the
  * race has no date/distance. Used by the "Generate training plan" action
@@ -409,6 +423,8 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     currentWeeklyMiles: planRow.current_weekly_miles != null ? Number(planRow.current_weekly_miles) : null,
     longestRunMiles: planRow.longest_run_miles != null ? Number(planRow.longest_run_miles) : null,
     createdAt: planRow.created_at ?? undefined,
+    raceResult: ['finished', 'dnf', 'dns', 'cancelled'].includes(planRow.race_result) ? (planRow.race_result as RaceResult) : null,
+    raceFinishSeconds: planRow.race_finish_seconds != null ? Number(planRow.race_finish_seconds) : null,
     pace: planRow.pace ?? null,
     paceUnit: planRow.pace_unit ?? null,
     customPace: planRow.custom_pace ?? null,

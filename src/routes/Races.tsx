@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { RaceResultBox } from '../components/RaceResultBox';
 import { EmptyState, PageHeader, SectionHeader } from '../components/PageHeader';
 import { useApp } from '../state/AppContext';
 import { deleteTrainingPlan, fetchCrewAccessList, regeneratePlanWeeks, setPrimaryRace } from '../lib/api';
@@ -232,6 +233,14 @@ export function Races() {
                     </>
                   )}
                 </div>
+                {isPast && p.id && (
+                  <RaceResultBox
+                    planId={p.id}
+                    result={p.raceResult}
+                    finishSeconds={p.raceFinishSeconds}
+                    onSaved={(patch) => dispatch({ type: 'PLAN_PATCHED', planId: p.id as string, patch })}
+                  />
+                )}
               </div>
             );
           })}
