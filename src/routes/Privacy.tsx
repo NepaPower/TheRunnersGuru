@@ -72,13 +72,13 @@ export function Privacy() {
           <h3>Your training and races</h3>
           <p>
             The races you add (name, date, distance, location), your goal time and fitness answers, your generated training
-            plan, how a race went if you record it (finished with a time, did not finish, did not start, or cancelled; visible with that race to any crew you invite), and everything you put in a Crew Plan: aid-station notes, cutoffs, pace and rest times, your course GPX
+            plan, how a race went if you record it (finished with a time, did not finish, did not start, or cancelled; for a DNF or a cancellation, optionally the miles and time on feet, a reason, and a short note; visible with that race to any crew you invite), and everything you put in a Crew Plan: aid-station notes, cutoffs, pace and rest times, your course GPX
             file, and any gear or segment images you upload.
           </p>
           <h3>Your running background</h3>
           <p>
             If you choose to add them in Profile → Background: races you have already run (name, date, distance, finish
-            time, result, notes) and current or past injuries (body area, whether it is current, when it started, whether it happened in a race or in training, notes).
+            time, result, and for a DNF the miles, reason and notes) and current or past injuries (body area, whether it is current, when it started, whether it happened in a race or in training, notes).
             Injuries are health information, so they are kept strictly private to you and are never shown to your crew or
             to other runners.
           </p>

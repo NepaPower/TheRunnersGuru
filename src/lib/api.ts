@@ -6,6 +6,7 @@ import type {
   CrewNoteEntry,
   FeedbackCategory,
   GpxRoute,
+  DnfReason,
   Injury,
   InjuryCause,
   LoggedRun,
@@ -16,6 +17,7 @@ import type {
   TrainingPlan,
 } from '../types';
 import { durationToSeconds, formatDurationParts } from './format';
+import { toDnfReason } from './raceResult';
 import { buildPhaseSummary, buildTrainingPlan } from './planGenerator';
 
 // ─── Auth ───────────────────────────────────────────────────────────────
@@ -287,14 +289,29 @@ export async function updateRaceDetails(planId: string, plan: TrainingPlan, opts
   if (opts.regenerateWeeks) await replaceWeekRows(planId, plan);
 }
 
-/** Records how a past race went ("How did it go?" on My Races). Owner-only in the
- * database. The finish time is kept only for 'finished'. Pass result null to clear it. */
-export async function saveRaceResult(planId: string, result: RaceResult | null, finishSeconds: number | null) {
+export interface RaceResultInput {
+  result: RaceResult | null;
+  finishSeconds: number | null;
+  milesCompleted: number | null;
+  dnfReason: DnfReason | '';
+  note: string;
+}
+
+/** Records how a past race went ("How did it go?" on My Races). Owner-only in the database.
+ * Each result keeps only the details that belong to it: a time for finished / DNF / cancelled
+ * (finish time or time on feet), miles for DNF / cancelled, a reason for DNF, a note for DNF /
+ * cancelled. Pass result null to clear everything. */
+export async function saveRaceResult(planId: string, input: RaceResultInput) {
+  const r = input.result;
+  const ran = r === 'dnf' || r === 'cancelled';
   const { error } = await supabase
     .from('training_plans')
     .update({
-      race_result: result,
-      race_finish_seconds: result === 'finished' ? finishSeconds : null,
+      race_result: r,
+      race_finish_seconds: r === 'finished' || ran ? input.finishSeconds : null,
+      race_miles_completed: ran ? input.milesCompleted : null,
+      race_dnf_reason: r === 'dnf' && input.dnfReason ? input.dnfReason : null,
+      race_result_note: ran && input.note.trim() ? input.note.trim() : null,
     })
     .eq('id', planId);
   if (error) throw error;
@@ -425,6 +442,9 @@ async function mapPlanRow(planRow: Record<string, any>): Promise<TrainingPlan> {
     createdAt: planRow.created_at ?? undefined,
     raceResult: ['finished', 'dnf', 'dns', 'cancelled'].includes(planRow.race_result) ? (planRow.race_result as RaceResult) : null,
     raceFinishSeconds: planRow.race_finish_seconds != null ? Number(planRow.race_finish_seconds) : null,
+    raceMilesCompleted: planRow.race_miles_completed != null ? Number(planRow.race_miles_completed) : null,
+    raceDnfReason: toDnfReason(planRow.race_dnf_reason),
+    raceResultNote: planRow.race_result_note ?? '',
     pace: planRow.pace ?? null,
     paceUnit: planRow.pace_unit ?? null,
     customPace: planRow.custom_pace ?? null,
@@ -1147,6 +1167,8 @@ export interface PastRaceInput {
   distance: string;
   finishSeconds: number | null;
   result: 'finished' | 'dnf';
+  milesCompleted: number | null;
+  dnfReason: DnfReason | '';
   notes: string;
 }
 
@@ -1166,6 +1188,8 @@ function mapPastRaceRow(r: any): PastRace {
     distance: r.distance_label,
     finishSeconds: r.finish_seconds ?? null,
     result: r.result === 'dnf' ? 'dnf' : 'finished',
+    milesCompleted: r.miles_completed != null ? Number(r.miles_completed) : null,
+    dnfReason: toDnfReason(r.dnf_reason),
     notes: r.notes ?? '',
   };
 }
@@ -1177,6 +1201,8 @@ function pastRaceColumns(input: PastRaceInput) {
     distance_label: input.distance.trim(),
     finish_seconds: input.finishSeconds,
     result: input.result,
+    miles_completed: input.result === 'dnf' ? input.milesCompleted : null,
+    dnf_reason: input.result === 'dnf' && input.dnfReason ? input.dnfReason : null,
     notes: input.notes.trim() || null,
   };
 }

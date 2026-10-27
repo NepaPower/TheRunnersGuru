@@ -238,6 +238,9 @@ export function Races() {
                     planId={p.id}
                     result={p.raceResult}
                     finishSeconds={p.raceFinishSeconds}
+                    milesCompleted={p.raceMilesCompleted}
+                    dnfReason={p.raceDnfReason}
+                    note={p.raceResultNote}
                     onSaved={(patch) => dispatch({ type: 'PLAN_PATCHED', planId: p.id as string, patch })}
                   />
                 )}

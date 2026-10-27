@@ -152,6 +152,11 @@ create table public.training_plans (
   -- Owner-only (enforce_course_setup_chief_only). Hand-run version: supabase/race_result.sql.
   race_result text check (race_result is null or race_result in ('finished', 'dnf', 'dns', 'cancelled')),
   race_finish_seconds int check (race_finish_seconds is null or (race_finish_seconds > 0 and race_finish_seconds <= 31536000)),
+  -- Details for a DNF / mid-race cancellation (race_finish_seconds then holds the time on feet).
+  -- Hand-run version: supabase/race_result_details.sql.
+  race_miles_completed numeric check (race_miles_completed is null or (race_miles_completed >= 0 and race_miles_completed <= 1000)),
+  race_dnf_reason text check (race_dnf_reason is null or race_dnf_reason in ('injury', 'illness', 'cutoff', 'stomach', 'heat_weather', 'fatigue', 'other')),
+  race_result_note text check (race_result_note is null or char_length(race_result_note) <= 200),
   quote text,
   created_at timestamptz not null default now()
 );
@@ -329,7 +334,10 @@ begin
     raise exception 'Only the plan owner or Chief Crew can change the course file, segment info, or mandatory gear';
   end if;
   if (new.race_result is distinct from old.race_result
-      or new.race_finish_seconds is distinct from old.race_finish_seconds)
+      or new.race_finish_seconds is distinct from old.race_finish_seconds
+      or new.race_miles_completed is distinct from old.race_miles_completed
+      or new.race_dnf_reason is distinct from old.race_dnf_reason
+      or new.race_result_note is distinct from old.race_result_note)
      and auth.uid() is not null and auth.uid() is distinct from old.user_id then
     raise exception 'Only the race owner can record the result';
   end if;
@@ -915,3 +923,4 @@ create index chat_messages_thread_idx on public.chat_messages (thread_id, create
 -- ─── Running background (past races + injuries) ──────────────────────────
 -- Tables runner_past_races and runner_injuries (owner-only RLS, cascade on
 -- account deletion). Hand-run version: supabase/running_background.sql.
+-- (runner_past_races also gained miles_completed and dnf_reason: see supabase/race_result_details.sql.)

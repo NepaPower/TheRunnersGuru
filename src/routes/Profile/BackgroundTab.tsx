@@ -13,10 +13,10 @@ import {
   updateInjury,
   updatePastRace,
 } from '../../lib/api';
-import { formatFinishTime } from '../../lib/format';
+import { DNF_REASONS, parseMilesCompleted, resultDetailParts } from '../../lib/raceResult';
 import { daysUntil, localISODate } from '../../lib/today';
 import { distanceGoalLabel } from '../../state/selectors';
-import type { Injury, InjuryCause, PastRace, RaceResult } from '../../types';
+import type { DnfReason, Injury, InjuryCause, PastRace, RaceResult } from '../../types';
 
 const DISTANCE_SUGGESTIONS = ['5K', '10K', 'Half marathon', 'Marathon', '50K', '50 miles', '100K', '100 miles', '200 miles'];
 const AREA_SUGGESTIONS = ['Knee', 'Ankle', 'Achilles', 'Shin', 'Calf', 'Hamstring', 'Quad', 'Hip', 'IT band', 'Plantar fascia', 'Foot', 'Lower back'];
@@ -98,10 +98,12 @@ interface RaceDraft {
   minutes: string;
   seconds: string;
   result: 'finished' | 'dnf';
+  miles: string;
+  reason: DnfReason | '';
   notes: string;
 }
 
-const EMPTY_RACE: RaceDraft = { name: '', date: '', distance: '', hours: '', minutes: '', seconds: '', result: 'finished', notes: '' };
+const EMPTY_RACE: RaceDraft = { name: '', date: '', distance: '', hours: '', minutes: '', seconds: '', result: 'finished', miles: '', reason: '', notes: '' };
 
 function draftFromRace(r: PastRace): RaceDraft {
   const t = r.finishSeconds ?? 0;
@@ -113,6 +115,8 @@ function draftFromRace(r: PastRace): RaceDraft {
     minutes: r.finishSeconds ? String(Math.floor((t % 3600) / 60)) : '',
     seconds: r.finishSeconds ? String(t % 60) : '',
     result: r.result,
+    miles: r.milesCompleted != null ? String(r.milesCompleted) : '',
+    reason: r.dnfReason,
     notes: r.notes,
   };
 }
@@ -124,7 +128,7 @@ const digits = (v: string) => v.replace(/[^\d]/g, '');
  * including none yet). */
 type PastRaceItem =
   | { kind: 'manual'; date: string; race: PastRace }
-  | { kind: 'plan'; date: string; id: string; name: string; distance: string; finishSeconds: number | null; result: RaceResult | null };
+  | { kind: 'plan'; date: string; id: string; name: string; distance: string; finishSeconds: number | null; milesCompleted: number | null; dnfReason: DnfReason | ''; note: string; result: RaceResult | null };
 
 const PLAN_RESULT_BADGE: Record<RaceResult, { label: string; cls: string }> = {
   finished: { label: 'Finished', cls: 'rg-pf-badge-current' },
@@ -146,6 +150,9 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
       name: p.raceName,
       distance: distanceGoalLabel(p),
       finishSeconds: p.raceFinishSeconds ?? null,
+      milesCompleted: p.raceMilesCompleted ?? null,
+      dnfReason: p.raceDnfReason ?? '',
+      note: p.raceResultNote ?? '',
       result: p.raceResult ?? null,
     }));
   const merged: PastRaceItem[] = [...(races ?? []).map((r): PastRaceItem => ({ kind: 'manual', date: r.date, race: r })), ...fromPlans].sort((a, b) =>
@@ -185,12 +192,23 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
       return;
     }
     const seconds = (Number(draft.hours) || 0) * 3600 + (Number(draft.minutes) || 0) * 60 + (Number(draft.seconds) || 0);
+    if (draft.result === 'finished' && seconds <= 0) {
+      setError('Add your finish time.');
+      return;
+    }
+    const miles = draft.result === 'dnf' ? parseMilesCompleted(draft.miles) : null;
+    if (miles === undefined) {
+      setError('Miles should be a number, for example 140 or 52.3.');
+      return;
+    }
     const input = {
       name,
       date: draft.date,
       distance,
       finishSeconds: seconds > 0 ? seconds : null,
       result: draft.result,
+      milesCompleted: miles,
+      dnfReason: draft.result === 'dnf' ? draft.reason : ('' as const),
       notes: draft.notes,
     };
     setSaving(true);
@@ -260,13 +278,14 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
                       <div className="rg-pf-item-main">
                         <div className="rg-pf-item-title">{m.name}</div>
                         <div className="rg-pf-item-meta">
-                          {[formatDate(m.date), m.distance, m.finishSeconds ? formatFinishTime(m.finishSeconds) : null].filter(Boolean).join(' · ')}
+                          {[formatDate(m.date), m.distance, ...resultDetailParts(m)].join(' · ')}
                           {m.result && m.result !== 'finished' && (
                             <span className={`rg-pf-badge ${PLAN_RESULT_BADGE[m.result].cls}`}>{PLAN_RESULT_BADGE[m.result].label}</span>
                           )}
                           {!m.result && <span className="rg-pf-badge rg-pf-badge-current">No result yet</span>}
                           <span className="rg-pf-badge rg-pf-badge-past">From My Races</span>
                         </div>
+                        {m.note && <div className="rg-pf-item-notes">{m.note}</div>}
                       </div>
                       <div className="rg-pf-item-actions">
                         <Button variant="ghost" onClick={() => navigate('/races')}>
@@ -282,7 +301,7 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
                   <div className="rg-pf-item-main">
                     <div className="rg-pf-item-title">{r.name}</div>
                     <div className="rg-pf-item-meta">
-                      {[formatDate(r.date), r.distance, r.finishSeconds ? formatFinishTime(r.finishSeconds) : null].filter(Boolean).join(' · ')}
+                      {[formatDate(r.date), r.distance, ...resultDetailParts({ result: r.result, finishSeconds: r.finishSeconds, milesCompleted: r.milesCompleted, dnfReason: r.dnfReason })].join(' · ')}
                       {r.result === 'dnf' && <span className="rg-pf-badge rg-pf-badge-dnf">Did not finish</span>}
                     </div>
                     {r.notes && <div className="rg-pf-item-notes">{r.notes}</div>}
@@ -340,13 +359,6 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
                   </datalist>
                 </Field>
               </div>
-              <Field label="Finish time" optional>
-                <div className="rg-pf-time">
-                  <Input type="text" inputMode="numeric" placeholder="hrs" aria-label="Hours" value={draft.hours} onChange={(e) => set('hours', digits(e.target.value))} />
-                  <Input type="text" inputMode="numeric" placeholder="min" aria-label="Minutes" value={draft.minutes} onChange={(e) => set('minutes', digits(e.target.value))} />
-                  <Input type="text" inputMode="numeric" placeholder="sec" aria-label="Seconds" value={draft.seconds} onChange={(e) => set('seconds', digits(e.target.value))} />
-                </div>
-              </Field>
               <Field label="Result">
                 <div className="seg" style={{ maxWidth: 300 }}>
                   <label className="seg-opt">
@@ -357,6 +369,36 @@ function PastRaces({ userId, races, onChange }: { userId: string; races: PastRac
                     <input type="radio" name="pf-result" checked={draft.result === 'dnf'} onChange={() => set('result', 'dnf')} />
                     Did not finish
                   </label>
+                </div>
+              </Field>
+              {draft.result === 'dnf' && (
+                <div className="rg-grid-2">
+                  <Field label="Miles before you stopped" optional>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="e.g. 140"
+                      value={draft.miles}
+                      onChange={(e) => set('miles', e.target.value.replace(/[^\d.]/g, ''))}
+                    />
+                  </Field>
+                  <Field label="Reason" optional>
+                    <Select value={draft.reason} onChange={(e) => set('reason', e.target.value as DnfReason | '')}>
+                      <option value="">—</option>
+                      {DNF_REASONS.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+              )}
+              <Field label={draft.result === 'dnf' ? 'Time on feet' : 'Finish time'} optional={draft.result === 'dnf'} required={draft.result === 'finished'}>
+                <div className="rg-pf-time">
+                  <Input type="text" inputMode="numeric" placeholder="hrs" aria-label="Hours" value={draft.hours} onChange={(e) => set('hours', digits(e.target.value))} />
+                  <Input type="text" inputMode="numeric" placeholder="min" aria-label="Minutes" value={draft.minutes} onChange={(e) => set('minutes', digits(e.target.value))} />
+                  <Input type="text" inputMode="numeric" placeholder="sec" aria-label="Seconds" value={draft.seconds} onChange={(e) => set('seconds', digits(e.target.value))} />
                 </div>
               </Field>
               <Field label="Notes" optional>

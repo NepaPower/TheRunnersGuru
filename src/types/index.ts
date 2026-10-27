@@ -288,9 +288,14 @@ export interface TrainingPlan {
   currentWeeklyMiles?: number | null;
   longestRunMiles?: number | null;
   // How a past race went, recorded by the owner on My Races (null/absent = not
-  // recorded). `raceFinishSeconds` is only set for 'finished', and only if a time was given.
+  // recorded). `raceFinishSeconds` is the finish time for 'finished' and the time on feet for
+  // 'dnf' / 'cancelled' (null if not given). The miles, reason and note are optional extras for
+  // a DNF or a mid-race cancellation.
   raceResult?: RaceResult | null;
   raceFinishSeconds?: number | null;
+  raceMilesCompleted?: number | null;
+  raceDnfReason?: DnfReason | '';
+  raceResultNote?: string;
   // When the race was added (the row's created_at). Used for the 14-day
   // grace period before a completed race is locked. Absent on plans built
   // in the client and not yet re-read.
@@ -323,6 +328,9 @@ export interface TrainingPlan {
 
 /** The outcome of a race that has been run (or not): see TrainingPlan.raceResult. */
 export type RaceResult = 'finished' | 'dnf' | 'dns' | 'cancelled';
+
+/** Why a race ended in a DNF; '' when not entered. */
+export type DnfReason = 'injury' | 'illness' | 'cutoff' | 'stomach' | 'heat_weather' | 'fatigue' | 'other';
 
 export interface LoggedRun {
   id: string;
@@ -400,8 +408,10 @@ export interface PastRace {
   name: string;
   date: string; // yyyy-mm-dd
   distance: string;
-  finishSeconds: number | null;
+  finishSeconds: number | null; // finish time, or the time on feet for a DNF
   result: 'finished' | 'dnf';
+  milesCompleted: number | null; // miles run before a DNF
+  dnfReason: DnfReason | '';
   notes: string;
 }
 
