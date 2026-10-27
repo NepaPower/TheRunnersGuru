@@ -7,6 +7,7 @@ import type {
   FeedbackCategory,
   GpxRoute,
   Injury,
+  InjuryCause,
   LoggedRun,
   PastRace,
   SharedPlanEntry,
@@ -1137,6 +1138,7 @@ export interface InjuryInput {
   area: string;
   status: 'current' | 'past';
   startedOn: string;
+  cause: InjuryCause;
   notes: string;
 }
 
@@ -1200,6 +1202,7 @@ function mapInjuryRow(r: any): Injury {
     area: r.body_area,
     status: r.status === 'past' ? 'past' : 'current',
     startedOn: r.started_on ?? '',
+    cause: (['race', 'training', 'other', 'unsure'].includes(r.cause) ? r.cause : '') as InjuryCause,
     notes: r.notes ?? '',
   };
 }
@@ -1209,6 +1212,7 @@ function injuryColumns(input: InjuryInput) {
     body_area: input.area.trim(),
     status: input.status,
     started_on: input.startedOn || null,
+    cause: input.cause || null,
     notes: input.notes.trim() || null,
   };
 }

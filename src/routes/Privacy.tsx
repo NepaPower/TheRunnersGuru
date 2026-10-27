@@ -78,7 +78,7 @@ export function Privacy() {
           <h3>Your running background</h3>
           <p>
             If you choose to add them in Profile → Background: races you have already run (name, date, distance, finish
-            time, result, notes) and current or past injuries (body area, whether it is current, when it started, notes).
+            time, result, notes) and current or past injuries (body area, whether it is current, when it started, whether it happened in a race or in training, notes).
             Injuries are health information, so they are kept strictly private to you and are never shown to your crew or
             to other runners.
           </p>

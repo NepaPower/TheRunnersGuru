@@ -398,6 +398,9 @@ export interface PastRace {
   notes: string;
 }
 
+/** How an injury happened; '' when not entered. */
+export type InjuryCause = 'race' | 'training' | 'other' | 'unsure' | '';
+
 /** A current or past injury (Profile → Background). Health information: private to the
  * runner, never shown to crew. `startedOn` is yyyy-mm-01 or '' when not entered. */
 export interface Injury {
@@ -405,6 +408,7 @@ export interface Injury {
   area: string;
   status: 'current' | 'past';
   startedOn: string;
+  cause: InjuryCause;
   notes: string;
 }
 

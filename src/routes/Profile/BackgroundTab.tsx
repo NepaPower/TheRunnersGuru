@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { Field, Input, TextArea } from '../../components/ui/Form';
+import { Field, Input, Select, TextArea } from '../../components/ui/Form';
 import { useApp } from '../../state/AppContext';
 import {
   deleteInjury,
@@ -13,10 +13,18 @@ import {
   updatePastRace,
 } from '../../lib/api';
 import { localISODate } from '../../lib/today';
-import type { Injury, PastRace } from '../../types';
+import type { Injury, InjuryCause, PastRace } from '../../types';
 
 const DISTANCE_SUGGESTIONS = ['5K', '10K', 'Half marathon', 'Marathon', '50K', '50 miles', '100K', '100 miles', '200 miles'];
 const AREA_SUGGESTIONS = ['Knee', 'Ankle', 'Achilles', 'Shin', 'Calf', 'Hamstring', 'Quad', 'Hip', 'IT band', 'Plantar fascia', 'Foot', 'Lower back'];
+
+const CAUSE_OPTIONS: { value: Exclude<InjuryCause, ''>; label: string }[] = [
+  { value: 'race', label: 'During a race' },
+  { value: 'training', label: 'During training' },
+  { value: 'other', label: 'Not from running' },
+  { value: 'unsure', label: 'Not sure' },
+];
+const causeLabel = (c: InjuryCause) => CAUSE_OPTIONS.find((o) => o.value === c)?.label ?? '';
 
 const formatDate = (iso: string) =>
   new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -335,10 +343,11 @@ interface InjuryDraft {
   area: string;
   status: 'current' | 'past';
   month: string; // yyyy-mm from <input type="month">, '' when not entered
+  cause: InjuryCause;
   notes: string;
 }
 
-const EMPTY_INJURY: InjuryDraft = { area: '', status: 'current', month: '', notes: '' };
+const EMPTY_INJURY: InjuryDraft = { area: '', status: 'current', month: '', cause: '', notes: '' };
 
 function Injuries({ userId, injuries, onChange }: { userId: string; injuries: Injury[] | null; onChange: (i: Injury[]) => void }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -359,7 +368,7 @@ function Injuries({ userId, injuries, onChange }: { userId: string; injuries: In
     setEditingId('new');
   }
   function openEdit(i: Injury) {
-    setDraft({ area: i.area, status: i.status, month: i.startedOn.slice(0, 7), notes: i.notes });
+    setDraft({ area: i.area, status: i.status, month: i.startedOn.slice(0, 7), cause: i.cause, notes: i.notes });
     setError(null);
     setEditingId(i.id);
   }
@@ -375,7 +384,7 @@ function Injuries({ userId, injuries, onChange }: { userId: string; injuries: In
       setError('The month it started cannot be in the future.');
       return;
     }
-    const input = { area, status: draft.status, startedOn: draft.month ? `${draft.month}-01` : '', notes: draft.notes };
+    const input = { area, status: draft.status, startedOn: draft.month ? `${draft.month}-01` : '', cause: draft.cause, notes: draft.notes };
     setSaving(true);
     setError(null);
     try {
@@ -447,7 +456,11 @@ function Injuries({ userId, injuries, onChange }: { userId: string; injuries: In
                         {i.status === 'current' ? 'Current' : 'Past'}
                       </span>
                     </div>
-                    {i.startedOn && <div className="rg-pf-item-meta">Since {formatMonth(i.startedOn)}</div>}
+                    {(i.startedOn || i.cause) && (
+                      <div className="rg-pf-item-meta">
+                        {[i.startedOn ? `Since ${formatMonth(i.startedOn)}` : null, i.cause ? causeLabel(i.cause) : null].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                     {i.notes && <div className="rg-pf-item-notes">{i.notes}</div>}
                   </div>
                   {confirmDeleteId === i.id ? (
@@ -508,6 +521,16 @@ function Injuries({ userId, injuries, onChange }: { userId: string; injuries: In
               </Field>
               <Field label="Started" optional>
                 <Input type="month" max={thisMonth} value={draft.month} onChange={(e) => set('month', e.target.value)} />
+              </Field>
+              <Field label="How it happened" optional>
+                <Select value={draft.cause} onChange={(e) => set('cause', e.target.value as InjuryCause)}>
+                  <option value="">—</option>
+                  {CAUSE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
               </Field>
               <Field label="Notes" optional>
                 <TextArea rows={2} maxLength={500} placeholder="What it is, what helps, what to watch" value={draft.notes} onChange={(e) => set('notes', e.target.value)} />
