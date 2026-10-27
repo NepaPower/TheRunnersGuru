@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { PageHeader } from '../../components/PageHeader';
 import { useApp } from '../../state/AppContext';
-import { distanceGoalLabel, paceLabel } from '../../state/selectors';
 import { signOut } from '../../lib/api';
 import '../profile.css';
 import type { ProfileTab } from '../../types';
@@ -47,12 +46,6 @@ export function Profile() {
     navigate('/');
   }
 
-  // Describes the saved primary race. Someone with no race of their own (a
-  // crew-only account) gets no line, rather than the wizard's default answers.
-  const plan = state.trainingPlan;
-  const planPace = plan ? paceLabel(plan) : null;
-  const subtitle = plan ? [distanceGoalLabel(plan), planPace].filter(Boolean).join(' · ') : undefined;
-
   return (
     <>
       {/* The Log out action is the only reachable path to logging out on
@@ -61,7 +54,6 @@ export function Profile() {
       <PageHeader
         eyebrow="Profile"
         title="Your profile"
-        subtitle={subtitle}
         action={
           <Button variant="ghost" onClick={handleLogout}>
             Log out
