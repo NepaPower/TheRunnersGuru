@@ -17,3 +17,45 @@
     grid-template-columns: minmax(0, 520px) minmax(0, 440px);
   }
 }
+
+/* Profile -> Background: past races + injuries lists and their inline forms. */
+.rg-pf-list { display: flex; flex-direction: column; }
+.rg-pf-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px var(--space-3);
+  padding: 12px 0;
+  border-top: 1px solid var(--color-divider);
+}
+.rg-pf-item:first-child { border-top: none; padding-top: 0; }
+.rg-pf-item-main { flex: 1 1 220px; min-width: 0; }
+.rg-pf-item-title { font-family: var(--font-heading); font-weight: 600; font-size: 18px; line-height: 1.2; }
+.rg-pf-item-meta { margin-top: 2px; font-size: 13.5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+.rg-pf-item-notes { margin-top: 6px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rg-pf-item-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.rg-pf-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.rg-pf-badge-current { background: color-mix(in srgb, #d9a441 24%, transparent); color: #7a5410; }
+.rg-pf-badge-past { background: color-mix(in srgb, var(--color-text) 10%, transparent); color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+.rg-pf-badge-dnf { background: color-mix(in srgb, #a3362f 14%, transparent); color: #a3362f; }
+.rg-pf-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider-strong);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
+.rg-pf-time { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); max-width: 320px; }

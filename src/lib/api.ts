@@ -6,7 +6,9 @@ import type {
   CrewNoteEntry,
   FeedbackCategory,
   GpxRoute,
+  Injury,
   LoggedRun,
+  PastRace,
   SharedPlanEntry,
   SharedRoute,
   TrainingPlan,
@@ -1115,6 +1117,130 @@ export async function deleteLoggedRun(runId: string): Promise<void> {
 
 export async function updateLoggedRunTemperature(runId: string, label: string) {
   const { error } = await supabase.from('logged_runs').update({ temperature_label: label }).eq('id', runId);
+  if (error) throw error;
+}
+
+// ─── Running background (past races + injuries) ─────────────────────────
+// Both tables are owner-only in the database (supabase/running_background.sql):
+// there is no read path for crew or other runners, by design.
+
+export interface PastRaceInput {
+  name: string;
+  date: string;
+  distance: string;
+  finishSeconds: number | null;
+  result: 'finished' | 'dnf';
+  notes: string;
+}
+
+export interface InjuryInput {
+  area: string;
+  status: 'current' | 'past';
+  startedOn: string;
+  notes: string;
+}
+
+function mapPastRaceRow(r: any): PastRace {
+  return {
+    id: r.id,
+    name: r.race_name,
+    date: r.race_date,
+    distance: r.distance_label,
+    finishSeconds: r.finish_seconds ?? null,
+    result: r.result === 'dnf' ? 'dnf' : 'finished',
+    notes: r.notes ?? '',
+  };
+}
+
+function pastRaceColumns(input: PastRaceInput) {
+  return {
+    race_name: input.name.trim(),
+    race_date: input.date,
+    distance_label: input.distance.trim(),
+    finish_seconds: input.finishSeconds,
+    result: input.result,
+    notes: input.notes.trim() || null,
+  };
+}
+
+export async function fetchPastRaces(userId: string): Promise<PastRace[]> {
+  const { data, error } = await supabase
+    .from('runner_past_races')
+    .select('*')
+    .eq('user_id', userId)
+    .order('race_date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapPastRaceRow);
+}
+
+export async function insertPastRace(userId: string, input: PastRaceInput): Promise<PastRace> {
+  const { data, error } = await supabase
+    .from('runner_past_races')
+    .insert({ user_id: userId, ...pastRaceColumns(input) })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapPastRaceRow(data);
+}
+
+export async function updatePastRace(id: string, input: PastRaceInput): Promise<PastRace> {
+  const { data, error } = await supabase.from('runner_past_races').update(pastRaceColumns(input)).eq('id', id).select().single();
+  if (error) throw error;
+  return mapPastRaceRow(data);
+}
+
+export async function deletePastRace(id: string): Promise<void> {
+  const { error } = await supabase.from('runner_past_races').delete().eq('id', id);
+  if (error) throw error;
+}
+
+function mapInjuryRow(r: any): Injury {
+  return {
+    id: r.id,
+    area: r.body_area,
+    status: r.status === 'past' ? 'past' : 'current',
+    startedOn: r.started_on ?? '',
+    notes: r.notes ?? '',
+  };
+}
+
+function injuryColumns(input: InjuryInput) {
+  return {
+    body_area: input.area.trim(),
+    status: input.status,
+    started_on: input.startedOn || null,
+    notes: input.notes.trim() || null,
+  };
+}
+
+export async function fetchInjuries(userId: string): Promise<Injury[]> {
+  const { data, error } = await supabase
+    .from('runner_injuries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapInjuryRow);
+}
+
+export async function insertInjury(userId: string, input: InjuryInput): Promise<Injury> {
+  const { data, error } = await supabase
+    .from('runner_injuries')
+    .insert({ user_id: userId, ...injuryColumns(input) })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapInjuryRow(data);
+}
+
+export async function updateInjury(id: string, input: InjuryInput): Promise<Injury> {
+  const { data, error } = await supabase.from('runner_injuries').update(injuryColumns(input)).eq('id', id).select().single();
+  if (error) throw error;
+  return mapInjuryRow(data);
+}
+
+export async function deleteInjury(id: string): Promise<void> {
+  const { error } = await supabase.from('runner_injuries').delete().eq('id', id);
   if (error) throw error;
 }
 

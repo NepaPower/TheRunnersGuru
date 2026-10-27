@@ -5,7 +5,7 @@ import { SUPPORT_EMAIL } from '../data/constants';
 import { useApp } from '../state/AppContext';
 import './privacy.css';
 
-const LAST_UPDATED = 'October 20, 2026';
+const LAST_UPDATED = 'October 27, 2026';
 
 /** Public page (no sign-in): what The Runners Guru collects, who sees it,
  * and which outside services it talks to. Keep this in step with the app —
@@ -75,6 +75,13 @@ export function Privacy() {
             plan, and everything you put in a Crew Plan: aid-station notes, cutoffs, pace and rest times, your course GPX
             file, and any gear or segment images you upload.
           </p>
+          <h3>Your running background</h3>
+          <p>
+            If you choose to add them in Profile → Background: races you have already run (name, date, distance, finish
+            time, result, notes) and current or past injuries (body area, whether it is current, when it started, notes).
+            Injuries are health information, so they are kept strictly private to you and are never shown to your crew or
+            to other runners.
+          </p>
           <h3>Your run log</h3>
           <p>
             Each run you log: date, distance, time, notes, and optional details such as nutrition. If you import a GPX
@@ -99,7 +106,7 @@ export function Privacy() {
           <h2>Who can see it</h2>
           <ul>
             <li>
-              <strong>Only you:</strong> your profile, run log, training plan, and the races you add. This is enforced in
+              <strong>Only you:</strong> your profile, run log, running background (past races and injuries), training plan, and the races you add. This is enforced in
               our database, not just hidden in the app.
             </li>
             <li>
@@ -147,7 +154,7 @@ export function Privacy() {
           <h2>Your choices</h2>
           <ul>
             <li>Update your name, address, and phone any time from Profile.</li>
-            <li>Delete a run, a race, or a route you shared from inside the app.</li>
+            <li>Delete a run, a race, a past race, an injury note, or a route you shared from inside the app.</li>
             <li>
               To delete your account and everything attached to it, use <strong>Delete my account</strong> in Profile
               (Settings), or contact us (below). Deleting an account removes your

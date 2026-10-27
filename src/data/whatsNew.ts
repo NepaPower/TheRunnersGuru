@@ -10,6 +10,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-10-27',
+    title: 'Your running background',
+    items: [
+      'New Background tab in Profile: add the races you have already run (with finish time and notes) and your current or past injuries.',
+      'Injuries are private. Only you can see them, never your crew or other runners.',
+      'Marathon goal times can now go up to 9 hours, for slower trail marathons.',
+      'A closer look at the Crew Plan on the home page: GPX upload, arrival times, weather at every station, crew, offline and more.',
+    ],
+  },
+  {
     id: '2026-10-22',
     title: 'Plans that fit where you are',
     items: [

@@ -11,12 +11,14 @@ import { StatsTab } from './StatsTab';
 import { LeaderboardTab } from './LeaderboardTab';
 import { ChallengesTab } from './ChallengesTab';
 import { SettingsTab } from './SettingsTab';
+import { BackgroundTab } from './BackgroundTab';
 
 // `hidden: true` tabs stay fully built but aren't shown or reachable —
 // Leaderboard and Challenges still run on hardcoded placeholder data
 // (src/data/constants.ts), not real users. Flip the flag to bring one back.
 const TABS: { id: ProfileTab; label: string; hidden?: boolean }[] = [
   { id: 'settings', label: 'Settings' },
+  { id: 'background', label: 'Background' },
   { id: 'stats', label: 'Stats' },
   { id: 'leaderboard', label: 'Leaderboard', hidden: true },
   { id: 'challenges', label: 'Challenges', hidden: true },
@@ -86,6 +88,7 @@ export function Profile() {
         ))}
       </div>
 
+      {state.profileTab === 'background' && <BackgroundTab />}
       {state.profileTab === 'stats' && <StatsTab />}
       {state.profileTab === 'leaderboard' && isVisibleTab('leaderboard') && <LeaderboardTab />}
       {state.profileTab === 'challenges' && isVisibleTab('challenges') && <ChallengesTab />}

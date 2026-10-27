@@ -902,3 +902,7 @@ create index chat_messages_thread_idx on public.chat_messages (thread_id, create
 -- Uncomment to let Supabase push new chat messages to connected clients
 -- instantly (used for the Chat screen once real users message each other).
 -- alter publication supabase_realtime add table public.chat_messages;
+
+-- ─── Running background (past races + injuries) ──────────────────────────
+-- Tables runner_past_races and runner_injuries (owner-only RLS, cascade on
+-- account deletion). Hand-run version: supabase/running_background.sql.

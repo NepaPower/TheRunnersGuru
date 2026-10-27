@@ -77,7 +77,7 @@ export function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
         This permanently deletes <strong>{state.auth.email}</strong> and everything attached to it. It can't be undone.
       </p>
       <ul style={{ margin: '0 0 var(--space-3)', paddingLeft: 20, lineHeight: 1.6 }}>
-        <li>Your profile, name and address</li>
+        <li>Your profile, name and address, and your past races and injury notes</li>
         <li>
           {plural(runs, 'logged run', 'logged runs')}
         </li>

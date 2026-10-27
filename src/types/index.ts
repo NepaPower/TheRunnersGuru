@@ -384,7 +384,29 @@ export interface RunSession {
   distanceMiles: number;
 }
 
-export type ProfileTab = 'stats' | 'leaderboard' | 'challenges' | 'settings';
+export type ProfileTab = 'stats' | 'leaderboard' | 'challenges' | 'settings' | 'background';
+
+/** A race the runner has already run (Profile → Background). Private to them; separate
+ * from the races they plan in My Races. `finishSeconds` is null when no time was entered. */
+export interface PastRace {
+  id: string;
+  name: string;
+  date: string; // yyyy-mm-dd
+  distance: string;
+  finishSeconds: number | null;
+  result: 'finished' | 'dnf';
+  notes: string;
+}
+
+/** A current or past injury (Profile → Background). Health information: private to the
+ * runner, never shown to crew. `startedOn` is yyyy-mm-01 or '' when not entered. */
+export interface Injury {
+  id: string;
+  area: string;
+  status: 'current' | 'past';
+  startedOn: string;
+  notes: string;
+}
 
 /** One plan shared with the current user as a crew member (not their own
  * plan) — see fetchSharedPlans in lib/api.ts. */
