@@ -4,3 +4,6 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+
+# Social launch drafts (images + post copy), kept out of the public repo
+_social-launch/
