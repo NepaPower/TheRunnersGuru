@@ -10,6 +10,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
   {
+    id: '2026-11-04',
+    title: 'Works with no signal',
+    items: [
+      'Opening the app with no signal no longer sends you to the sign-in page. It opens on your saved copy and brings in fresh data when signal returns.',
+      'Before you head out, tap Save for offline on your Crew Plan so the latest version is on your phone.',
+      'Terms and Privacy now say who runs the app (D4Nepal LLC).',
+    ],
+  },
+  {
     id: '2026-10-27',
     title: 'Your running history',
     items: [

@@ -3,7 +3,7 @@ import type { AppState, TrainingPlan } from '../types';
 import type { Action } from './actions';
 import { buildInitialState, reducer } from './reducer';
 import { fetchTemperatureForZipAndDate } from './../lib/weather';
-import { supabase } from '../lib/supabaseClient';
+import { storedSessionUserId, supabase } from '../lib/supabaseClient';
 import { hydrateUserData } from '../lib/api';
 import { updateLoggedRunTemperature } from '../lib/api';
 import { cacheGet, cacheSet } from '../lib/offlineCache';
@@ -26,6 +26,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, buildInitialState);
   const [authReady, setAuthReady] = React.useState(false);
   const timerRef = useRef<number | null>(null);
+  // Mirrors state.dataStale for the auth listeners below (they are set up once and would
+  // otherwise only see the first render's value).
+  const staleRef = useRef(false);
+  staleRef.current = state.dataStale;
 
   // On first load, and whenever Supabase's auth state changes (sign-in,
   // sign-out, token refresh), pull the user's data and hydrate local state.
@@ -48,19 +52,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      const userId = data.session?.user.id;
-      if (!userId) {
+    // With no signal, a session whose access token has expired can't be renewed, so
+    // getSession() says "no session" even though the sign-in is still saved. Fall back to
+    // the saved sign-in so the app opens on its saved copy instead of the sign-in page. The
+    // token renews itself, and fresh data loads, as soon as signal returns (see below).
+    //
+    // supabase keeps retrying that renewal for about 30 seconds before giving up. Nobody
+    // should stare at "Loading…" that long on a trail, so after a few seconds open the saved
+    // copy if there is one; a slow-but-working connection still replaces it with fresh data
+    // when the session comes through.
+    let opened = false;
+    const slowTimer = window.setTimeout(async () => {
+      if (opened) return;
+      const savedUserId = storedSessionUserId();
+      if (savedUserId && (await hydrateFromCache(savedUserId))) {
+        opened = true;
         setAuthReady(true);
+      }
+    }, 4000);
+
+    supabase.auth.getSession().then(({ data }) => {
+      window.clearTimeout(slowTimer);
+      const userId = data.session?.user.id ?? storedSessionUserId();
+      if (!userId) {
+        opened = true;
+        setAuthReady(true);
+        return;
+      }
+      if (opened) {
+        // Already on the saved copy: if the session did come through, load the fresh data.
+        if (data.session) hydrateFromSession(userId).catch(() => {});
         return;
       }
       hydrateFromSession(userId)
         .catch(() => hydrateFromCache(userId))
-        .finally(() => setAuthReady(true));
+        .finally(() => {
+          opened = true;
+          setAuthReady(true);
+        });
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user.id) {
+        hydrateFromSession(session.user.id).catch(() => {});
+      }
+      // The token just renewed after a stretch on the saved copy: load fresh data now.
+      if (event === 'TOKEN_REFRESHED' && session?.user.id && staleRef.current) {
         hydrateFromSession(session.user.id).catch(() => {});
       }
       if (event === 'SIGNED_OUT') {
@@ -68,7 +105,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    // Signal is back while running on the saved copy: renew the token right away (rather than
+    // waiting for the next background check) and load fresh data.
+    function handleOnline() {
+      if (!staleRef.current) return;
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session?.user.id) hydrateFromSession(data.session.user.id).catch(() => {});
+      });
+    }
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.clearTimeout(slowTimer);
+      sub.subscription.unsubscribe();
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   // Run-tracking timer: purely a client-side simulation (not real GPS),
