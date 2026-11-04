@@ -5,7 +5,7 @@ import { SUPPORT_EMAIL } from '../data/constants';
 import { useApp } from '../state/AppContext';
 import './privacy.css';
 
-const LAST_UPDATED = 'October 27, 2026';
+const LAST_UPDATED = 'November 4, 2026';
 
 /** Public page (no sign-in): what The Runners Guru collects, who sees it,
  * and which outside services it talks to. Keep this in step with the app —
@@ -171,6 +171,9 @@ export function Privacy() {
             If we change how we handle your information, we will update this page and the date at the top. If a change
             matters, we will tell you in the app.
           </p>
+
+          <h2>Who runs this</h2>
+          <p>The Runners Guru is operated by D4Nepal LLC.</p>
 
           <h2 id="contact">Contact</h2>
           <p>

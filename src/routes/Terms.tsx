@@ -6,7 +6,7 @@ import { useApp } from '../state/AppContext';
 // Terms and Privacy are twin legal pages: they share one stylesheet.
 import './privacy.css';
 
-const LAST_UPDATED = 'October 21, 2026';
+const LAST_UPDATED = 'November 4, 2026';
 
 /** Public page (no sign-in): the ground rules for using The Runners Guru.
  * Written in plain English to sit next to the Privacy page. If the app starts
@@ -142,6 +142,9 @@ export function Terms() {
             If we change these terms, we'll update this page and the date at the top. If a change matters, we'll tell you in
             the app. Using the app after a change means you accept it.
           </p>
+
+          <h2>Who runs this</h2>
+          <p>The Runners Guru is operated by D4Nepal LLC.</p>
 
           <h2 id="contact">Contact</h2>
           <p>
